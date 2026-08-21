@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "host": "vite dev --host",
-    "build": "vite build && tsc --noEmit",
+    "build": "rm -rf dist && vite build && tsc --noEmit",
     "start": "node scripts/serve.mjs",
     "typecheck": "tsc --noEmit"
   },
