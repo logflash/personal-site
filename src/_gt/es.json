@@ -1,0 +1,71 @@
+{
+  "157c9e55d9f87056": "Construí un cargador solar variable de lazo cerrado con un sensor de potencia y un convertidor reductor, y luego escribí firmware para experimentar con distintos algoritmos de maximización de potencia.",
+  "1738f499d0c9cf60": "Investigación",
+  "1912938772b112de": "B.S.E. ECE, Princeton — 1.º de 1.300",
+  "1d4df5410bca2e3b": "Estudié ECE en Princeton —donde me gradué primero de una promoción de 1.305 estudiantes—, y mi investigación abarcó la detección de enfermedades mediante dispositivos portátiles, los modelos basados en energía y el aprendizaje robótico.",
+  "1e87300d832e74e4": "Resolví Pacman como un juego discreto de persecución-evasión y luego utilicé las funciones de valor óptimas aprendidas para explorar garantías de seguridad y equilibrios para los equipos de Pacman y los fantasmas.",
+  "2ecf88ef9e8e4259": "Inicio",
+  "30b52a001ba4e38e": "menos",
+  "346e753c3412369d": "NeuTigers, Inc. — Consultoría de datos e IA",
+  "424a9891f646a1cb": "Sep",
+  "4a68cb0d1371a99a": [
+    {
+      "c": [
+        {
+          "i": 2,
+          "k": "_gt_value_2",
+          "v": "v"
+        },
+        " contribuciones en GitHub"
+      ],
+      "i": 1,
+      "t": "span"
+    },
+    " ",
+    {
+      "c": "en el último año",
+      "i": 3,
+      "t": "span"
+    }
+  ],
+  "4add1139ae8ec5c1": "Contacto",
+  "4cbc7c43dd33c363": "Currículum",
+  "53a76d38ff01b2c7": "Iteración de valores de seguridad para Pacman",
+  "56bb6c62f1675d86": "Planificación por difusión con timeskip",
+  "59c42bdbb959f307": "Soy Ian, estudiante de Ph.D. en el MIT, y trabajo en el entrenamiento y la aplicación de foundation models basados en señales para aplicaciones médicas. Anteriormente: B.S.E. y M.Eng. en ECE en Princeton, investigación en detección de enfermedades y aprendizaje robótico, tres veranos en NVIDIA y un puesto como ingeniero fundador en General Translation.",
+  "64e29011e5191414": "más",
+  "67897ef3683d551b": "Una red neuronal compacta (con menos de 3.000 parámetros) que detecta diabetes tipo 2 a partir de registros de sensores de relojes inteligentes en condiciones de vida cotidiana y datos demográficos, alcanzando una precisión de aproximadamente el 80 % a nivel de paciente.",
+  "736b73ee39ba81a4": "contribución",
+  "7579865081290ffe": "General Translation — Equipo de infraestructura y producto",
+  "7591f4a61c3ec257": "contribuciones",
+  "76bac68d4ec20110": "Ago",
+  "7af77b16f24aab50": "Nov",
+  "7bbcf2d2dac3dcbc": "Abr",
+  "7bc1c5e3a09a5d24": "M.Eng. en ECE, Princeton — Jha Lab · Silver Lab",
+  "812ea2aea68e959c": "NVIDIA × 3 — Equipos de rendimiento y consumo energético",
+  "8205ddfc0eb06ddf": "Calendario de contribuciones de GitHub",
+  "8ab875836528e208": "Dic",
+  "8e3dcdea148dcb24": "Interpretabilidad de la clonación de comportamiento",
+  "962ef73f590b4bac": "Jun",
+  "9849a2db0bf07c7a": "correo electrónico",
+  "a15bc4536ed048ee": "Añadí pseudoacciones de \"timeskip\" a planificadores por difusión para resolver laberintos, lo que permite escalas temporales más flexibles y guiables mediante recompensas en distintas regiones de un plan diferencialmente plano.",
+  "a55085242ccbb3ba": "Jul",
+  "ad6d9952dae36cd6": "Volver arriba",
+  "ae0c4d02f05f0e84": "Mar",
+  "ae53526125cab81a": "Desde el otoño de 2026, soy estudiante de Ph.D. en EECS en el MIT (bajo la dirección de Dina Katabi) y trabajo en el desarrollo de foundation models que combinan señales fisiológicas e historiales médicos electrónicos para evaluar de forma no invasiva la salud y el bienestar de los pacientes.",
+  "b6f1f0767f38d12b": "Infraestructura para la competición de Pacman",
+  "c8285949891659cb": "Controlador embebido de carga solar",
+  "c98e8db24999ff4d": "May",
+  "cbdd9ab109de11f2": "Ph.D. en EECS, MIT — Katabi Lab",
+  "cc84bfe0ee5d0174": "Proyectos",
+  "d0efd2bd84419e0d": "veranos",
+  "d17a78299414d13b": "Oct",
+  "d61125eb79478cf3": "Decodificación de escenas mediante fMRI",
+  "d67ef1f046688fcf": "Utilicé un conjunto de datos de estímulos narrativos y respuestas BOLD para identificar regiones cerebrales que responden selectivamente a descripciones puramente auditivas de escenas específicas.",
+  "dc1162bb6d3eda32": "Ene",
+  "e932b923effd24fc": "Creé y mantuve el servidor del juego, el rastreador de visión por computadora, la consola web y la infraestructura de cliente para la Pacbot Robotics Competition.",
+  "eb7b909d3ae68f60": "Feb",
+  "f41ea186c275b56e": "Sobre mí",
+  "f7e3a16961f11c35": "Entrené y analicé políticas ViT de extremo a extremo para navegación robótica, a fin de comprender qué bloques del transformer eran responsables de predecir y determinar las acciones.",
+  "fda5c9f6d1d9da06": "Cambiar de tema"
+}
