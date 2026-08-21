@@ -1,7 +1,7 @@
-import { LocaleSelector } from 'gt-react'
 import { profile } from '../data/site'
 import type { Theme } from '../hooks/useTheme'
 import { Identity } from './Identity'
+import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -27,7 +27,7 @@ export function Sidebar({ activeId, theme, onToggleTheme }: SidebarProps) {
           © {profile.copyrightYear} {profile.name}
         </span>
         <span className="footer-controls">
-          <LocaleSelector />
+          <LocaleSwitcher />
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </span>
       </div>
