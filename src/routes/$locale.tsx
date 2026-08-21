@@ -8,7 +8,7 @@ import { Home } from '../components/sections/Home'
 import { Projects } from '../components/sections/Projects'
 import { Research } from '../components/sections/Research'
 import { navItems, profile } from '../data/site'
-import { useDeepLinkScroll, useMobileHashSync } from '../hooks/useHashRoute'
+import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { useScrollSpy } from '../hooks/useScrollSpy'
 import { useTheme } from '../hooks/useTheme'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
@@ -30,8 +30,11 @@ const SECTION_IDS = navItems.map((item) => item.id)
 // The whole site is a single page composed of hash-linked sections.
 function LocalePage() {
   const { theme, toggleTheme } = useTheme()
+  // Scrollspy drives only the desktop sidebar highlight; on mobile the
+  // hash route (and pill selection) changes via explicit navigation, plus
+  // a reset when the viewport returns to the top.
   const activeId = useScrollSpy(SECTION_IDS)
-  useMobileHashSync(activeId)
+  useClearHashAtTop()
   useDeepLinkScroll()
 
   return (

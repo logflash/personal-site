@@ -1,8 +1,9 @@
+import { memo } from 'react'
 import { useGT, useMessages } from 'gt-react'
 import { repos } from '../../data/site'
 import { SectionHeading } from '../SectionHeading'
 
-export function Projects() {
+export const Projects = memo(function Projects() {
   const gt = useGT()
   const m = useMessages()
   return (
@@ -29,4 +30,4 @@ export function Projects() {
       </div>
     </section>
   )
-}
+})

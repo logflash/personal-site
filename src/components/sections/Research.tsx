@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useGT, useMessages } from 'gt-react'
 import { papers } from '../../data/site'
 import { SectionHeading } from '../SectionHeading'
@@ -23,7 +24,7 @@ function PaperIcon() {
   )
 }
 
-export function Research() {
+export const Research = memo(function Research() {
   const gt = useGT()
   const m = useMessages()
   return (
@@ -48,4 +49,4 @@ export function Research() {
       </div>
     </section>
   )
-}
+})

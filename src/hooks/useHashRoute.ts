@@ -11,12 +11,14 @@ function replaceHash(target: string) {
 
 /** The current location.hash ('#about', ...; '' when unset), as live state. */
 export function useHash(): string {
-  const [hash, setHash] = useState(() =>
-    typeof window === 'undefined' ? '' : window.location.hash,
-  )
+  // Starts empty to match SSR output — the fragment is client-only knowledge
+  // (browsers don't send it to servers), so it must be applied after
+  // hydration or React silently keeps the server's inactive markup.
+  const [hash, setHash] = useState('')
 
   useEffect(() => {
     const update = () => setHash(window.location.hash)
+    update()
     window.addEventListener('hashchange', update)
     return () => window.removeEventListener('hashchange', update)
   }, [])
@@ -25,53 +27,31 @@ export function useHash(): string {
 }
 
 /**
- * Mobile only: infers the hash route from the viewport scroll, keeping the
- * URL in sync with the section in view (/#about, /#projects, ...). Any
- * scrolling — user-driven or an in-flight anchor scroll — may move the
- * hash. The home section, including the top of the page, maps to no hash.
- * Uses replaceState so scrolling doesn't flood the history stack.
- *
- * Syncing runs both when the active section changes and on scroll events
- * themselves: a hash set by a pill tap must be cleared when the user
- * scrolls back to the top even if the active section never changed along
- * the way.
+ * Mobile only: clears the #section hash when the viewport reaches the very
+ * top of the page. This is the sole scroll-driven hash update — the hash
+ * otherwise changes only through explicit navigation (pill taps, heading
+ * taps, back-to-top).
  */
-export function useMobileHashSync(activeId: string) {
-  // At load, the browser may still owe a deep-link jump (e.g. /#projects)
-  // while scrollspy reports 'home'; never clear the hash before then. The
-  // jump itself is the first scroll event, so it is skipped too.
-  const hasScrolled = useRef(false)
-  const activeIdRef = useRef(activeId)
-  activeIdRef.current = activeId
-
-  const sync = useCallback(() => {
-    if (!window.matchMedia(MOBILE_MEDIA_QUERY).matches) return
-    const target = activeIdRef.current === 'home' ? '' : `#${activeIdRef.current}`
-    if (target === '' && !hasScrolled.current) return
-    if (window.location.hash !== target) replaceHash(target)
-  }, [])
+export function useClearHashAtTop() {
+  const mqlRef = useRef<MediaQueryList | null>(null)
 
   useEffect(() => {
     let ticking = false
+    const update = () => {
+      ticking = false
+      if (window.scrollY > 0 || window.location.hash === '') return
+      mqlRef.current ??= window.matchMedia(MOBILE_MEDIA_QUERY)
+      if (mqlRef.current.matches) replaceHash('')
+    }
     const onScroll = () => {
-      if (!hasScrolled.current) {
-        hasScrolled.current = true
-        return
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(update)
       }
-      if (ticking) return
-      ticking = true
-      requestAnimationFrame(() => {
-        ticking = false
-        sync()
-      })
     }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
-  }, [sync])
-
-  useEffect(() => {
-    sync()
-  }, [activeId, sync])
+  }, [])
 }
 
 /**

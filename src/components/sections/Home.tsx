@@ -1,9 +1,9 @@
 import { useMessages } from 'gt-react'
-import { Fragment } from 'react'
+import { Fragment, memo } from 'react'
 import { profile, quickLinks } from '../../data/site'
 import { externalProps } from '../../lib/links'
 
-export function Home() {
+export const Home = memo(function Home() {
   const m = useMessages()
   return (
     <section id="home" className="section">
@@ -24,4 +24,4 @@ export function Home() {
       </div>
     </section>
   )
-}
+})
