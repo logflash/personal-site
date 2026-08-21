@@ -1,7 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-
-// Must match the mobile breakpoint in styles/global.css.
-const MOBILE_MEDIA_QUERY = '(max-width: 880px)'
+import { useCallback, useEffect, useState } from 'react'
 
 function replaceHash(target: string) {
   history.replaceState(null, '', window.location.pathname + window.location.search + target)
@@ -27,21 +24,18 @@ export function useHash(): string {
 }
 
 /**
- * Mobile only: clears the #section hash when the viewport reaches the very
- * top of the page. This is the sole scroll-driven hash update — the hash
- * otherwise changes only through explicit navigation (pill taps, heading
- * taps, back-to-top).
+ * Clears the #section hash when the viewport reaches the very top of the
+ * page (restoring Home as the highlighted nav item). This is the sole
+ * scroll-driven hash update — the hash otherwise changes only through
+ * explicit navigation (sidebar/pill/heading clicks, back-to-top).
  */
 export function useClearHashAtTop() {
-  const mqlRef = useRef<MediaQueryList | null>(null)
-
   useEffect(() => {
     let ticking = false
     const update = () => {
       ticking = false
       if (window.scrollY > 0 || window.location.hash === '') return
-      mqlRef.current ??= window.matchMedia(MOBILE_MEDIA_QUERY)
-      if (mqlRef.current.matches) replaceHash('')
+      replaceHash('')
     }
     const onScroll = () => {
       if (!ticking) {

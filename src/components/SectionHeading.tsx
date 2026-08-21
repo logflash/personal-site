@@ -1,6 +1,6 @@
 import { useGT } from 'gt-react'
 import { useBackToTop } from '../hooks/useHashRoute'
-import { useScrolled } from '../hooks/useScrollSpy'
+import { useScrolled } from '../hooks/useScrolled'
 
 interface SectionHeadingProps {
   id: string

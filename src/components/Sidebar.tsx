@@ -1,4 +1,5 @@
 import { profile } from '../data/site'
+import { useHash } from '../hooks/useHashRoute'
 import type { Theme } from '../hooks/useTheme'
 import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
@@ -6,13 +7,17 @@ import { NavLinks } from './NavLinks'
 import { ThemeToggle } from './ThemeToggle'
 
 interface SidebarProps {
-  activeId: string
   theme: Theme
   onToggleTheme: () => void
 }
 
-/** Desktop-only sidebar. */
-export function Sidebar({ activeId, theme, onToggleTheme }: SidebarProps) {
+/**
+ * Desktop-only sidebar. The highlighted item follows the hash route (clicks
+ * only — never scroll position); no hash means Home.
+ */
+export function Sidebar({ theme, onToggleTheme }: SidebarProps) {
+  const hash = useHash()
+  const activeId = hash ? hash.slice(1) : 'home'
   return (
     <aside className="sidebar">
       <div className="identity">

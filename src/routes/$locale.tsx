@@ -7,9 +7,8 @@ import { Contact } from '../components/sections/Contact'
 import { Home } from '../components/sections/Home'
 import { Projects } from '../components/sections/Projects'
 import { Research } from '../components/sections/Research'
-import { navItems, profile } from '../data/site'
+import { profile } from '../data/site'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
-import { useScrollSpy } from '../hooks/useScrollSpy'
 import { useTheme } from '../hooks/useTheme'
 import { fetchContributions } from '../lib/contributions'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
@@ -27,22 +26,19 @@ export const Route = createFileRoute('/$locale')({
   component: LocalePage,
 })
 
-const SECTION_IDS = navItems.map((item) => item.id)
-
-// The whole site is a single page composed of hash-linked sections.
+// The whole site is a single page composed of hash-linked sections. The
+// hash route changes only through clicks (sidebar, pills, headings, hash
+// anchors) plus a reset when the viewport returns to the top; nav
+// highlights on all viewports follow the hash.
 function LocalePage() {
   const { contributions } = Route.useLoaderData()
   const { theme, toggleTheme } = useTheme()
-  // Scrollspy drives only the desktop sidebar highlight; on mobile the
-  // hash route (and pill selection) changes via explicit navigation, plus
-  // a reset when the viewport returns to the top.
-  const activeId = useScrollSpy(SECTION_IDS)
   useClearHashAtTop()
   useDeepLinkScroll()
 
   return (
     <div className="layout">
-      <Sidebar activeId={activeId} theme={theme} onToggleTheme={toggleTheme} />
+      <Sidebar theme={theme} onToggleTheme={toggleTheme} />
       <div className="content">
         <MobileTopBar theme={theme} onToggleTheme={toggleTheme} />
         <main>
