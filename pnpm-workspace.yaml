@@ -1,0 +1,5 @@
+# pnpm >=10 blocks dependency build scripts unless approved here.
+# esbuild: vite's bundler backend; tree-sitter-python: gt CLI extractor bindings.
+allowBuilds:
+  esbuild: true
+  tree-sitter-python: true
