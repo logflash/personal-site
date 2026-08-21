@@ -1,4 +1,4 @@
-import { t } from 'gt-react'
+import { useGT } from 'gt-react'
 import { useBackToTop } from '../hooks/useHashRoute'
 import { useScrolled } from '../hooks/useScrollSpy'
 
@@ -16,6 +16,7 @@ interface SectionHeadingProps {
  * scrolled, jumping back to the top.
  */
 export function SectionHeading({ id, title, tight }: SectionHeadingProps) {
+  const gt = useGT()
   const scrolled = useScrolled()
   const backToTop = useBackToTop()
 
@@ -33,8 +34,8 @@ export function SectionHeading({ id, title, tight }: SectionHeadingProps) {
         <button
           type="button"
           className="back-to-top"
-          title={t('Back to top')}
-          aria-label={t('Back to top')}
+          title={gt('Back to top')}
+          aria-label={gt('Back to top')}
           onClick={backToTop}
         >
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">

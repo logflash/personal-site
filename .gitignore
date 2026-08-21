@@ -6,3 +6,9 @@ dist/
 # General Translation credentials (see .env.example for the expected variables)
 .env
 .env.local
+
+# TanStack Start build artifacts
+.output/
+.nitro/
+.tanstack/
+src/routeTree.gen.ts

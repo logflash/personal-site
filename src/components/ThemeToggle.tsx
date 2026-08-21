@@ -1,4 +1,4 @@
-import { t } from 'gt-react'
+import { useGT } from 'gt-react'
 import type { Theme } from '../hooks/useTheme'
 
 interface ThemeToggleProps {
@@ -7,12 +7,13 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+  const gt = useGT()
   return (
     <button
       type="button"
       className="theme-toggle"
-      title={t('Toggle theme')}
-      aria-label={t('Toggle theme')}
+      title={gt('Toggle theme')}
+      aria-label={gt('Toggle theme')}
       onClick={onToggle}
     >
       {theme === 'dark' ? '☀' : '☾'}

@@ -1,4 +1,4 @@
-import { t } from 'gt-react'
+import { useGT, useMessages } from 'gt-react'
 import { papers } from '../../data/site'
 import { SectionHeading } from '../SectionHeading'
 
@@ -24,9 +24,11 @@ function PaperIcon() {
 }
 
 export function Research() {
+  const gt = useGT()
+  const m = useMessages()
   return (
     <section id="research" className="section">
-      <SectionHeading id="research" title={t('Research')} tight />
+      <SectionHeading id="research" title={gt('Research')} tight />
       <div className="stack">
         {papers.map((paper) => (
           <a key={paper.name} className="row-link pub" href={paper.url} target="_blank" rel="noreferrer">
@@ -37,7 +39,7 @@ export function Research() {
                 <span className="pdf-chip">PDF</span>
                 <span className="venue">{paper.venue}</span>
               </span>
-              <span className="item-desc">{paper.desc}</span>
+              <span className="item-desc">{m(paper.desc)}</span>
               {/* Mobile layout shows the venue below the description instead */}
               <span className="venue venue-sm">{paper.venue}</span>
             </span>

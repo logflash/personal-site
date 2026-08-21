@@ -1,4 +1,4 @@
-import { T, Var, t } from 'gt-react'
+import { T, Var, useGT } from 'gt-react'
 import { useEffect, useRef, useState } from 'react'
 import { profile } from '../data/site'
 
@@ -18,8 +18,6 @@ interface ContributionsResponse {
 const API_URL = `https://github-contributions-api.jogruber.de/v4/${profile.githubUser}?y=last`
 
 const DAYS_PER_WEEK = 7
-// prettier-ignore
-const MONTH_LABELS = [t('Jan'), t('Feb'), t('Mar'), t('Apr'), t('May'), t('Jun'), t('Jul'), t('Aug'), t('Sep'), t('Oct'), t('Nov'), t('Dec')]
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
 const MIN_LABEL_GAP_WEEKS = 3
 
@@ -39,7 +37,10 @@ function toWeeks(days: ContributionDay[]): (ContributionDay | null)[][] {
 }
 
 /** GitHub-style month labels: one at each column where a new month starts. */
-function toMonthLabels(weeks: (ContributionDay | null)[][]): { week: number; name: string }[] {
+function toMonthLabels(
+  weeks: (ContributionDay | null)[][],
+  monthLabels: string[],
+): { week: number; name: string }[] {
   const labels: { week: number; name: string }[] = []
   let prevMonth = -1
   weeks.forEach((week, w) => {
@@ -47,7 +48,7 @@ function toMonthLabels(weeks: (ContributionDay | null)[][]): { week: number; nam
     if (!first) return
     const month = new Date(`${first.date}T00:00:00Z`).getUTCMonth()
     if (month !== prevMonth) {
-      labels.push({ week: w, name: MONTH_LABELS[month] })
+      labels.push({ week: w, name: monthLabels[month] })
       prevMonth = month
     }
   })
@@ -62,6 +63,9 @@ function toMonthLabels(weeks: (ContributionDay | null)[][]): { week: number; nam
  * Purely decorative: renders nothing if the fetch fails.
  */
 export function ContributionGraph() {
+  const gt = useGT()
+  // prettier-ignore — gt() requires string literals for CLI extraction
+  const monthLabels = [gt('Jan'), gt('Feb'), gt('Mar'), gt('Apr'), gt('May'), gt('Jun'), gt('Jul'), gt('Aug'), gt('Sep'), gt('Oct'), gt('Nov'), gt('Dec')]
   const [data, setData] = useState<ContributionsResponse | null>(null)
   const [failed, setFailed] = useState(false)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -89,11 +93,11 @@ export function ContributionGraph() {
   const weeks = data ? toWeeks(data.contributions) : []
 
   return (
-    <section className="section cg" aria-label={t('GitHub contribution calendar')}>
+    <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
       <div className="cg-scroller" ref={scrollerRef}>
         <div className="cg-inner">
           <div className="cg-months" aria-hidden="true">
-            {toMonthLabels(weeks).map(({ week, name }) => (
+            {toMonthLabels(weeks, monthLabels).map(({ week, name }) => (
               <span key={week} style={{ left: week * WEEK_PITCH_PX }}>
                 {name}
               </span>
@@ -107,7 +111,7 @@ export function ContributionGraph() {
                     <span
                       key={day.date}
                       className={`cg-cell cg-l${Math.min(day.level, 4)}`}
-                      title={`${day.count} ${day.count === 1 ? t('contribution') : t('contributions')} · ${day.date}`}
+                      title={`${day.count} ${day.count === 1 ? gt('contribution') : gt('contributions')} · ${day.date}`}
                     />
                   ) : (
                     <span key={`pad-${d}`} className="cg-cell cg-pad" />
@@ -130,11 +134,11 @@ export function ContributionGraph() {
             </T>
           </a>
           <span className="cg-legend" aria-hidden="true">
-            {t('less')}
+            {gt('less')}
             {[0, 1, 2, 3, 4].map((level) => (
               <span key={level} className={`cg-cell cg-l${level}`} />
             ))}
-            {t('more')}
+            {gt('more')}
           </span>
         </div>
       )}

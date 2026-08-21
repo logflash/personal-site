@@ -1,9 +1,9 @@
-import { LocaleSelector } from 'gt-react'
 import type { MouseEvent } from 'react'
 import { mobileNavItems } from '../data/site'
 import { useBackToTop, useHash } from '../hooks/useHashRoute'
 import type { Theme } from '../hooks/useTheme'
 import { Identity } from './Identity'
+import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
 import { ThemeToggle } from './ThemeToggle'
 
@@ -34,7 +34,7 @@ export function MobileTopBar({ theme, onToggleTheme }: MobileTopBarProps) {
           <Identity />
         </a>
         <div className="spacer" />
-        <LocaleSelector />
+        <LocaleSwitcher />
         <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       </header>
       <nav className="pill-nav" aria-label="Primary">
