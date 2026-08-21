@@ -3,5 +3,38 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "dist/client",
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "cookie", "key": "generaltranslation.locale", "value": "en" }],
+      "destination": "/en",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "cookie", "key": "generaltranslation.locale", "value": "es" }],
+      "destination": "/es",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "cookie", "key": "generaltranslation.locale", "value": "ja" }],
+      "destination": "/ja",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "header", "key": "accept-language", "value": "(?i)^\\s*es.*" }],
+      "destination": "/es",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "header", "key": "accept-language", "value": "(?i)^\\s*ja.*" }],
+      "destination": "/ja",
+      "permanent": false
+    },
+    { "source": "/", "destination": "/en", "permanent": false }
+  ],
   "rewrites": [{ "source": "/(.*)", "destination": "/api/ssr" }]
 }
