@@ -21,13 +21,23 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
-      { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-      { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
-      {
-        // Only the weights the stylesheet uses: mono 400; sans 400-700; serif 600
-        rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&family=IBM+Plex+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap',
-      },
+      // Self-hosted fonts (declared in styles/fonts.css with font-display:
+      // optional). Preloading the latin subsets makes them reliably available
+      // within the block window, so text renders atomically — no font swap.
+      ...[
+        'ibm-plex-sans-400-latin',
+        'ibm-plex-sans-500-latin',
+        'ibm-plex-sans-600-latin',
+        'ibm-plex-sans-700-latin',
+        'jetbrains-mono-400-latin',
+        'source-serif-4-600-latin',
+      ].map((font) => ({
+        rel: 'preload',
+        as: 'font',
+        type: 'font/woff2',
+        href: `/fonts/${font}.woff2`,
+        crossOrigin: 'anonymous' as const,
+      })),
       { rel: 'stylesheet', href: globalCss },
     ],
   }),
