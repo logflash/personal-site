@@ -426,10 +426,6 @@ main {
 
 /* ---- Contribution graph ---- */
 
-.cg {
-  min-height: 119px; /* months + grid + meta row, reserved to avoid layout shift */
-}
-
 .cg-scroller {
   overflow-x: auto;
   scrollbar-width: none;
