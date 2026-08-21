@@ -14,9 +14,13 @@ export const Contact = memo(function Contact() {
         {contactRows.map((row) => (
           <div key={row.label} className="contact-row">
             <span className="label">{m(row.label)}</span>
-            <a href={row.href} {...externalProps(row.external)}>
-              {row.text}
-            </a>
+            {row.href ? (
+              <a href={row.href} {...externalProps(row.external)}>
+                {row.text}
+              </a>
+            ) : (
+              <span>{row.text}</span>
+            )}
           </div>
         ))}
       </div>
