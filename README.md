@@ -51,7 +51,7 @@ serves the same build locally via `scripts/serve.mjs`.
 - `src/data/site.ts` — all content (nav, intro, timeline, papers, repos, contact)
 - `src/components/` — presentational components; `sections/` holds the page sections
 - `src/hooks/` — `useTheme` (light/dark, persisted to localStorage), `useScrollSpy`,
-  `useHashRoute` (scroll-driven hash routing on mobile)
+  `useHashRoute` (click-driven hash routing on mobile; scrolling to the top clears it)
 - `src/lib/seo.ts` — per-locale head tags; `src/lib/localePath.ts` — locale helpers
 - `src/styles/global.css` — design tokens and responsive rules; the sidebar
   collapses to the mobile top bar below 880px

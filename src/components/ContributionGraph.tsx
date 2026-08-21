@@ -1,5 +1,5 @@
 import { T, Var, useGT } from 'gt-react'
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { profile } from '../data/site'
 
 interface ContributionDay {
@@ -60,9 +60,11 @@ function toMonthLabels(
 
 /**
  * GitHub contribution calendar, restyled with the site's accent scale.
- * Purely decorative: renders nothing if the fetch fails.
+ * Purely decorative: renders nothing if the fetch fails. Memoized — the
+ * page re-renders on every scroll-spy change, and this subtree is by far
+ * its largest (~400 nodes).
  */
-export function ContributionGraph() {
+export const ContributionGraph = memo(function ContributionGraph() {
   const gt = useGT()
   // prettier-ignore — gt() requires string literals for CLI extraction
   const monthLabels = [gt('Jan'), gt('Feb'), gt('Mar'), gt('Apr'), gt('May'), gt('Jun'), gt('Jul'), gt('Aug'), gt('Sep'), gt('Oct'), gt('Nov'), gt('Dec')]
@@ -90,7 +92,7 @@ export function ContributionGraph() {
 
   if (failed) return null
 
-  const weeks = data ? toWeeks(data.contributions) : []
+  const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
 
   return (
     <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
@@ -144,4 +146,4 @@ export function ContributionGraph() {
       )}
     </section>
   )
-}
+})

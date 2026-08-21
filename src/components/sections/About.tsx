@@ -1,8 +1,9 @@
+import { memo } from 'react'
 import { useGT, useMessages } from 'gt-react'
 import { profile, timeline } from '../../data/site'
 import { SectionHeading } from '../SectionHeading'
 
-export function About() {
+export const About = memo(function About() {
   const gt = useGT()
   const m = useMessages()
   return (
@@ -23,4 +24,4 @@ export function About() {
       </div>
     </section>
   )
-}
+})

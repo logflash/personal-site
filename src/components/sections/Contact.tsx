@@ -1,9 +1,10 @@
+import { memo } from 'react'
 import { useGT, useMessages } from 'gt-react'
 import { contactRows } from '../../data/site'
 import { externalProps } from '../../lib/links'
 import { SectionHeading } from '../SectionHeading'
 
-export function Contact() {
+export const Contact = memo(function Contact() {
   const gt = useGT()
   const m = useMessages()
   return (
@@ -21,4 +22,4 @@ export function Contact() {
       </div>
     </section>
   )
-}
+})

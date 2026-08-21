@@ -1,14 +1,24 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 /** True while the viewport is scrolled at all; false at the very top. */
 export function useScrolled(): boolean {
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const update = () => setScrolled(window.scrollY > 0)
-    window.addEventListener('scroll', update, { passive: true })
+    let ticking = false
+    const update = () => {
+      ticking = false
+      setScrolled(window.scrollY > 0)
+    }
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true
+        requestAnimationFrame(update)
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
     update()
-    return () => window.removeEventListener('scroll', update)
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   return scrolled
@@ -21,6 +31,7 @@ export function useScrolled(): boolean {
  */
 export function useScrollSpy(sectionIds: string[], offset = 120): string {
   const [activeId, setActiveId] = useState(sectionIds[0])
+  const activeIdRef = useRef(sectionIds[0])
 
   useEffect(() => {
     let ticking = false
@@ -34,7 +45,12 @@ export function useScrollSpy(sectionIds: string[], offset = 120): string {
       }
       const atBottom = window.innerHeight + window.scrollY >= document.body.scrollHeight - 2
       if (atBottom) current = sectionIds[sectionIds.length - 1]
-      setActiveId(current)
+      // Skip React scheduling entirely on the (vast majority of) frames
+      // where the active section hasn't changed.
+      if (current !== activeIdRef.current) {
+        activeIdRef.current = current
+        setActiveId(current)
+      }
     }
 
     const onScroll = () => {
