@@ -55,12 +55,23 @@ interface ContributionGraphProps {
  * re-renders on every scroll-spy change, and this subtree is by far its
  * largest (~400 nodes).
  */
-export const ContributionGraph = memo(function ContributionGraph({
-  data,
-}: ContributionGraphProps) {
+export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
   const gt = useGT()
-  // prettier-ignore — gt() requires string literals for CLI extraction
-  const monthLabels = [gt('Jan'), gt('Feb'), gt('Mar'), gt('Apr'), gt('May'), gt('Jun'), gt('Jul'), gt('Aug'), gt('Sep'), gt('Oct'), gt('Nov'), gt('Dec')]
+  // Spelled out per month — gt() requires string literals for CLI extraction.
+  const monthLabels = [
+    gt('Jan'),
+    gt('Feb'),
+    gt('Mar'),
+    gt('Apr'),
+    gt('May'),
+    gt('Jun'),
+    gt('Jul'),
+    gt('Aug'),
+    gt('Sep'),
+    gt('Oct'),
+    gt('Nov'),
+    gt('Dec'),
+  ]
   const scrollerRef = useRef<HTMLDivElement>(null)
 
   // When the grid overflows (mobile), start scrolled to the recent end.

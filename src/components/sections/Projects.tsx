@@ -11,7 +11,13 @@ export const Projects = memo(function Projects() {
       <SectionHeading id="projects" title={gt('Projects')} tight />
       <div className="stack">
         {repos.map((repo) => (
-          <a key={repo.name} className="row-link project" href={repo.url} target="_blank" rel="noreferrer">
+          <a
+            key={repo.name}
+            className="row-link project"
+            href={repo.url}
+            target="_blank"
+            rel="noreferrer"
+          >
             <span className="title-row">
               <span className="item-name">{m(repo.name)}</span>
               <span className="repo-path">{repo.repoPath}</span>

@@ -5,7 +5,14 @@ import { SectionHeading } from '../SectionHeading'
 
 function PaperIcon() {
   return (
-    <svg className="doc-icon" width="17" height="21" viewBox="0 0 17 21" fill="none" aria-hidden="true">
+    <svg
+      className="doc-icon"
+      width="17"
+      height="21"
+      viewBox="0 0 17 21"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M1 1.5h9.5L16 6.8v12.7a.5.5 0 0 1-.5.5h-14a.5.5 0 0 1-.5-.5v-18Z"
         stroke="currentColor"
@@ -32,7 +39,13 @@ export const Research = memo(function Research() {
       <SectionHeading id="research" title={gt('Research')} tight />
       <div className="stack">
         {papers.map((paper) => (
-          <a key={paper.name} className="row-link pub" href={paper.url} target="_blank" rel="noreferrer">
+          <a
+            key={paper.name}
+            className="row-link pub"
+            href={paper.url}
+            target="_blank"
+            rel="noreferrer"
+          >
             <PaperIcon />
             <span className="pub-body">
               <span className="title-row">

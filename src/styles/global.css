@@ -49,7 +49,9 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
-  transition: background-color 0.25s, color 0.25s;
+  transition:
+    background-color 0.25s,
+    color 0.25s;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -125,7 +127,9 @@ main {
   justify-content: center;
   padding: 0;
   flex: none;
-  transition: color 0.15s, border-color 0.15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
 /* Hover styles only on real pointers: on touch, tapped elements keep their

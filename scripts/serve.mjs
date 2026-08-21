@@ -28,7 +28,9 @@ const COMPRESSIBLE = new Set(['.js', '.css', '.html', '.json', '.xml', '.txt', '
 
 function send(req, res, status, headers, body) {
   const acceptsGzip = /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')
-  const ext = headers['content-type']?.startsWith('text/html') ? '' : extname(new URL(`http://x${req.url}`).pathname)
+  const ext = headers['content-type']?.startsWith('text/html')
+    ? ''
+    : extname(new URL(`http://x${req.url}`).pathname)
   if (acceptsGzip && body.length > 1024 && COMPRESSIBLE.has(ext)) {
     body = gzipSync(body)
     headers['content-encoding'] = 'gzip'
@@ -44,7 +46,13 @@ createServer(async (req, res) => {
     if (pathname !== '/' && filePath.startsWith(CLIENT_DIR) && existsSync(filePath)) {
       const data = await readFile(filePath).catch(() => null)
       if (data) {
-        send(req, res, 200, { 'content-type': MIME[extname(filePath)] ?? 'application/octet-stream' }, data)
+        send(
+          req,
+          res,
+          200,
+          { 'content-type': MIME[extname(filePath)] ?? 'application/octet-stream' },
+          data,
+        )
         return
       }
     }
@@ -53,7 +61,13 @@ createServer(async (req, res) => {
       headers: req.headers,
     })
     const response = await handler.fetch(request)
-    send(req, res, response.status, Object.fromEntries(response.headers), Buffer.from(await response.arrayBuffer()))
+    send(
+      req,
+      res,
+      response.status,
+      Object.fromEntries(response.headers),
+      Buffer.from(await response.arrayBuffer()),
+    )
   } catch (error) {
     res.writeHead(500)
     res.end(String(error))
