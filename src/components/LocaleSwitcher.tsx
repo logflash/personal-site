@@ -1,16 +1,15 @@
-import { useLocation, useNavigate } from '@tanstack/react-router'
 import { getLocaleProperties, useLocale } from 'gt-react'
 import { SUPPORTED_LOCALES, persistLocaleCookie } from '../lib/localePath'
 
 /**
- * Locale picker for the path-prefixed routing (/en, /es, /ja): switching
- * navigates to the same page under the new prefix and remembers the choice
- * in gt-react's cookie so the bare `/` redirects there next visit.
+ * Locale picker for the path-prefixed routing (/en, /es, /ja). Switching is
+ * a full-document navigation: the new locale's page is server-rendered (and
+ * CDN-cached), and it keeps the router free to never re-run loaders within
+ * a page view (see router.tsx). The cookie makes the bare `/` remember the
+ * choice on the next visit.
  */
 export function LocaleSwitcher() {
   const locale = useLocale()
-  const navigate = useNavigate()
-  const { hash } = useLocation()
 
   return (
     <select
@@ -20,7 +19,7 @@ export function LocaleSwitcher() {
       onChange={(event) => {
         const next = event.target.value
         persistLocaleCookie(next)
-        navigate({ to: '/$locale', params: { locale: next }, hash })
+        window.location.href = `/${next}${window.location.search}${window.location.hash}`
       }}
     >
       {SUPPORTED_LOCALES.map((code) => (
