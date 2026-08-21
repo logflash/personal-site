@@ -23,12 +23,12 @@ export const Route = createRootRoute({
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
       // Self-hosted fonts (declared in styles/fonts.css with font-display:
-      // optional). Preloading the latin subsets makes them reliably available
-      // within the block window, so text renders atomically — no font swap.
+      // optional). Preload only the faces visible above the fold — extra
+      // preloads compete with the LCP text for mobile bandwidth. Non-preloaded
+      // weights (sans 500/600) load lazily; font-display: optional keeps
+      // rendering atomic either way.
       ...[
         'ibm-plex-sans-400-latin',
-        'ibm-plex-sans-500-latin',
-        'ibm-plex-sans-600-latin',
         'ibm-plex-sans-700-latin',
         'jetbrains-mono-400-latin',
         'source-serif-4-600-latin',
