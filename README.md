@@ -50,8 +50,8 @@ serves the same build locally via `scripts/serve.mjs`.
   (locale redirect), `$locale.tsx` (the page + SEO head)
 - `src/data/site.ts` — all content (nav, intro, timeline, papers, repos, contact)
 - `src/components/` — presentational components; `sections/` holds the page sections
-- `src/hooks/` — `useTheme` (light/dark, persisted to localStorage), `useScrollSpy`,
-  `useHashRoute` (click-driven hash routing on mobile; scrolling to the top clears it)
+- `src/hooks/` — `useTheme` (light/dark, persisted to localStorage), `useHashRoute`
+  (click-driven hash routing; scrolling to the top clears it), `useScrolled`
 - `src/lib/seo.ts` — per-locale head tags; `src/lib/localePath.ts` — locale helpers
 - `src/styles/global.css` — design tokens and responsive rules; the sidebar
   collapses to the mobile top bar below 880px
