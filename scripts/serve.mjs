@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { extname, join, normalize } from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 const PORT = process.env.PORT ?? 3000
 const CLIENT_DIR = 'dist/client'
@@ -12,6 +13,8 @@ const MIME = {
   '.js': 'text/javascript',
   '.css': 'text/css',
   '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.woff2': 'font/woff2',
   '.pdf': 'application/pdf',
   '.json': 'application/json',
   '.xml': 'application/xml',
@@ -21,6 +24,19 @@ const MIME = {
 
 const { default: handler } = await import('../dist/server/server.js')
 
+const COMPRESSIBLE = new Set(['.js', '.css', '.html', '.json', '.xml', '.txt', ''])
+
+function send(req, res, status, headers, body) {
+  const acceptsGzip = /\bgzip\b/.test(req.headers['accept-encoding'] ?? '')
+  const ext = headers['content-type']?.startsWith('text/html') ? '' : extname(new URL(`http://x${req.url}`).pathname)
+  if (acceptsGzip && body.length > 1024 && COMPRESSIBLE.has(ext)) {
+    body = gzipSync(body)
+    headers['content-encoding'] = 'gzip'
+  }
+  res.writeHead(status, headers)
+  res.end(body)
+}
+
 createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(req.url.split('?')[0])
@@ -28,8 +44,7 @@ createServer(async (req, res) => {
     if (pathname !== '/' && filePath.startsWith(CLIENT_DIR) && existsSync(filePath)) {
       const data = await readFile(filePath).catch(() => null)
       if (data) {
-        res.writeHead(200, { 'content-type': MIME[extname(filePath)] ?? 'application/octet-stream' })
-        res.end(data)
+        send(req, res, 200, { 'content-type': MIME[extname(filePath)] ?? 'application/octet-stream' }, data)
         return
       }
     }
@@ -38,8 +53,7 @@ createServer(async (req, res) => {
       headers: req.headers,
     })
     const response = await handler.fetch(request)
-    res.writeHead(response.status, Object.fromEntries(response.headers))
-    res.end(Buffer.from(await response.arrayBuffer()))
+    send(req, res, response.status, Object.fromEntries(response.headers), Buffer.from(await response.arrayBuffer()))
   } catch (error) {
     res.writeHead(500)
     res.end(String(error))
