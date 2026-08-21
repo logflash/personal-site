@@ -2,7 +2,8 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { GTProvider, getLocale, getTranslationsSnapshot } from 'gt-tanstack-start'
 import type { ReactNode } from 'react'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
-import globalCss from '../styles/global.css?url'
+import fontsCssUrl from '../styles/fonts.css?url'
+import globalCssUrl from '../styles/global.css?url'
 
 // Applies the saved theme before first paint to avoid a light-mode flash.
 const THEME_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}`
@@ -38,8 +39,16 @@ export const Route = createRootRoute({
         href: `/fonts/${font}.woff2`,
         crossOrigin: 'anonymous' as const,
       })),
-      { rel: 'stylesheet', href: globalCss },
+      // Dev only: linked stylesheets keep CSS editing live; production
+      // inlines the CSS below to remove the only render-blocking requests.
+      ...(import.meta.env.DEV
+        ? [
+            { rel: 'stylesheet', href: fontsCssUrl },
+            { rel: 'stylesheet', href: globalCssUrl },
+          ]
+        : []),
     ],
+    styles: import.meta.env.DEV ? [] : [{ children: __INLINE_CSS__ }],
   }),
   shellComponent: RootDocument,
 })

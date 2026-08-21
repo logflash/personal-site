@@ -53,7 +53,8 @@ export const profile = {
   handle: '@logflash',
   githubUser: 'logflash',
   copyrightYear: 2026,
-  avatar: '/avatar.png',
+  avatar: '/avatar.png', // 256px — og:image and favicon
+  avatarSmall: '/avatar-160.png', // rendered at 40/76px in the UI
   intro: msg(
     "I'm Ian, a Ph.D. student at MIT working on training and applying signal-based foundation models for medical applications. Before that: a B.S.E. and M.Eng in ECE at Princeton, research in disease detection and robot learning, three summers at NVIDIA, and a founding engineer role at General Translation.",
   ),

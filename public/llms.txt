@@ -1,0 +1,24 @@
+# Ian Henriques
+
+> Personal site of Ian Henriques (@logflash) — Ph.D. student in EECS at MIT
+> working on signal-based foundation models for medical applications; formerly
+> ECE at Princeton (B.S.E., M.Eng.) and a founding engineer at General
+> Translation. The site is a single page with sections for About, Research,
+> Projects, and Contact, available in English, Spanish, and Japanese.
+
+## Pages
+
+- [Home (English)](https://ianhenriques.com/en): bio, research, projects, and contact details
+- [Inicio (Español)](https://ianhenriques.com/es): the same content in Spanish
+- [ホーム（日本語）](https://ianhenriques.com/ja): the same content in Japanese
+- [Resume (PDF)](https://ianhenriques.com/IanResume_14.3.pdf): full curriculum vitae
+
+## Research
+
+- [SweetDeep: Predicting Type 2 Diabetes with Smartwatches (arXiv)](https://arxiv.org/pdf/2512.03471): compact neural network detecting type 2 diabetes from smartwatch data
+
+## Elsewhere
+
+- [GitHub](https://github.com/logflash): open-source projects and contributions
+- [Google Scholar](https://scholar.google.com/citations?user=PfM704AAAAAJ): publications
+- [LinkedIn](https://www.linkedin.com/in/ian-henriques/): professional profile
