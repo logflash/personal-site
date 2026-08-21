@@ -62,6 +62,9 @@ export function useClearHashAtTop() {
 export function useDeepLinkScroll() {
   useEffect(() => {
     if (window.scrollY > 0 || !window.location.hash) return
+    // '#home' means the top of the page — a fresh load is already there,
+    // so scrolling to the section's offset would only shift the view down.
+    if (window.location.hash === '#home') return
     const target = document.getElementById(window.location.hash.slice(1))
     target?.scrollIntoView({ behavior: 'instant' })
   }, [])
