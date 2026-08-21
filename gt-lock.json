@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "branchId": "brc_deteswf0fvw356zoq9l6235b",
+  "entries": [
+    {
+      "fileId": "879f3a5f954ee8b75bf1e91f4ea9916b41c933e5beba7eb6362647a637c9c66d",
+      "versionId": "6bafe51689e488c9d3bec5100ec087f414f543bb45b22c598afc405aeaf46a6f",
+      "translations": {
+        "es": {
+          "updatedAt": "2026-08-21T10:05:10.562Z",
+          "fileName": "src/_gt/es.json",
+          "postProcessHash": "993fdbb8375fe197f8f17a77597dc5df54547f1704a7b14ca6b49db99e157aaf"
+        },
+        "ja": {
+          "updatedAt": "2026-08-21T10:05:10.563Z",
+          "fileName": "src/_gt/ja.json",
+          "postProcessHash": "0c1082bfc33cfc091d0e32e25aeb35abfae42f138ce671f6284ad3bc7c6b38f5"
+        }
+      },
+      "fileName": "__INTERNAL_GT_TEMPLATE_NAME__"
+    }
+  ]
+}

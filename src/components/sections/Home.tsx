@@ -1,0 +1,25 @@
+import { Fragment } from 'react'
+import { profile, quickLinks } from '../../data/site'
+import { externalProps } from '../../lib/links'
+
+export function Home() {
+  return (
+    <section id="home" className="section">
+      <p className="intro">{profile.intro}</p>
+      <div className="quick-links">
+        {quickLinks.map((link, i) => (
+          <Fragment key={link.label}>
+            {i > 0 && (
+              <span className="sep" aria-hidden="true">
+                ·
+              </span>
+            )}
+            <a href={link.href} {...externalProps(link.external)}>
+              {link.label}
+            </a>
+          </Fragment>
+        ))}
+      </div>
+    </section>
+  )
+}

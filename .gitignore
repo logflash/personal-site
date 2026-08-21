@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.local
+.DS_Store
+
+# General Translation credentials (see .env.example for the expected variables)
+.env
+.env.local
