@@ -23,12 +23,15 @@ export const Route = createRootRoute({
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
       // Self-hosted fonts (declared in styles/fonts.css with font-display:
-      // optional). Preload only the faces visible above the fold — extra
-      // preloads compete with the LCP text for mobile bandwidth. Non-preloaded
-      // weights (sans 500/600) load lazily; font-display: optional keeps
-      // rendering atomic either way.
+      // optional). Preload every latin face: with `optional`, a face that
+      // loses the load race falls back for the whole page view, and sans
+      // 500/600 style *interaction* states (active nav item, item names) —
+      // without them ready up front, moving the sidebar highlight flips
+      // text between Plex and the system fallback, which reads as flicker.
       ...[
         'ibm-plex-sans-400-latin',
+        'ibm-plex-sans-500-latin',
+        'ibm-plex-sans-600-latin',
         'ibm-plex-sans-700-latin',
         'jetbrains-mono-400-latin',
         'source-serif-4-600-latin',
