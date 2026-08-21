@@ -43,7 +43,8 @@ export interface Repo {
 export interface ContactRow {
   label: string
   text: string
-  href: string
+  /** Omitted for the email row: plain text, no mailto (scraper-unfriendly). */
+  href?: string
   external?: boolean
 }
 
@@ -188,7 +189,7 @@ export const repos: Repo[] = REPO_SOURCES.map(({ lang, color, ...rest }) => ({
 }))
 
 export const contactRows: ContactRow[] = [
-  { label: msg('email'), text: 'ian [at] ianlh [dot] com', href: 'mailto:ian [at] ianlh [dot] com' },
+  { label: msg('email'), text: 'ian [at] ianlh [dot] com' },
   {
     label: 'linkedin',
     text: 'linkedin.com/in/ian-henriques',
