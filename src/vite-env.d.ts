@@ -2,3 +2,6 @@
 
 /** Route of the resume PDF in public/, injected by `define` in vite.config.ts. */
 declare const __RESUME_HREF__: string
+
+/** Site CSS inlined at build time by `define` in vite.config.ts. */
+declare const __INLINE_CSS__: string
