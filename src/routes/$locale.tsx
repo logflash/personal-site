@@ -11,6 +11,7 @@ import { navItems, profile } from '../data/site'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { useScrollSpy } from '../hooks/useScrollSpy'
 import { useTheme } from '../hooks/useTheme'
+import { fetchContributions } from '../lib/contributions'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
 import { localeHead } from '../lib/seo'
 
@@ -21,6 +22,7 @@ export const Route = createFileRoute('/$locale')({
       throw redirect({ to: '/$locale', params: { locale: DEFAULT_LOCALE } })
     }
   },
+  loader: async () => ({ contributions: await fetchContributions() }),
   head: ({ params }) => localeHead(params.locale),
   component: LocalePage,
 })
@@ -29,6 +31,7 @@ const SECTION_IDS = navItems.map((item) => item.id)
 
 // The whole site is a single page composed of hash-linked sections.
 function LocalePage() {
+  const { contributions } = Route.useLoaderData()
   const { theme, toggleTheme } = useTheme()
   // Scrollspy drives only the desktop sidebar highlight; on mobile the
   // hash route (and pill selection) changes via explicit navigation, plus
@@ -44,7 +47,7 @@ function LocalePage() {
         <MobileTopBar theme={theme} onToggleTheme={toggleTheme} />
         <main>
           <Home />
-          <ContributionGraph />
+          <ContributionGraph data={contributions} />
           <About />
           <Research />
           <Projects />

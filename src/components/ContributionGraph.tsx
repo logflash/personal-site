@@ -1,21 +1,7 @@
 import { T, Var, useGT } from 'gt-react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef } from 'react'
 import { profile } from '../data/site'
-
-interface ContributionDay {
-  date: string
-  count: number
-  level: number
-}
-
-interface ContributionsResponse {
-  total: { lastYear: number }
-  contributions: ContributionDay[]
-}
-
-// GitHub's own calendar endpoint is CORS-blocked in browsers; this public
-// mirror (the one react-github-calendar uses) serves the same data as JSON.
-const API_URL = `https://github-contributions-api.jogruber.de/v4/${profile.githubUser}?y=last`
+import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
 
 const DAYS_PER_WEEK = 7
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
@@ -58,41 +44,34 @@ function toMonthLabels(
   )
 }
 
+interface ContributionGraphProps {
+  /** Fetched in the route loader (SSR) — null when the API was unreachable. */
+  data: ContributionsResponse | null
+}
+
 /**
  * GitHub contribution calendar, restyled with the site's accent scale.
- * Purely decorative: renders nothing if the fetch fails. Memoized — the
- * page re-renders on every scroll-spy change, and this subtree is by far
- * its largest (~400 nodes).
+ * Purely decorative: renders nothing without data. Memoized — the page
+ * re-renders on every scroll-spy change, and this subtree is by far its
+ * largest (~400 nodes).
  */
-export const ContributionGraph = memo(function ContributionGraph() {
+export const ContributionGraph = memo(function ContributionGraph({
+  data,
+}: ContributionGraphProps) {
   const gt = useGT()
   // prettier-ignore — gt() requires string literals for CLI extraction
   const monthLabels = [gt('Jan'), gt('Feb'), gt('Mar'), gt('Apr'), gt('May'), gt('Jun'), gt('Jul'), gt('Aug'), gt('Sep'), gt('Oct'), gt('Nov'), gt('Dec')]
-  const [data, setData] = useState<ContributionsResponse | null>(null)
-  const [failed, setFailed] = useState(false)
   const scrollerRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch(API_URL, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
-      .then((json: ContributionsResponse) => setData(json))
-      .catch((err: unknown) => {
-        // An unmount abort isn't a failure (StrictMode remounts in dev).
-        if (!(err instanceof DOMException && err.name === 'AbortError')) setFailed(true)
-      })
-    return () => controller.abort()
-  }, [])
 
   // When the grid overflows (mobile), start scrolled to the recent end.
   useEffect(() => {
     const el = scrollerRef.current
     if (el) el.scrollLeft = el.scrollWidth
-  }, [data])
-
-  if (failed) return null
+  }, [])
 
   const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
+
+  if (!data) return null
 
   return (
     <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
