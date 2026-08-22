@@ -3,3 +3,5 @@
 allowBuilds:
   esbuild: true
   tree-sitter-python: true
+minimumReleaseAgeExclude:
+  - gt-rrweb@0.1.0
