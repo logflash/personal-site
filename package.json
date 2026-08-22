@@ -13,14 +13,17 @@
     "lint:fix": "oxlint --quiet --fix . && oxfmt ."
   },
   "dependencies": {
+    "@rrweb/record": "^2.1.1",
     "@tanstack/react-router": "^1.159.14",
-    "@tanstack/react-start": "~1.159.0",
+    "@tanstack/react-start": "~1.159.14",
     "gt-react": "^11.1.12",
+    "gt-rrweb": "^0.1.0",
     "gt-tanstack-start": "^11.1.12",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@rrweb/types": "^2.1.1",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",

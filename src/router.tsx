@@ -4,7 +4,13 @@ import gtConfig from '../gt.config.json'
 import loadTranslations from './loadTranslations'
 import { routeTree } from './routeTree.gen'
 
-initializeGT({ ...gtConfig, loadTranslations })
+initializeGT({
+  ...gtConfig,
+  loadTranslations,
+  // Stamp each <T> with its translation hash (data-_gt-hash) so gt-rrweb's
+  // harvester can map recorded text onto other locales. Off by default.
+  _tagIds: true,
+})
 
 export function getRouter() {
   return createRouter({
