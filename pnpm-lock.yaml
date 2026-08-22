@@ -17,6 +17,9 @@ importers:
       '@tanstack/react-start':
         specifier: ~1.159.14
         version: 1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@7.3.6(tsx@4.23.12)(yaml@2.9.0))
+      gt-i18n:
+        specifier: 1.0.16
+        version: 1.0.16
       gt-react:
         specifier: ^11.1.12
         version: 11.1.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
