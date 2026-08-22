@@ -1034,3 +1034,39 @@ html.gt-recording body .layout {
 html.gt-recording .sidebar {
   height: calc(100vw * 9 / 16);
 }
+
+/* ---- Replay overlay ---- */
+
+/* Dropping a recording JSON on the avatar highlights it as a drop target. */
+.avatar-hold.drop-ready .avatar-ring {
+  opacity: 1;
+}
+
+.avatar-hold.drop-ready .ring-track {
+  stroke: var(--acc);
+}
+
+/* Full-screen replay layer (Identity portals it to <body>). The box hosts the
+   gt-rrweb player, which sizes its own height from the recording's aspect
+   ratio; dropping another recording JSON on it swaps the replay (debug mode),
+   any other file refreshes the page, and clicking the backdrop collapses the
+   overlay. Flex keeps the box centered on both axes at any window size. */
+.replay-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 65%);
+  backdrop-filter: blur(4px);
+}
+
+/* The vw/vh terms fit the box to the window (16:9 stage + player chrome);
+   the pixel cap decides its size on large screens. */
+.replay-overlay-box {
+  width: min(94vw, calc(88vh * 16 / 9), 2160px);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}

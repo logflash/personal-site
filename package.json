@@ -14,11 +14,12 @@
   },
   "dependencies": {
     "@rrweb/record": "^2.1.1",
+    "@rrweb/replay": "^2.1.1",
     "@tanstack/react-router": "^1.159.14",
     "@tanstack/react-start": "~1.159.14",
     "gt-i18n": "1.0.16",
     "gt-react": "^11.1.12",
-    "gt-rrweb": "^0.1.0",
+    "gt-rrweb": "^0.2.0",
     "gt-tanstack-start": "^11.1.12",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
