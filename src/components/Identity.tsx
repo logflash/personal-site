@@ -1,8 +1,12 @@
 import { useRecorder } from 'gt-rrweb'
-import type { MouseEvent } from 'react'
+import type { GTReplayerBundle } from 'gt-rrweb/replay'
+import type { DragEvent, MouseEvent } from 'react'
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { profile } from '../data/site'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromPath } from '../lib/localePath'
+import { parseRecording } from '../lib/recordingDrop'
+import { ReplayOverlay } from './ReplayOverlay'
 
 /** Hold duration before the avatar gesture starts a localized recording. */
 const HOLD_MS = 1000
@@ -14,10 +18,16 @@ const HOLD_MS = 1000
  * second (a progress ring charges around it) to put the site into gt-rrweb
  * recording mode. The current locale is recorded as the source; the bundle
  * downloads on stop (see the GTRecorder mount in __root).
+ *
+ * It is also the replay drop target: drop a recording JSON on it to open a
+ * replay overlay (debug mode — another drop on the box swaps the replay);
+ * drop a file that isn't a recording and the page refreshes.
  */
 export function Identity() {
   const { status, start } = useRecorder()
   const [charging, setCharging] = useState(false)
+  const [dropReady, setDropReady] = useState(false)
+  const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const justCharged = useRef(false)
 
@@ -48,15 +58,41 @@ export function Identity() {
     event.stopPropagation()
   }
 
+  // Drop a recording JSON on the avatar to replay it; anything else refreshes.
+  const onDrop = (event: DragEvent<HTMLSpanElement>) => {
+    event.preventDefault()
+    setDropReady(false)
+    const file = event.dataTransfer?.files?.[0]
+    if (!file) return
+    void file.text().then(
+      (text) => {
+        const bundle = parseRecording(text)
+        if (bundle) setReplay(bundle)
+        else window.location.reload()
+      },
+      () => window.location.reload(),
+    )
+  }
+
+  const avatarClass = ['avatar-hold', charging && 'charging', dropReady && 'drop-ready']
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <>
       <span
-        className={charging ? 'avatar-hold charging' : 'avatar-hold'}
+        className={avatarClass}
         onPointerDown={beginHold}
         onPointerUp={cancelHold}
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
         onClickCapture={swallowClick}
+        onDragOver={(event) => {
+          event.preventDefault()
+          setDropReady(true)
+        }}
+        onDragLeave={() => setDropReady(false)}
+        onDrop={onDrop}
       >
         <img className="avatar" src={profile.avatarSmall} alt={profile.name} draggable={false} />
         <svg className="avatar-ring" viewBox="0 0 48 48" aria-hidden="true">
@@ -68,6 +104,16 @@ export function Identity() {
         <span className="name">{profile.name}</span>
         <span className="handle">{profile.handle}</span>
       </div>
+      {replay
+        ? createPortal(
+            <ReplayOverlay
+              bundle={replay}
+              initialLocale={localeFromPath(window.location.pathname) ?? DEFAULT_LOCALE}
+              onClose={() => setReplay(null)}
+            />,
+            document.body,
+          )
+        : null}
     </>
   )
 }
