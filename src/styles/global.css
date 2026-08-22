@@ -555,6 +555,35 @@ main {
   background: transparent;
 }
 
+/* Hovered day pops above its neighbors: a slight lift with a page-background
+   ring so the cell reads as raised rather than just enlarged. The pop is
+   instant (transition on :hover) but the release decays over ~2s (transition
+   here), so sweeping the pointer leaves a trail of settling cells. z-index
+   decays discretely, holding the shrinking cell above its neighbors for the
+   first half of the release. Transform and shadow only — cheap enough for
+   the ~370-cell grid. */
+.cg-grid .cg-cell {
+  position: relative;
+  z-index: 0;
+  transition:
+    transform 1.8s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 1.8s cubic-bezier(0.22, 1, 0.36, 1),
+    z-index 1.8s;
+}
+
+@media (hover: hover) {
+  html:not(.touch) .cg-grid .cg-cell:not(.cg-pad):hover {
+    z-index: 1;
+    transform: scale(1.8);
+    box-shadow:
+      0 0 0 1px var(--bg),
+      0 1px 5px rgba(0, 0, 0, 0.25);
+    transition:
+      transform 0.12s ease,
+      box-shadow 0.12s ease;
+  }
+}
+
 .cg-meta {
   display: flex;
   flex-wrap: wrap; /* long translations drop the legend to its own row */
