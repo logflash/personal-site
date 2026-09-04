@@ -1,14 +1,13 @@
-/* Self-hosted (latin + latin-ext subsets of the Google Fonts originals).
-   font-display: optional makes font loading atomic: the browser either
-   has the font within its ~100ms block window or keeps the fallback for
-   that page view — it never swaps fonts mid-view. Preloads in
-   __root.tsx make the window essentially always met. */
+/* Self-hosted latin + latin-ext subsets of the Google Fonts originals.
+   `swap` guarantees that a cold visit adopts the selected face once it
+   arrives. The latin faces are preloaded in __root.tsx, so the fallback
+   interval is normally brief. */
 
 @font-face {
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-400-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -20,7 +19,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-400-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -31,7 +30,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 500;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-500-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -43,7 +42,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 500;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-500-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -54,7 +53,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 600;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-600-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -66,7 +65,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 600;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-600-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -77,7 +76,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 700;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-700-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -89,7 +88,7 @@
   font-family: 'IBM Plex Sans';
   font-style: normal;
   font-weight: 700;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/ibm-plex-sans-700-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -100,7 +99,7 @@
   font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/jetbrains-mono-400-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -112,7 +111,7 @@
   font-family: 'JetBrains Mono';
   font-style: normal;
   font-weight: 400;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/jetbrains-mono-400-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
@@ -123,7 +122,7 @@
   font-family: 'Source Serif 4';
   font-style: normal;
   font-weight: 600;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/source-serif-4-600-latin-ext.woff2') format('woff2');
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
@@ -135,7 +134,7 @@
   font-family: 'Source Serif 4';
   font-style: normal;
   font-weight: 600;
-  font-display: optional;
+  font-display: swap;
   src: url('/fonts/source-serif-4-600-latin.woff2') format('woff2');
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
