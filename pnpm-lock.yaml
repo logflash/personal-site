@@ -5,7 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  gt-rrweb@0.2.0: b34aa6fcb4e1c4a89fcfb468824bc2fce83537084dfb297c8022a612696448fd
+  gt-rrweb@0.2.0:
+    hash: b34aa6fcb4e1c4a89fcfb468824bc2fce83537084dfb297c8022a612696448fd
+    path: patches/gt-rrweb@0.2.0.patch
 
 importers:
 
