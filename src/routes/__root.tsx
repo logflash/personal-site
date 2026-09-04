@@ -73,12 +73,9 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
-      // Self-hosted fonts (declared in styles/fonts.css with font-display:
-      // optional). Preload every latin face: with `optional`, a face that
-      // loses the load race falls back for the whole page view, and sans
-      // 500/600 style *interaction* states (active nav item, item names) —
-      // without them ready up front, moving the sidebar highlight flips
-      // text between Plex and the system fallback, which reads as flicker.
+      // Preload every self-hosted latin face. This keeps the fallback interval
+      // from font-display: swap short, including sans 500/600 interaction
+      // states (active nav item and item names).
       ...[
         'ibm-plex-sans-400-latin',
         'ibm-plex-sans-500-latin',
