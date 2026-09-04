@@ -1026,11 +1026,20 @@ html.gt-recording body .layout {
   width: 100vw !important;
   height: calc(100vw * 9 / 16) !important;
   min-height: 0 !important;
-  overflow-y: auto !important;
+  overflow: hidden !important;
   transform: translate(-50%, -50%) scale(var(--gt-capture-scale, 1)) !important;
 }
 
-/* Size the sticky sidebar to the capture's virtual viewport, not the real one. */
+/* Scroll only the document column. Keeping the sidebar outside the scrolling
+   layer prevents transformed sticky text from being re-rasterized at slightly
+   different subpixels on every rrweb scroll tick. */
+html.gt-recording .content {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Size the sidebar to the capture's virtual viewport, not the real one. */
 html.gt-recording .sidebar {
   height: calc(100vw * 9 / 16);
 }

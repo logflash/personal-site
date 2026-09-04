@@ -68,9 +68,9 @@ export function useDeepLinkScroll() {
 export function useBackToTop() {
   return useCallback(() => {
     window.scrollTo({ top: 0 })
-    // While recording (gt-rrweb capture), the site scrolls inside the fixed
-    // .layout container instead of the window; reset it too.
-    document.querySelector('.layout')?.scrollTo({ top: 0 })
+    // While recording (gt-rrweb capture), the document column scrolls inside
+    // the fixed frame instead of the window; reset it too.
+    document.querySelector('.content')?.scrollTo({ top: 0 })
     replaceHash('')
   }, [])
 }
