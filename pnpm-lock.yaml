@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  gt-rrweb@0.2.0: b34aa6fcb4e1c4a89fcfb468824bc2fce83537084dfb297c8022a612696448fd
+
 importers:
 
   .:
@@ -28,7 +31,7 @@ importers:
         version: 11.1.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       gt-rrweb:
         specifier: ^0.2.0
-        version: 0.2.0(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 0.2.0(patch_hash=b34aa6fcb4e1c4a89fcfb468824bc2fce83537084dfb297c8022a612696448fd)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       gt-tanstack-start:
         specifier: ^11.1.12
         version: 11.1.12(@tanstack/react-start@1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@7.3.6(tsx@4.23.12)(yaml@2.9.0)))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -3617,7 +3620,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  gt-rrweb@0.2.0(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  gt-rrweb@0.2.0(patch_hash=b34aa6fcb4e1c4a89fcfb468824bc2fce83537084dfb297c8022a612696448fd)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@rrweb/types': 2.1.1
       react: 19.2.8
