@@ -86,6 +86,7 @@ export function Identity() {
         onPointerUp={cancelHold}
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
+        onContextMenu={(event) => event.preventDefault()}
         onClickCapture={swallowClick}
         onDragOver={(event) => {
           event.preventDefault()
