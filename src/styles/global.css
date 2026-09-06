@@ -101,11 +101,16 @@ main {
   display: block;
   width: fit-content;
   flex: none;
+  -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  touch-action: none;
 }
 
 .avatar-hold .avatar {
+  /* Let the wrapper own the gesture so image-specific save/OCR menus do not
+     treat the avatar as the long-press target. */
+  pointer-events: none;
   transition: transform 0.2s ease;
 }
 
@@ -1014,17 +1019,16 @@ main {
 }
 
 /* While recording, shrink the whole site into the capture frame: lay out at
-   full viewport width with a 16:9 virtual viewport, scaled down so the result
-   exactly fills the frame outline. --gt-capture-scale is set by CaptureScale
-   (__root.tsx); the geometry mirrors gt-rrweb's frame math (94vw usable
-   width, 144px of vertical chrome, 16:9). The `body` in the selector
+   full viewport width with a virtual viewport matching the locked recording
+   aspect, then scale it to exactly fill the frame outline. The custom
+   properties are set by CaptureScale (__root.tsx); the `body` in the selector
    out-specifies gt-rrweb's own injected frame rule on the same element. */
 html.gt-recording body .layout {
   position: fixed !important;
   left: 50% !important;
   top: 50% !important;
   width: 100vw !important;
-  height: calc(100vw * 9 / 16) !important;
+  height: calc(100vw * var(--gt-capture-height-ratio, 0.5625)) !important;
   min-height: 0 !important;
   overflow: hidden !important;
   transform: translate(-50%, -50%) scale(var(--gt-capture-scale, 1)) !important;
@@ -1041,7 +1045,7 @@ html.gt-recording .content {
 
 /* Size the sidebar to the capture's virtual viewport, not the real one. */
 html.gt-recording .sidebar {
-  height: calc(100vw * 9 / 16);
+  height: calc(100vw * var(--gt-capture-height-ratio, 0.5625));
 }
 
 /* ---- Replay overlay ---- */

@@ -2,7 +2,7 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import { hashMessage } from 'gt-i18n/internal'
 import { GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { GTProvider, getLocale, getTranslationsSnapshot } from 'gt-tanstack-start'
 import type { ReactNode } from 'react'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
@@ -30,30 +30,71 @@ function handleRecordingComplete(bundle: RecorderBundle) {
   URL.revokeObjectURL(url)
 }
 
-// While recording, global.css scales the whole site (.layout) down into the
-// capture frame; this computes the scale factor, mirroring gt-rrweb's frame
-// geometry (94vw usable width, 144px of vertical chrome, 16:9).
-function CaptureScale() {
-  const { isRecording } = useRecorder()
+const MOBILE_VIEWPORT = '(max-width: 880px)'
+const DESKTOP_ASPECT = 16 / 9
+const MOBILE_ASPECT = 3 / 4
+const MOBILE_FRAME = { aspect: MOBILE_ASPECT } as const
+const DESKTOP_LABELS = { rec: 'REC · 16:9' }
+const MOBILE_LABELS = { rec: 'REC · 3:4' }
 
+// While recording, global.css scales the whole site (.layout) down into the
+// capture frame. The aspect is supplied by ResponsiveRecorder and remains
+// fixed for the entire recording.
+function CaptureScale({ aspect }: { aspect: number }) {
   useEffect(() => {
-    if (!isRecording) return
     const update = () => {
-      const frameWidth = Math.min(0.94 * window.innerWidth, (window.innerHeight - 144) * (16 / 9))
+      const frameWidth = Math.min(0.94 * window.innerWidth, (window.innerHeight - 144) * aspect)
       document.documentElement.style.setProperty(
         '--gt-capture-scale',
         String(frameWidth / window.innerWidth),
       )
+      document.documentElement.style.setProperty('--gt-capture-height-ratio', String(1 / aspect))
     }
     update()
     window.addEventListener('resize', update)
     return () => {
       window.removeEventListener('resize', update)
       document.documentElement.style.removeProperty('--gt-capture-scale')
+      document.documentElement.style.removeProperty('--gt-capture-height-ratio')
     }
-  }, [isRecording])
+  }, [aspect])
 
   return null
+}
+
+/** Uses the same breakpoint as the site's mobile layout and locks that choice
+ * while recording so the overlay, pointer bounds, and virtual viewport agree. */
+function ResponsiveRecorder() {
+  const { status } = useRecorder()
+  const [mobile, setMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(MOBILE_VIEWPORT).matches,
+  )
+
+  useEffect(() => {
+    const query = window.matchMedia(MOBILE_VIEWPORT)
+    const update = () => {
+      if (status === 'idle') setMobile(query.matches)
+    }
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [status])
+
+  const aspect = mobile ? MOBILE_ASPECT : DESKTOP_ASPECT
+
+  return (
+    <>
+      <GTRecorder
+        contentSelector=".layout"
+        frame={mobile ? MOBILE_FRAME : '16:9'}
+        expose="gtRecorder"
+        harvest={harvest}
+        labels={mobile ? MOBILE_LABELS : DESKTOP_LABELS}
+        onComplete={handleRecordingComplete}
+      />
+      <CaptureScale aspect={aspect} />
+    </>
+  )
 }
 
 // Applies the saved theme before first paint to avoid a light-mode flash.
@@ -117,14 +158,7 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <GTProvider locale={locale} translations={translations}>
           {children}
-          <GTRecorder
-            contentSelector=".layout"
-            frame="16:9"
-            expose="gtRecorder"
-            harvest={harvest}
-            onComplete={handleRecordingComplete}
-          />
-          <CaptureScale />
+          <ResponsiveRecorder />
         </GTProvider>
         <Scripts />
       </body>
