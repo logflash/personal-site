@@ -32,15 +32,15 @@ export const Route = createFileRoute('/$locale')({
 // highlights on all viewports follow the hash.
 function LocalePage() {
   const { contributions } = Route.useLoaderData()
-  const { theme, toggleTheme } = useTheme()
+  const { toggleTheme } = useTheme()
   useClearHashAtTop()
   useDeepLinkScroll()
 
   return (
     <div className="layout">
-      <Sidebar theme={theme} onToggleTheme={toggleTheme} />
+      <Sidebar onToggleTheme={toggleTheme} />
       <div className="content">
-        <MobileTopBar theme={theme} onToggleTheme={toggleTheme} />
+        <MobileTopBar onToggleTheme={toggleTheme} />
         <main>
           <Home />
           <ContributionGraph data={contributions} />

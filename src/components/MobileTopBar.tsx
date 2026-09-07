@@ -1,14 +1,12 @@
 import type { MouseEvent } from 'react'
 import { mobileNavItems } from '../data/site'
-import { useBackToTop, useHash } from '../hooks/useHashRoute'
-import type { Theme } from '../hooks/useTheme'
+import { useBackToTop } from '../hooks/useHashRoute'
 import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
 import { ThemeToggle } from './ThemeToggle'
 
 interface MobileTopBarProps {
-  theme: Theme
   onToggleTheme: () => void
 }
 
@@ -17,8 +15,7 @@ interface MobileTopBarProps {
  * follows the hash route directly — a tap highlights immediately, and no
  * pill is selected while the page is at the top (no hash).
  */
-export function MobileTopBar({ theme, onToggleTheme }: MobileTopBarProps) {
-  const hash = useHash()
+export function MobileTopBar({ onToggleTheme }: MobileTopBarProps) {
   const backToTop = useBackToTop()
 
   // Back to the top-level route: scroll up and clear any #section hash.
@@ -35,10 +32,10 @@ export function MobileTopBar({ theme, onToggleTheme }: MobileTopBarProps) {
         </a>
         <div className="spacer" />
         <LocaleSwitcher />
-        <ThemeToggle theme={theme} onToggle={onToggleTheme} />
+        <ThemeToggle onToggle={onToggleTheme} />
       </header>
       <nav className="pill-nav" aria-label="Primary">
-        <NavLinks activeId={hash.slice(1)} items={mobileNavItems} />
+        <NavLinks items={mobileNavItems} />
       </nav>
     </div>
   )
