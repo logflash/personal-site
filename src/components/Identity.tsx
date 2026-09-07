@@ -1,12 +1,12 @@
-import { useRecorder } from 'gt-rrweb'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
 import type { DragEvent, MouseEvent } from 'react'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { profile } from '../data/site'
+import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromPath } from '../lib/localePath'
 import { parseRecording } from '../lib/recordingDrop'
-import { ReplayOverlay } from './ReplayOverlay'
+import { LazyReplayOverlay } from './LazyReplayOverlay'
 
 /** Hold duration before the avatar gesture starts a localized recording. */
 const HOLD_MS = 1000
@@ -17,15 +17,15 @@ const HOLD_MS = 1000
  * The avatar doubles as a hidden recording trigger: press and hold for one
  * second (a progress ring charges around it) to put the site into gt-rrweb
  * recording mode. The current locale is recorded as the source; the bundle
- * opens directly in the replay overlay on stop (see the GTRecorder mount in
- * __root), where it can still be downloaded as JSON.
+ * opens directly in the replay overlay on stop (see RecordingRuntime), where
+ * it can still be downloaded as JSON.
  *
  * It is also the replay drop target: drop a recording JSON on it to open a
  * replay overlay (debug mode — another drop on the box swaps the replay);
  * drop a file that isn't a recording and the page refreshes.
  */
 export function Identity() {
-  const { status, start } = useRecorder()
+  const { status, prepare, start } = useRecordingRuntime()
   const [charging, setCharging] = useState(false)
   const [dropReady, setDropReady] = useState(false)
   const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
@@ -39,13 +39,14 @@ export function Identity() {
 
   const beginHold = () => {
     if (status !== 'idle') return
+    prepare()
     justCharged.current = false
     setCharging(true)
     holdTimer.current = setTimeout(() => {
       setCharging(false)
       justCharged.current = true
       const locale = localeFromPath(window.location.pathname) ?? DEFAULT_LOCALE
-      void start({ locales: [locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)] })
+      start([locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)])
     }, HOLD_MS)
   }
 
@@ -108,7 +109,7 @@ export function Identity() {
       </div>
       {replay
         ? createPortal(
-            <ReplayOverlay
+            <LazyReplayOverlay
               bundle={replay}
               initialLocale={localeFromPath(window.location.pathname) ?? DEFAULT_LOCALE}
               onClose={() => setReplay(null)}
