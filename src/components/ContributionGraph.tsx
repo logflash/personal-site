@@ -1,5 +1,5 @@
 import { T, Var, useGT } from 'gt-react'
-import { memo, useEffect, useMemo, useRef } from 'react'
+import { memo, useMemo } from 'react'
 import { profile } from '../data/site'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
 
@@ -72,21 +72,13 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     gt('Nov'),
     gt('Dec'),
   ]
-  const scrollerRef = useRef<HTMLDivElement>(null)
-
-  // When the grid overflows (mobile), start scrolled to the recent end.
-  useEffect(() => {
-    const el = scrollerRef.current
-    if (el) el.scrollLeft = el.scrollWidth
-  }, [])
-
   const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
 
   if (!data) return null
 
   return (
     <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
-      <div className="cg-scroller" ref={scrollerRef}>
+      <div className="cg-scroller">
         <div className="cg-inner">
           <div className="cg-months" aria-hidden="true">
             {toMonthLabels(weeks, monthLabels).map(({ week, name }) => (

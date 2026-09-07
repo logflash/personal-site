@@ -87,8 +87,15 @@ function ResponsiveRecorder({ onComplete }: { onComplete: (bundle: RecorderBundl
   )
 }
 
-// Applies the saved theme before first paint to avoid a light-mode flash.
-const THEME_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}`
+// Applies client-only display state before CSS and the first paint. A fragment
+// load must be instant; normal hash navigation becomes smooth after hydration.
+const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}const setActiveSection=()=>{let section='home';try{section=decodeURIComponent(location.hash.slice(1))||'home'}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
+
+// Runs synchronously after the server-rendered sections have been parsed but
+// before the client bundle or first visible paint. It positions both scroll
+// axes that have non-default starting points. If a future route stops
+// rendering its anchor on the server, useDeepLinkScroll remains the fallback.
+const INITIAL_LAYOUT_SCRIPT = `try{document.querySelectorAll('.cg-scroller').forEach((scroller)=>{scroller.scrollLeft=scroller.scrollWidth})}finally{document.documentElement.removeAttribute('data-initial-scroll')}if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
 
 export const Route = createRootRoute({
   loader: async ({ location }) => {
@@ -143,7 +150,7 @@ function RootDocument({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: the theme script may set data-theme pre-hydration
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: DISPLAY_BOOT_SCRIPT }} />
         <HeadContent />
       </head>
       <body>
@@ -154,6 +161,7 @@ function RootDocument({ children }: { children: ReactNode }) {
             <ReplayOverlay bundle={replay} initialLocale={locale} onClose={() => setReplay(null)} />
           ) : null}
         </GTProvider>
+        <script dangerouslySetInnerHTML={{ __html: INITIAL_LAYOUT_SCRIPT }} />
         <Scripts />
       </body>
     </html>

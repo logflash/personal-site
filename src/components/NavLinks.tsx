@@ -4,11 +4,10 @@ import { navItems, type NavItem } from '../data/site'
 import { useBackToTop } from '../hooks/useHashRoute'
 
 interface NavLinksProps {
-  activeId: string
   items?: NavItem[]
 }
 
-export function NavLinks({ activeId, items = navItems }: NavLinksProps) {
+export function NavLinks({ items = navItems }: NavLinksProps) {
   const m = useMessages()
   const backToTop = useBackToTop()
 
@@ -25,7 +24,7 @@ export function NavLinks({ activeId, items = navItems }: NavLinksProps) {
         <a
           key={id}
           href={id === 'home' ? '/' : `#${id}`}
-          className={id === activeId ? 'active' : undefined}
+          data-section={id}
           onClick={id === 'home' ? goHome : undefined}
         >
           {m(label)}

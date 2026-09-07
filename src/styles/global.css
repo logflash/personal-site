@@ -44,6 +44,18 @@ html {
   scroll-behavior: smooth;
 }
 
+/* The boot script adds this before CSS is evaluated so a refreshed deep link
+   starts at its target instead of visibly animating there from the top. */
+html[data-initial-hash] {
+  scroll-behavior: auto;
+}
+
+/* The body-end boot script reveals the server-rendered page only after the
+   initial anchor has been positioned, so the top is never a visible frame. */
+html[data-initial-hash] body {
+  visibility: hidden;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -198,6 +210,20 @@ main {
     border-color 0.15s;
 }
 
+/* Both glyphs stay in the server and client markup. The pre-paint data-theme
+   attribute alone decides which one is visible, avoiding a hydration swap. */
+.theme-icon-sun {
+  display: none;
+}
+
+:root[data-theme='dark'] .theme-icon-sun {
+  display: inline;
+}
+
+:root[data-theme='dark'] .theme-icon-moon {
+  display: none;
+}
+
 /* Hover styles only on real pointers: on touch, tapped elements keep their
    :hover state until the next tap, which reads as a stuck selection. Some
    browsers (Samsung Internet on S Pen devices) report hover support for
@@ -250,7 +276,11 @@ main {
   color: var(--mut);
 }
 
-.side-nav a.active {
+:root[data-active-section='home'] .side-nav a[data-section='home'],
+:root[data-active-section='about'] .side-nav a[data-section='about'],
+:root[data-active-section='research'] .side-nav a[data-section='research'],
+:root[data-active-section='projects'] .side-nav a[data-section='projects'],
+:root[data-active-section='contact'] .side-nav a[data-section='contact'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -372,7 +402,10 @@ main {
   white-space: nowrap;
 }
 
-.pill-nav a.active {
+:root[data-active-section='about'] .pill-nav a[data-section='about'],
+:root[data-active-section='research'] .pill-nav a[data-section='research'],
+:root[data-active-section='projects'] .pill-nav a[data-section='projects'],
+:root[data-active-section='contact'] .pill-nav a[data-section='contact'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -497,6 +530,12 @@ main {
 .cg-scroller {
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+/* The body-end layout script starts the overflowed graph at its recent end
+   before revealing it, instead of visibly sliding it there after hydration. */
+html[data-initial-scroll] .cg-scroller {
+  visibility: hidden;
 }
 
 .cg-scroller::-webkit-scrollbar {
