@@ -17,7 +17,8 @@ const HOLD_MS = 1000
  * The avatar doubles as a hidden recording trigger: press and hold for one
  * second (a progress ring charges around it) to put the site into gt-rrweb
  * recording mode. The current locale is recorded as the source; the bundle
- * downloads on stop (see the GTRecorder mount in __root).
+ * opens directly in the replay overlay on stop (see the GTRecorder mount in
+ * __root), where it can still be downloaded as JSON.
  *
  * It is also the replay drop target: drop a recording JSON on it to open a
  * replay overlay (debug mode — another drop on the box swaps the replay);

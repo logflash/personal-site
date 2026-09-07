@@ -5,6 +5,7 @@ import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useState } from 'react'
 import { GTProvider, getLocale, getTranslationsSnapshot } from 'gt-tanstack-start'
 import type { ReactNode } from 'react'
+import { ReplayOverlay } from '../components/ReplayOverlay'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
 import loadTranslations from '../loadTranslations'
 import fontsCssUrl from '../styles/fonts.css?url'
@@ -17,17 +18,6 @@ const harvest: HarvestOptions = {
   loadTranslations,
   hashMessage: (message: string) => hashMessage(message, { $format: 'ICU' }),
   sourceLocale: DEFAULT_LOCALE,
-}
-
-// Stopping a recording downloads the bundle (rrweb events + per-locale text
-// overlay) as a .json for later replay.
-function handleRecordingComplete(bundle: RecorderBundle) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(bundle)], { type: 'application/json' }))
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = `gt-recording-${bundle.locales[0]}-${new Date().toISOString().slice(0, 10)}.json`
-  anchor.click()
-  URL.revokeObjectURL(url)
 }
 
 const MOBILE_VIEWPORT = '(max-width: 880px)'
@@ -64,7 +54,7 @@ function CaptureScale({ aspect }: { aspect: number }) {
 
 /** Uses the same breakpoint as the site's mobile layout and locks that choice
  * while recording so the overlay, pointer bounds, and virtual viewport agree. */
-function ResponsiveRecorder() {
+function ResponsiveRecorder({ onComplete }: { onComplete: (bundle: RecorderBundle) => void }) {
   const { status } = useRecorder()
   const [mobile, setMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(MOBILE_VIEWPORT).matches,
@@ -90,7 +80,7 @@ function ResponsiveRecorder() {
         expose="gtRecorder"
         harvest={harvest}
         labels={mobile ? MOBILE_LABELS : DESKTOP_LABELS}
-        onComplete={handleRecordingComplete}
+        onComplete={onComplete}
       />
       <CaptureScale aspect={aspect} />
     </>
@@ -147,6 +137,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   const { locale, translations } = Route.useLoaderData()
+  const [replay, setReplay] = useState<RecorderBundle | null>(null)
 
   return (
     // suppressHydrationWarning: the theme script may set data-theme pre-hydration
@@ -158,7 +149,10 @@ function RootDocument({ children }: { children: ReactNode }) {
       <body>
         <GTProvider locale={locale} translations={translations}>
           {children}
-          <ResponsiveRecorder />
+          <ResponsiveRecorder onComplete={setReplay} />
+          {replay ? (
+            <ReplayOverlay bundle={replay} initialLocale={locale} onClose={() => setReplay(null)} />
+          ) : null}
         </GTProvider>
         <Scripts />
       </body>
