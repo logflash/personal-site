@@ -1,8 +1,8 @@
-import { hashMessage } from 'gt-i18n/internal'
 import { GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useRef, useState } from 'react'
 import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecordingRuntime'
+import { translationHash } from '../lib/translationHash'
 import loadTranslations from '../loadTranslations'
 
 // gt-rrweb harvest: maps the recorded hashes onto each locale's published
@@ -10,7 +10,7 @@ import loadTranslations from '../loadTranslations'
 // gt()/useGT()/msg() strings, which render as bare text with no DOM hash.
 const harvest: HarvestOptions = {
   loadTranslations,
-  hashMessage: (message: string) => hashMessage(message, { $format: 'ICU' }),
+  hashMessage: translationHash,
 }
 
 const MOBILE_VIEWPORT = '(max-width: 880px)'
