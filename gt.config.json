@@ -4,6 +4,10 @@
     "es",
     "ja"
   ],
+  "src": [
+    "src/**/*.{js,jsx,ts,tsx}",
+    "!src/components/mdx/**"
+  ],
   "files": {
     "gt": {
       "output": "src/_gt/[locale].json"

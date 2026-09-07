@@ -40,13 +40,12 @@ export function localeHead(locale: string) {
     ],
     links: [
       { rel: 'canonical', href: url },
-      // Lowercase key: head() link attributes are emitted verbatim
       ...SUPPORTED_LOCALES.map((l) => ({
         rel: 'alternate',
-        hreflang: l,
+        hrefLang: l,
         href: `${SITE_URL}/${l}`,
       })),
-      { rel: 'alternate', hreflang: 'x-default', href: `${SITE_URL}/${DEFAULT_LOCALE}` },
+      { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_URL}/${DEFAULT_LOCALE}` },
     ],
     scripts: [
       {

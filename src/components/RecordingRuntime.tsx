@@ -3,7 +3,6 @@ import { GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useRef, useState } from 'react'
 import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecordingRuntime'
-import { DEFAULT_LOCALE } from '../lib/localePath'
 import loadTranslations from '../loadTranslations'
 
 // gt-rrweb harvest: maps the recorded hashes onto each locale's published
@@ -12,7 +11,6 @@ import loadTranslations from '../loadTranslations'
 const harvest: HarvestOptions = {
   loadTranslations,
   hashMessage: (message: string) => hashMessage(message, { $format: 'ICU' }),
-  sourceLocale: DEFAULT_LOCALE,
 }
 
 const MOBILE_VIEWPORT = '(max-width: 880px)'

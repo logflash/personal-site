@@ -1,12 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ContributionGraph } from '../components/ContributionGraph'
+import { ContentSection } from '../components/ContentSection'
 import { MobileTopBar } from '../components/MobileTopBar'
 import { Sidebar } from '../components/Sidebar'
-import { About } from '../components/sections/About'
-import { Contact } from '../components/sections/Contact'
-import { Home } from '../components/sections/Home'
-import { Projects } from '../components/sections/Projects'
-import { Research } from '../components/sections/Research'
 import { profile } from '../data/site'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { useTheme } from '../hooks/useTheme'
@@ -42,12 +38,12 @@ function LocalePage() {
       <div className="content">
         <MobileTopBar onToggleTheme={toggleTheme} />
         <main>
-          <Home />
+          <ContentSection name="home" />
           <ContributionGraph data={contributions} />
-          <About />
-          <Research />
-          <Projects />
-          <Contact />
+          <ContentSection name="about" />
+          <ContentSection name="research" />
+          <ContentSection name="projects" />
+          <ContentSection name="contact" />
           <div className="copyright-mobile">
             © {profile.copyrightYear} {profile.name}
           </div>
