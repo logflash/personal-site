@@ -41,23 +41,18 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
-      // Preload every self-hosted latin face. This keeps the fallback interval
-      // from font-display: swap short, including sans 500/600 interaction
-      // states (active nav item and item names).
-      ...[
-        'ibm-plex-sans-400-latin',
-        'ibm-plex-sans-500-latin',
-        'ibm-plex-sans-600-latin',
-        'ibm-plex-sans-700-latin',
-        'jetbrains-mono-400-latin',
-        'source-serif-4-600-latin',
-      ].map((font) => ({
-        rel: 'preload',
-        as: 'font',
-        type: 'font/woff2',
-        href: `/fonts/${font}.woff2`,
-        crossOrigin: 'anonymous' as const,
-      })),
+      // Preload every self-hosted latin font file. IBM Plex Sans is one shared
+      // variable resource for all four declared weights, so one preload warms
+      // every sans face without four copies competing on a cold visit.
+      ...['ibm-plex-sans-400-latin', 'jetbrains-mono-400-latin', 'source-serif-4-600-latin'].map(
+        (font) => ({
+          rel: 'preload',
+          as: 'font',
+          type: 'font/woff2',
+          href: `/fonts/${font}.woff2`,
+          crossOrigin: 'anonymous' as const,
+        }),
+      ),
       // Dev only: linked stylesheets keep CSS editing live; production
       // inlines the CSS below to remove the only render-blocking requests.
       ...(import.meta.env.DEV
