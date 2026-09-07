@@ -5,6 +5,8 @@ import { useScrolled } from '../hooks/useScrolled'
 interface SectionHeadingProps {
   id: string
   title: string
+  /** Source-message hash used by gt-rrweb when a recording starts in any locale. */
+  translationHash?: string
   /** Research/Projects use a tighter bottom margin than About/Contact. */
   tight?: boolean
 }
@@ -15,7 +17,7 @@ interface SectionHeadingProps {
  * scrolls to the section, and a chevron appears once the page is
  * scrolled, jumping back to the top.
  */
-export function SectionHeading({ id, title, tight }: SectionHeadingProps) {
+export function SectionHeading({ id, title, translationHash, tight }: SectionHeadingProps) {
   const gt = useGT()
   const scrolled = useScrolled()
   const backToTop = useBackToTop()
@@ -25,7 +27,7 @@ export function SectionHeading({ id, title, tight }: SectionHeadingProps) {
       <a className="hash" href={`#${id}`} aria-label={title}>
         #
       </a>
-      <h2>
+      <h2 {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}>
         <a className="h-link" href={`#${id}`}>
           {title}
         </a>

@@ -1,0 +1,71 @@
+{
+  "157c9e55d9f87056": "Built a closed-loop, variable solar charger using a power sensor and a buck-converter, then wrote firmware to experiment with different power maximization algorithms.",
+  "1738f499d0c9cf60": "Research",
+  "1912938772b112de": "B.S.E. ECE, Princeton — Class Rank 1 of 1.3k",
+  "1d4df5410bca2e3b": "I studied ECE at Princeton — graduating first in my class of 1,305 students — where my research spanned wearable disease detection, energy-based models, and robot learning.",
+  "1e87300d832e74e4": "Solved Pacman as a discrete pursuit-evasion game, then used the learned optimal value functions to explore safety guarantees and equilibria for the Pacman and ghost teams.",
+  "2ecf88ef9e8e4259": "Home",
+  "30b52a001ba4e38e": "less",
+  "346e753c3412369d": "NeuTigers, Inc. — Data and AI Consultancy",
+  "424a9891f646a1cb": "Sep",
+  "4a68cb0d1371a99a": [
+    {
+      "t": "span",
+      "i": 1,
+      "c": [
+        {
+          "i": 2,
+          "k": "_gt_value_2",
+          "v": "v"
+        },
+        " Github contributions"
+      ]
+    },
+    " ",
+    {
+      "t": "span",
+      "i": 3,
+      "c": "in the last year"
+    }
+  ],
+  "4add1139ae8ec5c1": "Contact",
+  "4cbc7c43dd33c363": "Resume",
+  "53a76d38ff01b2c7": "Safety Value Iteration for Pacman",
+  "56bb6c62f1675d86": "Timeskip Diffusion Planning",
+  "59c42bdbb959f307": "I'm Ian, a Ph.D. student at MIT working on training and applying signal-based foundation models for medical applications. Before that: a B.S.E. and M.Eng in ECE at Princeton, research in disease detection and robot learning, three summers at NVIDIA, and a founding engineer role at General Translation.",
+  "64e29011e5191414": "more",
+  "67897ef3683d551b": "A compact neural network (under 3,000 parameters) that detects type 2 diabetes from free-living smartwatch sensor recordings and demographic data, reaching ~80% patient-level accuracy.",
+  "736b73ee39ba81a4": "contribution",
+  "7579865081290ffe": "General Translation — Infra-Product Team",
+  "7591f4a61c3ec257": "contributions",
+  "76bac68d4ec20110": "Aug",
+  "7af77b16f24aab50": "Nov",
+  "7bbcf2d2dac3dcbc": "Apr",
+  "7bc1c5e3a09a5d24": "M.Eng. ECE, Princeton — Jha Lab · Silver Lab",
+  "812ea2aea68e959c": "NVIDIA × 3 — Performance and Power Teams",
+  "8205ddfc0eb06ddf": "GitHub contribution calendar",
+  "8ab875836528e208": "Dec",
+  "8e3dcdea148dcb24": "Behavior Cloning Interpretability",
+  "962ef73f590b4bac": "Jun",
+  "9849a2db0bf07c7a": "email",
+  "a15bc4536ed048ee": "Added \"timeskip\" pseudo-actions to maze-solving diffusion planners, allowing for more flexible, reward-guidable timescales for different regions of a differentially flat plan.",
+  "a55085242ccbb3ba": "Jul",
+  "ad6d9952dae36cd6": "Back to top",
+  "ae0c4d02f05f0e84": "Mar",
+  "ae53526125cab81a": "As of Fall 2026, I am a Ph.D. student in EECS at MIT (advised by Dina Katabi), working on building foundation models that combine physiological signals and electronic medical records to enable non-invasive reasoning about patient health and wellness.",
+  "b6f1f0767f38d12b": "Pacman Competition Infrastructure",
+  "c8285949891659cb": "Embedded Solar Charging Controller",
+  "c98e8db24999ff4d": "May",
+  "cbdd9ab109de11f2": "Ph.D. EECS, MIT — Katabi Lab",
+  "cc84bfe0ee5d0174": "Projects",
+  "d0efd2bd84419e0d": "summers",
+  "d17a78299414d13b": "Oct",
+  "d61125eb79478cf3": "fMRI Scene Decoding",
+  "d67ef1f046688fcf": "Used a dataset of narrative stimuli and BOLD responses to determine brain regions that are selective to purely auditory descriptions of specific scenes.",
+  "dc1162bb6d3eda32": "Jan",
+  "e932b923effd24fc": "Created and maintained the game server, computer vision tracker, web console, and client infrastructure for the Pacbot Robotics Competition.",
+  "eb7b909d3ae68f60": "Feb",
+  "f41ea186c275b56e": "About",
+  "f7e3a16961f11c35": "Trained and probed end-to-end ViT policies for robot navigation, to understand which transformer blocks were responsible for predicting and determining actions.",
+  "fda5c9f6d1d9da06": "Toggle theme"
+}

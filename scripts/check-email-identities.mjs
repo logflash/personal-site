@@ -2,7 +2,7 @@
 // obfuscated plain text ('user [at] domain [dot] com'), so no raw address or
 // mailto: link may appear in tracked text sources. Fails the lint if one does.
 import { execSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { extname } from 'node:path'
 
 const TEXT_EXTENSIONS = new Set([
@@ -14,6 +14,7 @@ const TEXT_EXTENSIONS = new Set([
   '.html',
   '.json',
   '.md',
+  '.mdx',
   '.txt',
   '.xml',
 ])
@@ -25,7 +26,7 @@ const SELF = 'scripts/check-email-identities.mjs'
 
 const files = execSync('git ls-files', { encoding: 'utf8' })
   .split('\n')
-  .filter((file) => file && file !== SELF && TEXT_EXTENSIONS.has(extname(file)))
+  .filter((file) => file && file !== SELF && existsSync(file) && TEXT_EXTENSIONS.has(extname(file)))
 
 const offenders = []
 for (const file of files) {

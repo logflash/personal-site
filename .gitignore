@@ -12,6 +12,9 @@ dist/
 .tanstack/
 src/routeTree.gen.ts
 
+# Derived from authored MDX for General Translation's source extractor
+src/generated/
+
 # General Translation recording demos
 .gt-*
 *.mjs

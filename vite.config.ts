@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import mdx from '@mdx-js/rollup'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -21,7 +22,9 @@ const inlineCss = ['src/styles/fonts.css', 'src/styles/global.css']
   .replace(/\s+/g, ' ')
 
 export default defineConfig({
-  plugins: [tanstackStart(), viteReact()],
+  // MDX stays a build-time concern: its output passes through the same React
+  // and TanStack Start SSR pipeline as the handwritten TSX components.
+  plugins: [tanstackStart(), mdx(), viteReact()],
   define: {
     __RESUME_HREF__: JSON.stringify(resumePdf ? `/${resumePdf}` : ''),
     __INLINE_CSS__: JSON.stringify(inlineCss),
