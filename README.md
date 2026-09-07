@@ -18,10 +18,10 @@ npm run start      # serve the production build locally
 English (default), Spanish, and Japanese, routed by path prefix (`/en`, `/es`,
 `/ja`). The prefix is the source of truth; the bare `/` is a server-side
 redirect using gt-react's cookie, then `Accept-Language`, then the default.
-`gtMiddleware` (src/start.ts) resolves the request locale, the root route
-loader hydrates `GTProvider`, and content uses `<T>`, `useGT()`, and
-`msg()`/`useMessages()` (for strings in `src/data/site.ts`, which are
-registered at module scope and decoded at render time).
+`gtMiddleware` (`src/start.ts`) resolves the request locale and the root route
+loader hydrates `GTProvider`. Page copy lives in `src/content/*.mdx`; the MDX
+sync script registers that copy with GT, while shared chrome uses `useGT()` or
+`msg()`/`useMessages()`.
 
 ```sh
 npx gt auth        # writes GT_PROJECT_ID / GT_API_KEY to .env.local
@@ -48,11 +48,12 @@ serves the same build locally via `scripts/serve.mjs`.
 
 - `src/routes/` — `__root.tsx` (document shell, GT hydration), `index.tsx`
   (locale redirect), `$locale.tsx` (the page + SEO head)
-- `src/data/site.ts` — all content (nav, intro, timeline, papers, repos, contact)
-- `src/components/` — presentational components; `sections/` holds the page sections
+- `src/content/` — authored MDX for the page sections
+- `src/data/site.ts` — shared identity and navigation data
+- `src/components/` — page chrome plus the parameterized MDX section renderer
 - `src/hooks/` — `useTheme` (light/dark, persisted to localStorage), `useHashRoute`
   (click-driven hash routing; scrolling to the top clears it), `useScrolled`
 - `src/lib/seo.ts` — per-locale head tags; `src/lib/localePath.ts` — locale helpers
 - `src/styles/global.css` — design tokens and responsive rules; the sidebar
   collapses to the mobile top bar below 880px
-- `public/` — avatar, resume PDF, robots.txt, sitemap.xml
+- `public/` — static assets, including the future `gt-contributions` collection

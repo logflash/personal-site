@@ -227,7 +227,7 @@ main {
 /* Hover styles only on real pointers: on touch, tapped elements keep their
    :hover state until the next tap, which reads as a stuck selection. Some
    browsers (Samsung Internet on S Pen devices) report hover support for
-   finger input, so index.html also latches html.touch on first touch —
+   finger input, so the root boot script latches html.touch on first touch —
    hover rules require both the media query and the class to be absent. */
 @media (hover: hover) {
   html:not(.touch) .theme-toggle:hover {
