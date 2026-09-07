@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   gt-rrweb@0.2.0:
-    hash: 886200d33dd78ad039f2d4b431495d1f3c558c2888f5070211aca8e4dcda9f31
+    hash: e2587f396e6987ff0b2d3b1ea6751e0e790dacb76b443efc604aca068e5cdb1b
     path: patches/gt-rrweb@0.2.0.patch
 
 importers:
@@ -33,7 +33,7 @@ importers:
         version: 11.1.12(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       gt-rrweb:
         specifier: ^0.2.0
-        version: 0.2.0(patch_hash=886200d33dd78ad039f2d4b431495d1f3c558c2888f5070211aca8e4dcda9f31)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 0.2.0(patch_hash=e2587f396e6987ff0b2d3b1ea6751e0e790dacb76b443efc604aca068e5cdb1b)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       gt-tanstack-start:
         specifier: ^11.1.12
         version: 11.1.12(@tanstack/react-start@1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@7.3.6(tsx@4.23.12)(yaml@2.9.0)))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -3622,7 +3622,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  gt-rrweb@0.2.0(patch_hash=886200d33dd78ad039f2d4b431495d1f3c558c2888f5070211aca8e4dcda9f31)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  gt-rrweb@0.2.0(patch_hash=e2587f396e6987ff0b2d3b1ea6751e0e790dacb76b443efc604aca068e5cdb1b)(@rrweb/record@2.1.1)(@rrweb/replay@2.1.1)(@rrweb/types@2.1.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
     dependencies:
       '@rrweb/types': 2.1.1
       react: 19.2.8
