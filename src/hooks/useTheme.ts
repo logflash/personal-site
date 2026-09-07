@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 
-export type Theme = 'light' | 'dark'
+type Theme = 'light' | 'dark'
 
 const STORAGE_KEY = 'ian-site-theme'
 
@@ -17,7 +17,8 @@ function getInitialTheme(): Theme {
 /**
  * Light/dark theme with localStorage persistence. The theme is applied as
  * `data-theme` on <html>, which drives the CSS custom properties in
- * global.css. index.html applies the saved value before first paint.
+ * global.css. The root document's boot script applies the saved value before
+ * first paint.
  */
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
@@ -35,5 +36,5 @@ export function useTheme() {
     setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
   }, [])
 
-  return { theme, toggleTheme }
+  return { toggleTheme }
 }

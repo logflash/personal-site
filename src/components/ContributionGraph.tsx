@@ -106,26 +106,24 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
           </div>
         </div>
       </div>
-      {data && (
-        <div className="cg-meta">
-          {/* Halves are nowrap, so a line break can only happen between them */}
-          <a href={`https://github.com/${profile.githubUser}`} target="_blank" rel="noreferrer">
-            <T>
-              <span>
-                <Var>{data.total.lastYear}</Var> Github contributions
-              </span>{' '}
-              <span>in the last year</span>
-            </T>
-          </a>
-          <span className="cg-legend" aria-hidden="true">
-            {gt('less')}
-            {[0, 1, 2, 3, 4].map((level) => (
-              <span key={level} className={`cg-cell cg-l${level}`} />
-            ))}
-            {gt('more')}
-          </span>
-        </div>
-      )}
+      <div className="cg-meta">
+        {/* Halves are nowrap, so a line break can only happen between them */}
+        <a href={`https://github.com/${profile.githubUser}`} target="_blank" rel="noreferrer">
+          <T>
+            <span>
+              <Var>{data.total.lastYear}</Var> Github contributions
+            </span>{' '}
+            <span>in the last year</span>
+          </T>
+        </a>
+        <span className="cg-legend" aria-hidden="true">
+          {gt('less')}
+          {[0, 1, 2, 3, 4].map((level) => (
+            <span key={level} className={`cg-cell cg-l${level}`} />
+          ))}
+          {gt('more')}
+        </span>
+      </div>
     </section>
   )
 })

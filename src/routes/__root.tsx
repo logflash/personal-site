@@ -19,7 +19,9 @@ type RecordingRuntimeComponent =
 
 // Applies client-only display state before CSS and the first paint. A fragment
 // load must be instant; normal hash navigation becomes smooth after hydration.
-const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}const setActiveSection=()=>{let section='home';try{section=decodeURIComponent(location.hash.slice(1))||'home'}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
+// Touch mode stays latched because some phone browsers report hover capability
+// even though finger taps leave :hover styles stuck on screen.
+const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{let section='home';try{section=decodeURIComponent(location.hash.slice(1))||'home'}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
 
 // Runs synchronously after the server-rendered sections have been parsed but
 // before the client bundle or first visible paint. It positions both scroll
