@@ -1,4 +1,3 @@
-import { hashMessage } from 'gt-i18n/internal'
 import {
   Children,
   Fragment,
@@ -10,6 +9,7 @@ import {
 } from 'react'
 import { externalProps } from '../../lib/links'
 import { useMdxGT } from '../../lib/mdxTranslation'
+import { translationHash } from '../../lib/translationHash'
 import { SectionHeading } from '../SectionHeading'
 
 interface SectionContextValue {
@@ -25,10 +25,6 @@ function text(children: ReactNode, component: string): string {
     return children.join('').trim()
   }
   throw new Error(`${component} only accepts plain text so translation node boundaries stay stable`)
-}
-
-function translationHash(message: string) {
-  return hashMessage(message, { $format: 'ICU' })
 }
 
 function elements(children: ReactNode) {
