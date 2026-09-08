@@ -1,10 +1,14 @@
 import type { GTReplayerFrame } from 'gt-rrweb/replay'
 import type { Font, PathCommand, RenderOptions } from 'opentype.js'
 
-const DEFAULT_DURATION_MS = 760
+const DEFAULT_DURATION_MS = 1_520
 const DESTINATION_TIMEOUT_MS = 10_000
 const MORPH_VIEWBOX_SIZE = 1_000
 const MORPH_PRECISION = 8
+// SVG paths do not receive the font hinting used by live browser text. Blend
+// to the real destination briefly at the end so the rasterizer, not a generic
+// vector path, owns the settled pixels.
+const ENDPOINT_HANDOFF_MS = 96
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 const CAPTURE_SELECTOR = '.layout'
 
@@ -87,15 +91,25 @@ interface OutlineRuntime extends KuteMorphRuntime {
 }
 
 interface OutlineContour {
+  index: number
   path: string
   polygon: Polygon
   depth: number
+  parentIndex: number | null
   center: [number, number]
   area: number
+  bounds: Rect
 }
 
 interface GlyphOutline {
   contours: OutlineContour[]
+  bounds: Rect
+}
+
+interface OutlineInstance {
+  role: FontRole
+  weight: number
+  opticalSize: number
 }
 
 interface ContourTemplate {
@@ -145,6 +159,11 @@ interface ReplayMorphState {
   generation: number
   sawTarget: boolean
   lastTime: number
+  handoffTarget: {
+    element: HTMLElement
+    opacity: string
+    priority: string
+  } | null
 }
 
 interface ActiveMorph {
@@ -156,6 +175,8 @@ interface ActiveMorph {
   timeout: number
   frame: number | null
   finishing: boolean
+  handoffElement: HTMLElement | null
+  handoffAnimation: Animation | null
 }
 
 const FONT_FILES: Record<FontRole, readonly string[]> = {
@@ -391,6 +412,72 @@ function transitionEase(progress: number) {
   )
 }
 
+function endpointHandoffOpacities(progress: number, duration: number) {
+  const handoffPortion = Math.min(1, ENDPOINT_HANDOFF_MS / Math.max(1, duration))
+  const handoffStart = 1 - handoffPortion
+  const handoffProgress = Math.min(1, Math.max(0, (progress - handoffStart) / handoffPortion))
+  const phase = handoffProgress * (Math.PI / 2)
+  return {
+    source: Math.cos(phase),
+    destination: Math.sin(phase),
+  }
+}
+
+function startEndpointHandoff(
+  morph: ActiveMorph,
+  element: HTMLElement,
+  duration: number,
+  progress: number,
+) {
+  if (morph.handoffElement !== element) {
+    morph.handoffAnimation?.cancel()
+    morph.handoffElement = element
+    const handoffOffset = Math.max(0, 1 - ENDPOINT_HANDOFF_MS / Math.max(1, duration))
+    const handoffFrames: Keyframe[] = Array.from({ length: 9 }, (_, index) => {
+      const handoffProgress = index / 8
+      return {
+        opacity: Math.sin(handoffProgress * (Math.PI / 2)),
+        offset: handoffOffset + handoffProgress * (1 - handoffOffset),
+      }
+    })
+    if (handoffOffset > 0) handoffFrames.unshift({ opacity: 0, offset: 0 })
+    morph.handoffAnimation = element.animate(handoffFrames, {
+      duration,
+      easing: 'linear',
+      fill: 'both',
+    })
+    morph.handoffAnimation.pause()
+  }
+  // Drive the animation from the same logical progress as the SVG instead of
+  // a second wall clock. Besides keeping their opacities complementary, this
+  // stays correct across a long frame or a destination element replacement.
+  if (morph.handoffAnimation) morph.handoffAnimation.currentTime = progress * duration
+}
+
+function restoreReplayHandoff(state: ReplayMorphState | null) {
+  if (!state?.handoffTarget) return
+  const { element, opacity, priority } = state.handoffTarget
+  if (opacity) element.style.setProperty('opacity', opacity, priority)
+  else element.style.removeProperty('opacity')
+  state.handoffTarget = null
+}
+
+function setReplayHandoff(state: ReplayMorphState, element: HTMLElement | null, opacity: number) {
+  if (state.handoffTarget?.element !== element) {
+    restoreReplayHandoff(state)
+    if (element) {
+      state.handoffTarget = {
+        element,
+        opacity: element.style.getPropertyValue('opacity'),
+        priority: element.style.getPropertyPriority('opacity'),
+      }
+    }
+  }
+  // Inline !important also overrides the hiding rule embedded in recordings
+  // made before the deterministic endpoint handoff was introduced.
+  element?.style.setProperty('opacity', String(opacity), 'important')
+}
+
 function readDuration() {
   const value = getComputedStyle(document.documentElement)
     .getPropertyValue('--font-morph-duration')
@@ -402,6 +489,35 @@ function readDuration() {
 
 function fontSize(endpoint: GlyphEndpoint) {
   return endpoint.style.fontSizeToHeight * endpoint.logicalRect.height
+}
+
+function numericFontWeight(value: string, fallback: number) {
+  const weight = Number.parseFloat(value)
+  return Number.isFinite(weight) ? weight : fallback
+}
+
+function outlineInstance(endpoint: GlyphEndpoint): OutlineInstance {
+  const role = endpoint.style.fontRole
+  return {
+    role,
+    weight: numericFontWeight(endpoint.style.fontWeight, role === 'sans' ? 500 : 600),
+    // Only Source Serif has an optical-size axis. Excluding sans font size
+    // avoids duplicate correspondence cached outlines that differ only by scale.
+    opticalSize: role === 'serif' ? fontSize(endpoint) : 0,
+  }
+}
+
+function counterpartOutlineInstance(role: FontRole): OutlineInstance {
+  const rootStyle = getComputedStyle(document.documentElement)
+  const value = (property: string, fallback: number) => {
+    const parsed = Number.parseFloat(rootStyle.getPropertyValue(property))
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+  return {
+    role,
+    weight: value(`--font-morph-${role}-weight`, role === 'sans' ? 500 : 600),
+    opticalSize: role === 'serif' ? value('--font-morph-serif-optical-size', 23) : 0,
+  }
 }
 
 function baseline(endpoint: GlyphEndpoint, font?: Font) {
@@ -430,6 +546,12 @@ function setLayerBox(layer: SVGSVGElement, rect: Rect, ownerDocument: Document) 
 
 function setLayerColor(layer: SVGSVGElement, color: PointColor) {
   layer.style.color = `rgb(${Math.round(color.red)} ${Math.round(color.green)} ${Math.round(color.blue)})`
+}
+
+function smoothColorProgress(progress: number) {
+  // Smootherstep keeps the color velocity at zero at both endpoints, so color
+  // begins and settles gently while remaining deterministic for replay.
+  return progress * progress * progress * (progress * (progress * 6 - 15) + 10)
 }
 
 function createTextFallback(layer: SVGSVGElement, endpoint: GlyphEndpoint) {
@@ -470,12 +592,17 @@ function createInitialLayer(endpoint: GlyphEndpoint, replay = false) {
   return layer
 }
 
-function renderOptions(): RenderOptions {
+function renderOptions(instance: OutlineInstance): RenderOptions {
+  const variation =
+    instance.role === 'sans' ? { wght: instance.weight } : { opsz: instance.opticalSize }
   return {
     kerning: true,
     letterSpacing: 0,
     features: { liga: false, rlig: false },
-  }
+    // opentype.js 2 supports variable coordinates, but @types/opentype.js
+    // still describes the pre-variable RenderOptions surface.
+    variation,
+  } as RenderOptions
 }
 
 function commandNumber(value: number) {
@@ -565,20 +692,61 @@ function polygonStats(polygon: Polygon) {
   }
 }
 
+function polygonBounds(polygon: Polygon): Rect {
+  const horizontal = polygon.map(([x]) => x)
+  const vertical = polygon.map(([, y]) => y)
+  const left = Math.min(...horizontal)
+  const top = Math.min(...vertical)
+  return {
+    left,
+    top,
+    width: Math.max(Number.EPSILON, Math.max(...horizontal) - left),
+    height: Math.max(Number.EPSILON, Math.max(...vertical) - top),
+  }
+}
+
+function combinedBounds(contours: OutlineContour[]): Rect {
+  if (!contours.length) return { left: 0, top: 0, width: 1, height: 1 }
+  const left = Math.min(...contours.map((contour) => contour.bounds.left))
+  const top = Math.min(...contours.map((contour) => contour.bounds.top))
+  const right = Math.max(...contours.map((contour) => contour.bounds.left + contour.bounds.width))
+  const bottom = Math.max(...contours.map((contour) => contour.bounds.top + contour.bounds.height))
+  return {
+    left,
+    top,
+    width: Math.max(Number.EPSILON, right - left),
+    height: Math.max(Number.EPSILON, bottom - top),
+  }
+}
+
 function classifyContours(paths: string[], runtime: KuteMorphRuntime): OutlineContour[] {
-  const contours = paths.map((path) => {
+  const contours: OutlineContour[] = paths.map((path, index) => {
     const polygon = runtime.getInterpolationPoints(path, path, MORPH_PRECISION)[0]
     const { area, center } = polygonStats(polygon)
-    return { path, polygon, depth: 0, center, area }
+    return {
+      index,
+      path,
+      polygon,
+      depth: 0,
+      parentIndex: null,
+      center,
+      area,
+      bounds: polygonBounds(polygon),
+    }
   })
 
   for (const contour of contours) {
     const sample = contour.polygon[0]
-    contour.depth = contours.reduce(
-      (depth, candidate) =>
-        candidate !== contour && pointInPolygon(sample, candidate.polygon) ? depth + 1 : depth,
-      0,
-    )
+    const containers = contours
+      .filter(
+        (candidate) =>
+          candidate !== contour &&
+          candidate.area > contour.area &&
+          pointInPolygon(sample, candidate.polygon),
+      )
+      .sort((left, right) => left.area - right.area)
+    contour.parentIndex = containers[0]?.index ?? null
+    contour.depth = containers.length
   }
   return contours
 }
@@ -588,70 +756,277 @@ function outlineFont(text: string, fonts: readonly Font[]) {
   return fonts.find((candidate) => characters.every((character) => candidate.hasChar(character)))
 }
 
-function buildOutline(text: string, font: Font, runtime: KuteMorphRuntime): GlyphOutline[] {
+function buildOutline(
+  text: string,
+  font: Font,
+  instance: OutlineInstance,
+  runtime: KuteMorphRuntime,
+): GlyphOutline[] {
   // Build once in a common 1,000-unit em square. Endpoint size, line box, and
   // letter spacing are cheap affine transforms applied only after navigation
   // reveals the target.
   const canonicalBaseline = (font.ascender / font.unitsPerEm) * MORPH_VIEWBOX_SIZE
-  const paths = font.getPaths(text, 0, canonicalBaseline, MORPH_VIEWBOX_SIZE, renderOptions())
+  const paths = font.getPaths(
+    text,
+    0,
+    canonicalBaseline,
+    MORPH_VIEWBOX_SIZE,
+    renderOptions(instance),
+  )
   return paths.map((path) => {
     const contours = splitContours(path.commands).map((commands) => contourPath(commands))
-    return { contours: classifyContours(contours, runtime) }
+    const classified = classifyContours(contours, runtime)
+    return { contours: classified, bounds: combinedBounds(classified) }
   })
 }
 
-function contourPairCost(source: OutlineContour, target: OutlineContour) {
+function relativeContourMetrics(contour: OutlineContour, glyph: GlyphOutline) {
+  const glyphArea = glyph.bounds.width * glyph.bounds.height
+  return {
+    center: [
+      (contour.center[0] - glyph.bounds.left) / glyph.bounds.width,
+      (contour.center[1] - glyph.bounds.top) / glyph.bounds.height,
+    ] as [number, number],
+    width: contour.bounds.width / glyph.bounds.width,
+    height: contour.bounds.height / glyph.bounds.height,
+    area: contour.area / glyphArea,
+  }
+}
+
+function contourPairCost(
+  source: OutlineContour,
+  target: OutlineContour,
+  sourceGlyph: GlyphOutline,
+  targetGlyph: GlyphOutline,
+) {
+  const sourceMetrics = relativeContourMetrics(source, sourceGlyph)
+  const targetMetrics = relativeContourMetrics(target, targetGlyph)
   const centerDistance = Math.hypot(
-    source.center[0] - target.center[0],
-    source.center[1] - target.center[1],
+    sourceMetrics.center[0] - targetMetrics.center[0],
+    sourceMetrics.center[1] - targetMetrics.center[1],
   )
-  const areaDistance = Math.abs(Math.log((source.area + 1) / (target.area + 1))) * 100
-  return centerDistance + areaDistance
+  const areaDistance = Math.abs(
+    Math.log((sourceMetrics.area + Number.EPSILON) / (targetMetrics.area + Number.EPSILON)),
+  )
+  const sizeDistance =
+    Math.abs(sourceMetrics.width - targetMetrics.width) +
+    Math.abs(sourceMetrics.height - targetMetrics.height)
+  const sourceChildren = sourceGlyph.contours.filter(
+    (contour) => contour.parentIndex === source.index,
+  ).length
+  const targetChildren = targetGlyph.contours.filter(
+    (contour) => contour.parentIndex === target.index,
+  ).length
+  return (
+    centerDistance * 400 +
+    areaDistance * 80 +
+    sizeDistance * 120 +
+    Math.abs(sourceChildren - targetChildren) * 160
+  )
+}
+
+/** Minimum-cost one-to-one assignment. Dummy rows or columns select which
+ * unmatched components should collapse without disturbing the other strokes. */
+function minimumAssignment(costs: number[][]) {
+  const size = costs.length
+  if (!size) return []
+  const rowPotential = new Array<number>(size + 1).fill(0)
+  const columnPotential = new Array<number>(size + 1).fill(0)
+  const columnMatch = new Array<number>(size + 1).fill(0)
+  const predecessor = new Array<number>(size + 1).fill(0)
+
+  for (let row = 1; row <= size; row += 1) {
+    columnMatch[0] = row
+    let column = 0
+    const minimum = new Array<number>(size + 1).fill(Number.POSITIVE_INFINITY)
+    const visited = new Array<boolean>(size + 1).fill(false)
+    do {
+      visited[column] = true
+      const matchedRow = columnMatch[column]
+      let delta = Number.POSITIVE_INFINITY
+      let nextColumn = 0
+      for (let candidate = 1; candidate <= size; candidate += 1) {
+        if (visited[candidate]) continue
+        const reducedCost =
+          costs[matchedRow - 1][candidate - 1] -
+          rowPotential[matchedRow] -
+          columnPotential[candidate]
+        if (reducedCost < minimum[candidate]) {
+          minimum[candidate] = reducedCost
+          predecessor[candidate] = column
+        }
+        if (minimum[candidate] < delta) {
+          delta = minimum[candidate]
+          nextColumn = candidate
+        }
+      }
+      for (let candidate = 0; candidate <= size; candidate += 1) {
+        if (visited[candidate]) {
+          rowPotential[columnMatch[candidate]] += delta
+          columnPotential[candidate] -= delta
+        } else {
+          minimum[candidate] -= delta
+        }
+      }
+      column = nextColumn
+    } while (columnMatch[column] !== 0)
+
+    do {
+      const previousColumn = predecessor[column]
+      columnMatch[column] = columnMatch[previousColumn]
+      column = previousColumn
+    } while (column !== 0)
+  }
+
+  const assignment = new Array<number>(size).fill(-1)
+  for (let column = 1; column <= size; column += 1) {
+    if (columnMatch[column]) assignment[columnMatch[column] - 1] = column - 1
+  }
+  return assignment
+}
+
+function squaredDistance(left: [number, number], right: [number, number]) {
+  return (left[0] - right[0]) ** 2 + (left[1] - right[1]) ** 2
+}
+
+function closestBoundaryPoint(reference: OutlineContour, addition: OutlineContour) {
+  let closest = reference.polygon[0]
+  let minimumDistance = Number.POSITIVE_INFINITY
+  for (const referencePoint of reference.polygon) {
+    for (const additionPoint of addition.polygon) {
+      const distance = squaredDistance(referencePoint, additionPoint)
+      if (distance < minimumDistance) {
+        minimumDistance = distance
+        closest = referencePoint
+      }
+    }
+  }
+  return { point: closest, distance: minimumDistance }
+}
+
+function mapGlyphPoint(point: [number, number], from: GlyphOutline, to: GlyphOutline) {
+  return [
+    to.bounds.left + ((point[0] - from.bounds.left) / from.bounds.width) * to.bounds.width,
+    to.bounds.top + ((point[1] - from.bounds.top) / from.bounds.height) * to.bounds.height,
+  ] as [number, number]
+}
+
+function nearestPoint(contour: OutlineContour, point: [number, number]) {
+  return contour.polygon.reduce(
+    (closest, candidate) =>
+      squaredDistance(candidate, point) < squaredDistance(closest, point) ? candidate : closest,
+    contour.polygon[0],
+  )
 }
 
 function pairGlyphContours(source: GlyphOutline, target: GlyphOutline) {
   const pairs: [OutlineContour, OutlineContour][] = []
-  const depths = new Set([
-    ...source.contours.map((contour) => contour.depth),
-    ...target.contours.map((contour) => contour.depth),
-  ])
 
-  for (const depth of depths) {
-    const sourceAtDepth = source.contours.filter((contour) => contour.depth === depth)
-    const availableTargets = target.contours.filter((contour) => contour.depth === depth)
-
-    // CJK sans/serif masters can decompose the same visible shape into a
-    // different number of filled contours and counters. Give every unmatched
-    // contour an epsilon-sized counterpart instead of creating/removing a path
-    // during interpolation. In particular, the mask contains a stable number
-    // of counter paths for the entire transition.
-
-    for (const sourceContour of sourceAtDepth) {
-      if (!availableTargets.length) {
-        pairs.push([sourceContour, collapsedContour(sourceContour)])
-        continue
-      }
-      let bestIndex = 0
-      for (let index = 1; index < availableTargets.length; index += 1) {
-        if (
-          contourPairCost(sourceContour, availableTargets[index]) <
-          contourPairCost(sourceContour, availableTargets[bestIndex])
-        ) {
-          bestIndex = index
-        }
-      }
-      const [targetContour] = availableTargets.splice(bestIndex, 1)
-      pairs.push([sourceContour, targetContour])
-    }
-    for (const targetContour of availableTargets) {
-      pairs.push([collapsedContour(targetContour), targetContour])
+  const collapseSubtree = (
+    glyph: GlyphOutline,
+    contour: OutlineContour,
+    side: 'source' | 'target',
+    anchor: [number, number],
+  ) => {
+    if (side === 'source') pairs.push([contour, collapsedContour(contour, anchor)])
+    else pairs.push([collapsedContour(contour, anchor), contour])
+    for (const child of glyph.contours.filter(
+      (candidate) => candidate.parentIndex === contour.index,
+    )) {
+      collapseSubtree(glyph, child, side, anchor)
     }
   }
+
+  const attachmentAnchor = (
+    contour: OutlineContour,
+    side: 'source' | 'target',
+    matched: [OutlineContour, OutlineContour][],
+  ) => {
+    if (!matched.length) {
+      const from = side === 'source' ? source : target
+      const to = side === 'source' ? target : source
+      return mapGlyphPoint(contour.center, from, to)
+    }
+    const related = matched.reduce(
+      (best, candidate) => {
+        const reference = side === 'source' ? candidate[0] : candidate[1]
+        const distance = closestBoundaryPoint(reference, contour).distance
+        return distance < best.distance ? { pair: candidate, distance } : best
+      },
+      { pair: matched[0], distance: Number.POSITIVE_INFINITY },
+    ).pair
+    const reference = side === 'source' ? related[0] : related[1]
+    const counterpart = side === 'source' ? related[1] : related[0]
+    const fromGlyph = side === 'source' ? source : target
+    const toGlyph = side === 'source' ? target : source
+    const attachment = closestBoundaryPoint(reference, contour).point
+    return nearestPoint(counterpart, mapGlyphPoint(attachment, fromGlyph, toGlyph))
+  }
+
+  const pairChildren = (
+    sourceParent: number | null,
+    targetParent: number | null,
+    parentPair?: [OutlineContour, OutlineContour],
+  ) => {
+    const sourceChildren = source.contours.filter((contour) => contour.parentIndex === sourceParent)
+    const targetChildren = target.contours.filter((contour) => contour.parentIndex === targetParent)
+    const size = Math.max(sourceChildren.length, targetChildren.length)
+    if (!size) return
+    const costs = Array.from({ length: size }, (_, sourceIndex) =>
+      Array.from({ length: size }, (_, targetIndex) => {
+        const sourceContour = sourceChildren[sourceIndex]
+        const targetContour = targetChildren[targetIndex]
+        return sourceContour && targetContour
+          ? contourPairCost(sourceContour, targetContour, source, target)
+          : 0
+      }),
+    )
+
+    const matched: [OutlineContour, OutlineContour][] = []
+    const unmatchedSource: OutlineContour[] = []
+    const unmatchedTarget: OutlineContour[] = []
+    for (const [sourceIndex, targetIndex] of minimumAssignment(costs).entries()) {
+      const sourceContour = sourceChildren[sourceIndex]
+      const targetContour = targetChildren[targetIndex]
+      if (sourceContour && targetContour) {
+        matched.push([sourceContour, targetContour])
+      } else if (sourceContour) {
+        unmatchedSource.push(sourceContour)
+      } else if (targetContour) {
+        unmatchedTarget.push(targetContour)
+      }
+    }
+    const attachmentPairs = matched.length ? matched : parentPair ? [parentPair] : []
+    for (const pair of matched) {
+      pairs.push(pair)
+      pairChildren(pair[0].index, pair[1].index, pair)
+    }
+    for (const contour of unmatchedSource) {
+      collapseSubtree(
+        source,
+        contour,
+        'source',
+        attachmentAnchor(contour, 'source', attachmentPairs),
+      )
+    }
+    for (const contour of unmatchedTarget) {
+      collapseSubtree(
+        target,
+        contour,
+        'target',
+        attachmentAnchor(contour, 'target', attachmentPairs),
+      )
+    }
+  }
+
+  // Pair connected components first, then recurse only within their owned
+  // counters. A hole can no longer migrate into another stroke of the glyph.
+  pairChildren(null, null)
   return pairs
 }
 
-function collapsedContour(contour: OutlineContour): OutlineContour {
-  const [x, y] = contour.center
+function collapsedContour(contour: OutlineContour, anchor = contour.center): OutlineContour {
+  const [x, y] = anchor
   const radius = 0.001
   const polygon: Polygon = [
     [x - radius, y],
@@ -660,12 +1035,202 @@ function collapsedContour(contour: OutlineContour): OutlineContour {
     [x, y + radius],
   ]
   return {
+    ...contour,
     path: polygonPath(polygon),
     polygon,
-    depth: contour.depth,
-    center: contour.center,
+    center: anchor,
     area: 0,
+    bounds: polygonBounds(polygon),
   }
+}
+
+interface BoundaryFeature {
+  x: number
+  y: number
+  tangentX: number
+  tangentY: number
+}
+
+function boundaryFeatures(polygon: Polygon): BoundaryFeature[] {
+  const bounds = polygonBounds(polygon)
+  const normalized = polygon.map(
+    ([x, y]) =>
+      [(x - bounds.left) / bounds.width, (y - bounds.top) / bounds.height] as [number, number],
+  )
+  return normalized.map(([x, y], index) => {
+    const previous = normalized[(index + normalized.length - 1) % normalized.length]
+    const next = normalized[(index + 1) % normalized.length]
+    const tangentX = next[0] - previous[0]
+    const tangentY = next[1] - previous[1]
+    const tangentLength = Math.max(Number.EPSILON, Math.hypot(tangentX, tangentY))
+    return {
+      x,
+      y,
+      tangentX: tangentX / tangentLength,
+      tangentY: tangentY / tangentLength,
+    }
+  })
+}
+
+function boundaryPairCost(
+  source: BoundaryFeature,
+  target: BoundaryFeature,
+  sourceIndex: number,
+  targetIndex: number,
+  band: number,
+) {
+  const position = (source.x - target.x) ** 2 + (source.y - target.y) ** 2
+  const tangent =
+    1 -
+    Math.max(-1, Math.min(1, source.tangentX * target.tangentX + source.tangentY * target.tangentY))
+  const phase = ((sourceIndex - targetIndex) / band) ** 2
+  return position + tangent * 0.2 + phase * 0.15
+}
+
+function pointAlongBoundary(polygon: Polygon, index: number): [number, number] {
+  const wrapped = ((index % polygon.length) + polygon.length) % polygon.length
+  const startIndex = Math.floor(wrapped)
+  const progress = wrapped - startIndex
+  const start = polygon[startIndex]
+  const end = polygon[(startIndex + 1) % polygon.length]
+  return [interpolate(start[0], end[0], progress), interpolate(start[1], end[1], progress)]
+}
+
+function sectionedBoundaryCorrespondence(
+  source: Polygon,
+  target: Polygon,
+  warpingPath: [number, number][],
+): [Polygon, Polygon] {
+  const length = source.length
+  // The DTW path discovers local structural correspondence. Convert that path
+  // into strictly ordered section anchors, then resample every section. This
+  // keeps the useful local match without leaving duplicated points that can
+  // pinch into visible blobs halfway through the morph.
+  const landmarkSpacing = Math.max(3, Math.ceil(length / 24))
+  const sourceLandmarks: number[] = []
+  for (let index = 0; index < length; index += landmarkSpacing) sourceLandmarks.push(index)
+  sourceLandmarks.push(length)
+
+  const targetLandmarks = sourceLandmarks.map((sourceIndex) => {
+    if (sourceIndex === length) return length
+    const candidates = warpingPath.filter(([candidate]) => candidate === sourceIndex)
+    if (candidates.length) {
+      return Math.round(
+        candidates.reduce((sum, [, targetIndex]) => sum + targetIndex, 0) / candidates.length,
+      )
+    }
+    return sourceIndex
+  })
+  targetLandmarks[0] = 0
+  targetLandmarks[targetLandmarks.length - 1] = length
+  for (let index = 1; index < targetLandmarks.length - 1; index += 1) {
+    const remaining = targetLandmarks.length - 1 - index
+    targetLandmarks[index] = Math.min(
+      length - remaining,
+      Math.max(targetLandmarks[index - 1] + 1, targetLandmarks[index]),
+    )
+  }
+
+  const matchedSource: Polygon = []
+  const matchedTarget: Polygon = []
+  for (let section = 0; section < sourceLandmarks.length - 1; section += 1) {
+    const sourceStart = sourceLandmarks[section]
+    const sourceEnd = sourceLandmarks[section + 1]
+    const targetStart = targetLandmarks[section]
+    const targetEnd = targetLandmarks[section + 1]
+    const segmentCount = Math.max(sourceEnd - sourceStart, targetEnd - targetStart)
+    for (let segment = 0; segment < segmentCount; segment += 1) {
+      const sectionProgress = segment / segmentCount
+      matchedSource.push(
+        pointAlongBoundary(source, interpolate(sourceStart, sourceEnd, sectionProgress)),
+      )
+      matchedTarget.push(
+        pointAlongBoundary(target, interpolate(targetStart, targetEnd, sectionProgress)),
+      )
+    }
+  }
+  return [matchedSource, matchedTarget]
+}
+
+/**
+ * Refine KUTE's single cyclic contour match with a banded, monotonic boundary
+ * assignment. Repeated points are harmless at either endpoint, while the
+ * ordering guarantee prevents one stroke region from donating its outline to
+ * a distant region of the same contour.
+ */
+function localBoundaryCorrespondence(source: Polygon, target: Polygon): [Polygon, Polygon] {
+  if (source.length !== target.length || source.length < 4) return [source, target]
+  const length = source.length
+  const band = Math.max(3, Math.ceil(length * 0.08))
+  const sourceFeatures = boundaryFeatures(source)
+  const targetFeatures = boundaryFeatures(target)
+  const directions = new Uint8Array(length * length)
+  let previous = new Float64Array(length)
+  previous.fill(Number.POSITIVE_INFINITY)
+
+  for (let sourceIndex = 0; sourceIndex < length; sourceIndex += 1) {
+    const current = new Float64Array(length)
+    current.fill(Number.POSITIVE_INFINITY)
+    const firstTarget = Math.max(0, sourceIndex - band)
+    const lastTarget = Math.min(length - 1, sourceIndex + band)
+    for (let targetIndex = firstTarget; targetIndex <= lastTarget; targetIndex += 1) {
+      const pointCost = boundaryPairCost(
+        sourceFeatures[sourceIndex],
+        targetFeatures[targetIndex],
+        sourceIndex,
+        targetIndex,
+        band,
+      )
+      if (sourceIndex === 0 && targetIndex === 0) {
+        current[targetIndex] = pointCost
+        continue
+      }
+
+      let predecessorCost = Number.POSITIVE_INFINITY
+      let direction = 0
+      if (sourceIndex > 0 && targetIndex > 0 && previous[targetIndex - 1] < predecessorCost) {
+        predecessorCost = previous[targetIndex - 1]
+        direction = 1
+      }
+      // Advancing only one boundary duplicates a point. Charge a small cost so
+      // a local mismatch can flex without allowing long stretches to collapse.
+      if (sourceIndex > 0 && previous[targetIndex] + 0.04 < predecessorCost) {
+        predecessorCost = previous[targetIndex] + 0.04
+        direction = 2
+      }
+      if (targetIndex > 0 && current[targetIndex - 1] + 0.04 < predecessorCost) {
+        predecessorCost = current[targetIndex - 1] + 0.04
+        direction = 3
+      }
+      if (direction) {
+        current[targetIndex] = pointCost + predecessorCost
+        directions[sourceIndex * length + targetIndex] = direction
+      }
+    }
+    previous = current
+  }
+
+  if (!Number.isFinite(previous[length - 1])) return [source, target]
+  const warpingPath: [number, number][] = []
+  let sourceIndex = length - 1
+  let targetIndex = length - 1
+  while (true) {
+    warpingPath.push([sourceIndex, targetIndex])
+    if (sourceIndex === 0 && targetIndex === 0) break
+    const direction = directions[sourceIndex * length + targetIndex]
+    if (direction === 1) {
+      sourceIndex -= 1
+      targetIndex -= 1
+    } else if (direction === 2) {
+      sourceIndex -= 1
+    } else if (direction === 3) {
+      targetIndex -= 1
+    } else {
+      return [source, target]
+    }
+  }
+  warpingPath.reverse()
+  return sectionedBoundaryCorrespondence(source, target, warpingPath)
 }
 
 async function loadOutlineRuntime() {
@@ -714,15 +1279,15 @@ async function loadOutlineRuntime() {
 
 function normalizedOutline(
   text: string,
-  sourceRole: FontRole,
-  targetRole: FontRole,
+  sourceInstance: OutlineInstance,
+  targetInstance: OutlineInstance,
   runtime: OutlineRuntime,
 ): NormalizedOutline {
-  const cacheKey = JSON.stringify([text, sourceRole, targetRole])
+  const cacheKey = JSON.stringify([text, sourceInstance, targetInstance])
   const cached = normalizedOutlineCache.get(cacheKey)
   if (cached) return cached
 
-  const reverseKey = JSON.stringify([text, targetRole, sourceRole])
+  const reverseKey = JSON.stringify([text, targetInstance, sourceInstance])
   const reverse = normalizedOutlineCache.get(reverseKey)
   if (reverse?.contours && reverse.sourceFont && reverse.targetFont) {
     const normalized: NormalizedOutline = {
@@ -739,8 +1304,8 @@ function normalizedOutline(
     return normalized
   }
 
-  const sourceFont = outlineFont(text, runtime.fonts[sourceRole])
-  const targetFont = outlineFont(text, runtime.fonts[targetRole])
+  const sourceFont = outlineFont(text, runtime.fonts[sourceInstance.role])
+  const targetFont = outlineFont(text, runtime.fonts[targetInstance.role])
   if (!sourceFont || !targetFont) {
     const normalized: NormalizedOutline = {
       contours: null,
@@ -750,8 +1315,8 @@ function normalizedOutline(
     return normalized
   }
 
-  const sourceGlyphs = buildOutline(text, sourceFont, runtime)
-  const targetGlyphs = buildOutline(text, targetFont, runtime)
+  const sourceGlyphs = buildOutline(text, sourceFont, sourceInstance, runtime)
+  const targetGlyphs = buildOutline(text, targetFont, targetInstance, runtime)
   if (sourceGlyphs.length !== targetGlyphs.length) {
     const normalized: NormalizedOutline = {
       contours: null,
@@ -772,11 +1337,12 @@ function normalizedOutline(
       // This is KUTE's expensive topology normalization and point matching.
       // It deliberately happens in canonical font space so it can be cached
       // before navigation, independently of the destination viewport/layout.
-      const [sourcePoints, targetPoints] = runtime.getInterpolationPoints(
+      const kutePoints = runtime.getInterpolationPoints(
         sourceContour.path,
         targetContour.path,
         MORPH_PRECISION,
       )
+      const [sourcePoints, targetPoints] = localBoundaryCorrespondence(...kutePoints)
       contours.push({
         depth: sourceContour.depth,
         glyphIndex,
@@ -820,8 +1386,8 @@ function prepareOutline(
 ): PreparedOutline {
   const normalized = normalizedOutline(
     source.text,
-    source.style.fontRole,
-    target.style.fontRole,
+    outlineInstance(source),
+    outlineInstance(target),
     runtime,
   )
   if (!normalized.contours || !normalized.sourceFont || !normalized.targetFont) {
@@ -864,7 +1430,12 @@ export function prepareFontMorph(key?: string): Promise<void> {
   return loadOutlineRuntime().then((runtime) => {
     if (!captured) return
     const targetRole: FontRole = captured.style.fontRole === 'sans' ? 'serif' : 'sans'
-    normalizedOutline(captured.text, captured.style.fontRole, targetRole, runtime)
+    normalizedOutline(
+      captured.text,
+      outlineInstance(captured),
+      counterpartOutlineInstance(targetRole),
+      runtime,
+    )
   })
 }
 
@@ -925,18 +1496,21 @@ function paintPreparedMorph(
   prepared: PreparedMorph,
   geometryProgress: number,
   outlineProgress: number,
+  sourceOpacity = 1,
   runtime?: KuteMorphRuntime,
 ) {
   const { layer, source, target, contours } = prepared
+  layer.style.opacity = String(sourceOpacity)
   setLayerBox(
     layer,
     interpolateRect(source.rect, target.rect, geometryProgress),
     layer.ownerDocument,
   )
+  const colorProgress = smoothColorProgress(outlineProgress)
   setLayerColor(layer, {
-    red: interpolate(source.style.color.red, target.style.color.red, outlineProgress),
-    green: interpolate(source.style.color.green, target.style.color.green, outlineProgress),
-    blue: interpolate(source.style.color.blue, target.style.color.blue, outlineProgress),
+    red: interpolate(source.style.color.red, target.style.color.red, colorProgress),
+    green: interpolate(source.style.color.green, target.style.color.green, colorProgress),
+    blue: interpolate(source.style.color.blue, target.style.color.blue, colorProgress),
   })
 
   if (!contours || !runtime) return
@@ -988,8 +1562,12 @@ function cleanup(morph: ActiveMorph) {
   morph.observer.disconnect()
   window.clearTimeout(morph.timeout)
   if (morph.frame !== null) cancelAnimationFrame(morph.frame)
-  morph.layer.remove()
+  // Release the CSS hiding rule while the destination animation is still at
+  // full opacity. Cancelling its compositor effect afterward cannot expose a
+  // zero-opacity frame, even if style and compositor commits straddle frames.
   document.documentElement.removeAttribute('data-font-morph-active')
+  morph.handoffAnimation?.cancel()
+  morph.layer.remove()
   activeMorph = null
 }
 
@@ -1062,6 +1640,7 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
   }
 
   const duration = Math.max(1, readDuration())
+  startEndpointHandoff(morph, target.element, duration, 0)
   emitRecordedMorph(
     morph.key,
     Math.max(0, performance.now() - morph.startedAt),
@@ -1087,7 +1666,10 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     // Follow the semantic endpoint itself instead of freezing its first pixel
     // box. If that endpoint leaves the capture frame (or is replaced by a
     // different locale/message), settle on the real post-navigation DOM.
-    if (currentTarget) prepared.target = currentTarget
+    if (currentTarget) {
+      prepared.target = currentTarget
+      startEndpointHandoff(morph, currentTarget.element, duration, linearProgress)
+    }
     const currentRect = interpolateRect(morph.source.rect, prepared.target.rect, geometryProgress)
     if (!currentTarget && !isInCaptureFrame(currentRect)) {
       cleanup(morph)
@@ -1100,7 +1682,10 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     // Position/size retain the shared-element ease, but KUTE's contour and
     // color interpolation stay linear so the serifs develop throughout the
     // full transition instead of being compressed into one part of it.
-    paintPreparedMorph(prepared, geometryProgress, linearProgress, runtime)
+    const handoff = currentTarget
+      ? endpointHandoffOpacities(linearProgress, duration)
+      : { source: 1, destination: 0 }
+    paintPreparedMorph(prepared, geometryProgress, linearProgress, handoff.source, runtime)
 
     if (linearProgress < 1) {
       morph.frame = requestAnimationFrame(paint)
@@ -1375,6 +1960,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
 
   const clear = () => {
     generation += 1
+    restoreReplayHandoff(state)
     state?.document.documentElement.removeAttribute('data-font-morph-fallback')
     state?.layer.remove()
     state = null
@@ -1471,6 +2057,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
         generation: currentGeneration,
         sawTarget: false,
         lastTime: frame.time,
+        handoffTarget: null,
       }
 
       const settleWithoutMorph = () => {
@@ -1528,6 +2115,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       (!currentTarget && state.sawTarget && !isInCaptureFrame(currentRect)) ||
       (currentTarget && !isInCaptureFrame(currentTarget.rect) && !isInCaptureFrame(currentRect))
     ) {
+      restoreReplayHandoff(state)
       state.layer.style.display = 'none'
       frame.document.documentElement.dataset.fontMorphFallback = ''
       return { advanceTo: active.holdEnd }
@@ -1541,7 +2129,11 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       setLayerBox(state.layer, state.prepared.source.rect, frame.document)
       return
     }
-    paintPreparedMorph(state.prepared, geometryProgress, linearProgress, runtime)
+    const handoff = currentTarget
+      ? endpointHandoffOpacities(linearProgress, active.payload.duration)
+      : { source: 1, destination: 0 }
+    setReplayHandoff(state, currentTarget?.element ?? null, handoff.destination)
+    paintPreparedMorph(state.prepared, geometryProgress, linearProgress, handoff.source, runtime)
   }
 }
 
@@ -1578,6 +2170,8 @@ export function beginFontMorph(key: string) {
     timeout: 0,
     frame: null,
     finishing: false,
+    handoffElement: null,
+    handoffAnimation: null,
   }
   activeMorph = morph
   document.documentElement.dataset.fontMorphActive = key
