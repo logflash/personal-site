@@ -24,19 +24,24 @@ export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: Mobil
   const onResumeRoute = useRouterState({
     select: (state) => state.location.pathname.endsWith('/resume'),
   })
-
   return (
     <div className="mobile-top">
       <header className="mobile-header">
-        <Link
-          className="identity-link"
-          to="/$locale"
-          params={{ locale }}
-          hash="home"
-          {...(onResumeRoute ? resumeMorphHandlers : {})}
-        >
-          <Identity />
-        </Link>
+        <div className="identity-link">
+          <Identity
+            renderWho={(who) => (
+              <Link
+                className="identity-text-link"
+                to="/$locale"
+                params={{ locale }}
+                hash="home"
+                {...(onResumeRoute ? resumeMorphHandlers : {})}
+              >
+                {who}
+              </Link>
+            )}
+          />
+        </div>
         <div className="spacer" />
         <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
         <ThemeToggle onToggle={onToggleTheme} />

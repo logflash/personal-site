@@ -1,0 +1,251 @@
+diff --git a/.gitignore b/.gitignore
+index cc402078bc08511df1c146f0e1fb1f3739ba4ddb..85b3ace9db08eb96098a569f69e1761171584d98 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -2,3 +2,5 @@ node_modules
+ package-lock.json
+ archived
+ .rollup.cache
++dist
++*.tsbuildinfo
+diff --git a/FORK.md b/FORK.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..3bf6f40af07519a30cc2a1310a099767cf133c59
+--- /dev/null
++++ b/FORK.md
+@@ -0,0 +1,37 @@
++# Fork notes
++
++## Provenance
++
++- Upstream repository: `https://github.com/generaltranslation/gt.git`
++- Upstream tag: `gt-rrweb@0.2.0`
++- Commit: `ad4f69ed7847a055ea555a102f4e597b7a138d5d`
++- `packages/rrweb` tree: `f8a44c1d425da0a993a6783b01cdb237681052ab`
++
++Run `node scripts/vendor-gt-rrweb.mjs --check` from the personal-site root to clone
++that exact revision, verify both Git object IDs, apply every ordered source patch with
++`git apply --check`, and compare the result with this directory. Pass `--source` with
++an existing checkout to perform the same verification without a network request.
++
++## Source-level changes
++
++The source patch series replaces the former package-manager patch against generated
++`dist` files. It carries these generic replay and harvesting behaviors:
++
++- associate separately-added rrweb text mutations with their nearest hash owner,
++  including child-before-parent mutation batches;
++- compress inactive time while retaining click, font-morph, and settled-text holds;
++- interpolate scroll tracks deterministically and keep translated click targets in
++  view when localized layouts differ;
++- make cursor and scroll state depend only on replay time, including after seeks;
++- distinguish mouse clicks, touch taps, swipes, cancellations, and off-frame pointer
++  samples; touch playback hides the cursor while retaining a prominent tap ripple;
++- synchronize locale selects and document language during translated playback;
++- expose the per-frame director hook and deterministic `advanceTo` directive;
++- avoid an artificial initial wait when a recording contains no stylesheet links;
++- retain the JSON download, locale controls, and replay HUD layout used by hosts.
++
++The pure timeline and input routines are covered in `src/replay/__tests__`. The browser
++suite records and replays a generic localized fixture, then checks locale swapping,
++scroll interpolation, click targeting, seeking, touch behavior, JSON export, initial
++rendering, frame directives, and debug hot-swapping. It intentionally contains no
++KUTE- or personal-site-specific assertions.
+diff --git a/LICENSE.md b/LICENSE.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..908fb0078c4f533cea6371c364be881dd1ed134b
+--- /dev/null
++++ b/LICENSE.md
+@@ -0,0 +1,22 @@
++MIT License
++
++Copyright (c) 2026 General Translation, Inc.
++Copyright (c) 2026 Ian Henriques
++
++Permission is hereby granted, free of charge, to any person obtaining a copy
++of this software and associated documentation files (the "Software"), to deal
++in the Software without restriction, including without limitation the rights
++to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
++copies of the Software, and to permit persons to whom the Software is
++furnished to do so, subject to the following conditions:
++
++The above copyright notice and this permission notice shall be included in all
++copies or substantial portions of the Software.
++
++THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
++IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
++FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
++AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
++LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
++OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
++SOFTWARE.
+diff --git a/README.md b/README.md
+index 640f85961465042b6a6c78f703e8f20f420f59ab..1546a0ecd254a359ee4f92b4950cad88b9600ada 100644
+--- a/README.md
++++ b/README.md
+@@ -1,11 +1,28 @@
+-# gt-rrweb
++# gt-rrweb fork
+ 
+ Record a product walkthrough once with [rrweb](https://www.rrweb.io/), then replay it
+-per-locale using your app's own published translations — no LLM, no re-recording.
++per-locale using the host application's published translations.
+ 
+-> **Scaffold.** This package is a work-in-progress skeleton; the public API
+-> (`GTRecorder`, `useRecorder`, and the per-locale harvest) is added in follow-up work.
++This directory is a standalone workspace fork of `gt-rrweb@0.2.0`, copied from the
++official `generaltranslation/gt` tag at commit
++`ad4f69ed7847a055ea555a102f4e597b7a138d5d`. The unmodified upstream package tree is
++`f8a44c1d425da0a993a6783b01cdb237681052ab`.
++
++The fork keeps the original recorder, harvest, replay, unit-test, and browser-test
++source. Local replay fixes are applied from the ordered source patch series by
++`scripts/vendor-gt-rrweb.mjs`; the personal site resolves this TypeScript source
++directly for hot reload.
++
++## Verification
++
++```sh
++corepack pnpm --filter gt-rrweb typecheck
++corepack pnpm --filter gt-rrweb test
++corepack pnpm --filter gt-rrweb e2e
++```
++
++`e2e:fixture` regenerates the generic browser recording used by the E2E suite.
+ 
+ ## License
+ 
+-MIT © General Translation, Inc.
++MIT © General Translation, Inc. See `LICENSE.md`.
+diff --git a/package.json b/package.json
+index aeb62dc2680fd5df1263ee746d1ce81d27eb2a29..7851ec220b982d4f56622b9e6a3fd0fe70932abc 100644
+--- a/package.json
++++ b/package.json
+@@ -27,16 +27,17 @@
+   },
+   "scripts": {
+     "build": "tsdown",
+-    "build:clean": "sh ../../scripts/clean.sh && pnpm run build",
+-    "build:release": "pnpm run build:clean",
+-    "release": "pnpm run build:clean && pnpm publish",
+-    "release:alpha": "pnpm run build:clean && pnpm publish --tag alpha",
+-    "release:beta": "pnpm run build:clean && pnpm publish --tag beta",
+-    "release:latest": "pnpm run build:clean && pnpm publish --tag latest",
+-    "test": "vitest run --passWithNoTests",
++    "build:clean": "corepack pnpm run build",
++    "build:release": "corepack pnpm run build:clean",
++    "release": "corepack pnpm run build:clean && corepack pnpm publish",
++    "release:alpha": "corepack pnpm run build:clean && corepack pnpm publish --tag alpha",
++    "release:beta": "corepack pnpm run build:clean && corepack pnpm publish --tag beta",
++    "release:latest": "corepack pnpm run build:clean && corepack pnpm publish --tag latest",
++    "test": "vitest run",
+     "test:watch": "vitest",
+-    "e2e": "pnpm run build && node e2e/run.mjs",
+-    "e2e:fixture": "pnpm run build && node e2e/make-fixture.mjs",
++    "lint": "oxlint --quiet src e2e",
++    "e2e": "corepack pnpm run build && node e2e/run.mjs",
++    "e2e:fixture": "corepack pnpm run build && node e2e/make-fixture.mjs",
+     "typecheck": "tsc --noEmit"
+   },
+   "repository": {
+@@ -54,14 +55,15 @@
+     "@rrweb/record": "^2.1.1",
+     "@rrweb/replay": "^2.1.1",
+     "@rrweb/types": "^2.1.1",
+-    "@types/node": "catalog:",
++    "@types/node": "^22.13.5",
+     "@types/react": ">=18.0.0 <20.0.0",
+     "@types/react-dom": ">=18.0.0 <20.0.0",
+     "morphdom": "^2.7.5",
++    "oxlint": "^1.79.0",
+     "playwright-core": "^1.57.0",
+-    "tsdown": "catalog:",
+-    "typescript": "catalog:",
+-    "vitest": "catalog:"
++    "tsdown": "^0.21.10",
++    "typescript": "^5.9.2",
++    "vitest": "^3.2.4"
+   },
+   "exports": {
+     ".": {
+diff --git a/tsconfig.json b/tsconfig.json
+index 9b87d9edeabf67118fbd35aef9916474322ddeae..4b512cd84f9c863f064168e979b1d33fe62aae51 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -1,6 +1,13 @@
+ {
+-  "extends": "../../tsconfig.base.json",
+   "compilerOptions": {
++    "strict": true,
++    "esModuleInterop": true,
++    "skipLibCheck": true,
++    "forceConsistentCasingInFileNames": true,
++    "resolveJsonModule": true,
++    "declaration": true,
++    "removeComments": false,
++    "allowSyntheticDefaultImports": true,
+     "module": "ESNext",
+     "target": "ES6",
+     "outDir": "./dist",
+diff --git a/tsdown.config.mts b/tsdown.config.mts
+index a9be41e029d14c48ef944907baa402b70a9d14ab..e500fb02f917c8da1d09b7c16df0c72e150c4be7 100644
+--- a/tsdown.config.mts
++++ b/tsdown.config.mts
+@@ -1,5 +1,4 @@
+ import { defineConfig } from 'tsdown';
+-import { createTsdownConfig } from '../../tsdown.preset.mts';
+ 
+ // Dual CJS+ESM (the repo norm). react/react-dom and the rrweb runtime are peers —
+ // keep them external so the host app supplies one copy. morphdom (used by the
+@@ -7,19 +6,35 @@ import { createTsdownConfig } from '../../tsdown.preset.mts';
+ // Three entries: '.' (the client recorder, carries a 'use client' directive),
+ // './harvest' (a pure browser function, no React / no directive), and './replay'
+ // (the client replayer: framework-agnostic core + a thin React wrapper).
+-export default defineConfig(
+-  createTsdownConfig(['src/index.ts', 'src/harvest.ts', 'src/replay.ts'], {
+-    neverBundle: [
+-      /^react$/,
+-      /^react\//,
+-      /^react-dom$/,
+-      /^react-dom\//,
+-      /^@rrweb\/record$/,
+-      /^@rrweb\/record\//,
+-      /^@rrweb\/replay$/,
+-      /^@rrweb\/replay\//,
+-      /^@rrweb\/types$/,
+-      /^@rrweb\/types\//,
+-    ],
+-  })
+-);
++const entry = ['src/index.ts', 'src/harvest.ts', 'src/replay.ts'];
++const deps = {
++  neverBundle: [
++    /^react$/,
++    /^react\//,
++    /^react-dom$/,
++    /^react-dom\//,
++    /^@rrweb\/record$/,
++    /^@rrweb\/record\//,
++    /^@rrweb\/replay$/,
++    /^@rrweb\/replay\//,
++    /^@rrweb\/types$/,
++    /^@rrweb\/types\//,
++  ],
++};
++
++export default defineConfig([
++  {
++    entry,
++    format: ['cjs'],
++    dts: true,
++    sourcemap: true,
++    clean: true,
++    deps: { onlyBundle: false, ...deps },
++  },
++  {
++    entry,
++    format: ['esm'],
++    sourcemap: true,
++    deps: { onlyBundle: false, ...deps },
++  },
++]);

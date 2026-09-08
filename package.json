@@ -24,7 +24,7 @@
     "@tanstack/react-start": "~1.159.14",
     "gt-i18n": "1.0.16",
     "gt-react": "^11.1.12",
-    "gt-rrweb": "^0.2.0",
+    "gt-rrweb": "workspace:*",
     "gt-tanstack-start": "^11.1.12",
     "kute.js": "2.2.6",
     "opentype.js": "^2.0.0",

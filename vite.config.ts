@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import mdx from '@mdx-js/rollup'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 
 // Inlined into a <style> tag in production (removes the only render-blocking
@@ -18,5 +19,23 @@ export default defineConfig({
   plugins: [tanstackStart(), mdx(), viteReact()],
   define: {
     __INLINE_CSS__: JSON.stringify(inlineCss),
+  },
+  // Resolve the vendored fork's TypeScript directly so local package changes
+  // participate in Vite HMR and a clean checkout does not require committed dist.
+  resolve: {
+    alias: [
+      {
+        find: /^gt-rrweb\/replay$/,
+        replacement: fileURLToPath(new URL('./repos/gt-rrweb/src/replay.ts', import.meta.url)),
+      },
+      {
+        find: /^gt-rrweb\/harvest$/,
+        replacement: fileURLToPath(new URL('./repos/gt-rrweb/src/harvest.ts', import.meta.url)),
+      },
+      {
+        find: /^gt-rrweb$/,
+        replacement: fileURLToPath(new URL('./repos/gt-rrweb/src/index.ts', import.meta.url)),
+      },
+    ],
   },
 })

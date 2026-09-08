@@ -1,6 +1,6 @@
 import { useLocale } from 'gt-react'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
-import type { DragEvent, MouseEvent } from 'react'
+import type { DragEvent, MouseEvent, ReactNode } from 'react'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { profile } from '../data/site'
@@ -11,6 +11,8 @@ import { LazyReplayOverlay } from './LazyReplayOverlay'
 
 /** Hold duration before the avatar gesture starts a localized recording. */
 const HOLD_MS = 1000
+/** Ignore ordinary taps before loading the comparatively heavy recorder runtime. */
+const PREPARE_DELAY_MS = 150
 
 /**
  * Avatar + name + handle, laid out by the parent container.
@@ -25,39 +27,36 @@ const HOLD_MS = 1000
  * replay overlay (debug mode — another drop on the box swaps the replay);
  * drop a file that isn't a recording and the page refreshes.
  */
-export function Identity() {
+export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactNode } = {}) {
   const currentLocale = useLocale()
   const { status, prepare, start } = useRecordingRuntime()
   const [charging, setCharging] = useState(false)
   const [dropReady, setDropReady] = useState(false)
   const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const justCharged = useRef(false)
+  const prepareTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const cancelHold = () => {
     clearTimeout(holdTimer.current)
+    clearTimeout(prepareTimer.current)
     setCharging(false)
   }
 
   const beginHold = () => {
     if (status !== 'idle') return
-    prepare()
-    justCharged.current = false
     setCharging(true)
+    prepareTimer.current = setTimeout(prepare, PREPARE_DELAY_MS)
     holdTimer.current = setTimeout(() => {
       setCharging(false)
-      justCharged.current = true
       const locale = localeFromPath(window.location.pathname) ?? currentLocale ?? DEFAULT_LOCALE
       start([locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)])
     }, HOLD_MS)
   }
 
-  // A completed hold releases over the avatar, which on mobile sits inside
-  // the header's back-to-top link — swallow that click so starting a
-  // recording doesn't also scroll the page.
-  const swallowClick = (event: MouseEvent) => {
-    if (!justCharged.current) return
-    justCharged.current = false
+  // On mobile the avatar sits inside the identity's back-to-top link. The
+  // avatar itself exclusively owns the recording gesture: a tap or completed
+  // hold must never activate that surrounding link.
+  const suppressAvatarActivation = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
   }
@@ -81,6 +80,12 @@ export function Identity() {
   const avatarClass = ['avatar-hold', charging && 'charging', dropReady && 'drop-ready']
     .filter(Boolean)
     .join(' ')
+  const who = (
+    <div className="who">
+      <span className="name">{profile.name}</span>
+      <span className="handle">{profile.handle}</span>
+    </div>
+  )
 
   return (
     <>
@@ -90,8 +95,8 @@ export function Identity() {
         onPointerUp={cancelHold}
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
-        onContextMenu={(event) => event.preventDefault()}
-        onClickCapture={swallowClick}
+        onContextMenu={suppressAvatarActivation}
+        onClickCapture={suppressAvatarActivation}
         onDragOver={(event) => {
           event.preventDefault()
           setDropReady(true)
@@ -105,10 +110,7 @@ export function Identity() {
           <circle className="ring-progress" cx="24" cy="24" r="23" pathLength={100} />
         </svg>
       </span>
-      <div className="who">
-        <span className="name">{profile.name}</span>
-        <span className="handle">{profile.handle}</span>
-      </div>
+      {renderWho ? renderWho(who) : who}
       {replay
         ? createPortal(
             <LazyReplayOverlay
