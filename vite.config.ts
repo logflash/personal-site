@@ -7,7 +7,7 @@ import { defineConfig } from 'vite'
 
 // Inlined into a <style> tag in production (removes the only render-blocking
 // request); dev uses a normal stylesheet link so CSS edits stay live.
-const inlineCss = ['src/styles/fonts.css', 'src/styles/global.css']
+const inlineCss = ['src/styles/fonts.css', 'repos/font-morph/styles.css', 'src/styles/global.css']
   .map((f) => readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'))
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -20,10 +20,14 @@ export default defineConfig({
   define: {
     __INLINE_CSS__: JSON.stringify(inlineCss),
   },
-  // Resolve the vendored fork's TypeScript directly so local package changes
+  // Resolve the vendored packages' TypeScript directly so local changes
   // participate in Vite HMR and a clean checkout does not require committed dist.
   resolve: {
     alias: [
+      {
+        find: /^font-morph$/,
+        replacement: fileURLToPath(new URL('./repos/font-morph/src/index.ts', import.meta.url)),
+      },
       {
         find: /^gt-rrweb\/replay$/,
         replacement: fileURLToPath(new URL('./repos/gt-rrweb/src/replay.ts', import.meta.url)),

@@ -63,7 +63,7 @@ export function fontMorphPayload(
   };
   const payload = custom.data?.payload;
   return custom.type === REPLAY_EVENT.Custom &&
-    custom.data?.tag === 'gt-font-morph' &&
+    (custom.data?.tag === 'font-morph' || custom.data?.tag === 'gt-font-morph') &&
     Number.isFinite(payload?.duration) &&
     (payload?.duration ?? 0) > 0
     ? (payload as FontMorphPayload)

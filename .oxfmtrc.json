@@ -3,6 +3,7 @@
   "ignorePatterns": [
     "src/_gt/",
     "src/generated/",
+    "repos/font-morph/",
     "repos/gt-rrweb/",
     "gt-lock.json",
     "gt.config.json"

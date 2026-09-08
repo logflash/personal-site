@@ -538,13 +538,6 @@ main {
 
 /* ---- Resume experiment ---- */
 
-:root {
-  --font-morph-duration: 1520ms;
-  --font-morph-sans-weight: 500;
-  --font-morph-serif-weight: 600;
-  --font-morph-serif-optical-size: 23;
-}
-
 .resume-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -573,40 +566,6 @@ main {
   stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-/* The live endpoints keep their layout and accessibility semantics while a
-   fixed SVG layer interpolates their paired glyph contours. */
-[data-font-morph] {
-  /* Match the OpenType outline pipeline: no browser-synthesized weight and no
-     discretionary glyph substitutions that would change contour topology. */
-  font-synthesis: none;
-  font-kerning: normal;
-  font-optical-sizing: auto;
-  font-variant-ligatures: none;
-}
-
-:root[data-font-morph-active] [data-font-morph] {
-  /* Kept non-important so the Web Animations endpoint handoff can take over
-     during the final 96 ms without emitting per-frame recording mutations. */
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* If a translated glyph is unavailable in the outline fonts, replay shows
-   the exact destination instead of faking a font morph with moving SVG text. */
-:root[data-font-morph-fallback] [data-font-morph] {
-  opacity: 1 !important;
-}
-
-.font-morph-layer {
-  position: fixed;
-  inset: 0 auto auto 0;
-  z-index: 2147483646;
-  display: block;
-  pointer-events: none;
-  transform-origin: top left;
-  will-change: transform, width, height;
 }
 
 /* ---- Contribution graph ---- */
