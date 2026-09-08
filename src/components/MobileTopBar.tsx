@@ -8,6 +8,7 @@ import { ThemeToggle } from './ThemeToggle'
 
 interface MobileTopBarProps {
   onToggleTheme: () => void
+  suppressLocaleInteraction?: boolean
 }
 
 /**
@@ -15,7 +16,7 @@ interface MobileTopBarProps {
  * follows the hash route directly — a tap highlights immediately, and no
  * pill is selected while the page is at the top (no hash).
  */
-export function MobileTopBar({ onToggleTheme }: MobileTopBarProps) {
+export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: MobileTopBarProps) {
   const backToTop = useBackToTop()
 
   // Back to the top-level route: scroll up and clear any #section hash.
@@ -31,7 +32,7 @@ export function MobileTopBar({ onToggleTheme }: MobileTopBarProps) {
           <Identity />
         </a>
         <div className="spacer" />
-        <LocaleSwitcher />
+        <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
         <ThemeToggle onToggle={onToggleTheme} />
       </header>
       <nav className="pill-nav" aria-label="Primary">

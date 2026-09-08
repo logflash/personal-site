@@ -21,7 +21,7 @@ type RecordingRuntimeComponent =
 // load must be instant; normal hash navigation becomes smooth after hydration.
 // Touch mode stays latched because some phone browsers report hover capability
 // even though finger taps leave :hover styles stuck on screen.
-const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{let section='home';try{section=decodeURIComponent(location.hash.slice(1))||'home'}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
+const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{let section=location.pathname.endsWith('/resume')?'resume':'home';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
 
 // Runs synchronously after the server-rendered sections have been parsed but
 // before the client bundle or first visible paint. It positions both scroll
@@ -36,7 +36,7 @@ export const Route = createRootRoute({
     const locale = localeFromPath(location.pathname) ?? getLocale() ?? DEFAULT_LOCALE
     return { locale, translations: await getTranslationsSnapshot(locale) }
   },
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -55,6 +55,15 @@ export const Route = createRootRoute({
           crossOrigin: 'anonymous' as const,
         }),
       ),
+      ...(loaderData?.locale === 'ja'
+        ? ['noto-sans-jp-400-outline', 'noto-serif-jp-600-outline'].map((font) => ({
+            rel: 'preload',
+            as: 'font',
+            type: 'font/ttf',
+            href: `/fonts/${font}.ttf`,
+            crossOrigin: 'anonymous' as const,
+          }))
+        : []),
       // Dev only: linked stylesheets keep CSS editing live; production
       // inlines the CSS below to remove the only render-blocking requests.
       ...(import.meta.env.DEV

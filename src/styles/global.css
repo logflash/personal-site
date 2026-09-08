@@ -8,9 +8,9 @@
   --hov: #f2effa;
   --side: #f4f1fb;
 
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-sans: 'IBM Plex Sans', 'Noto Sans JP', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
-  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-serif: 'Source Serif 4', 'Noto Serif JP', Georgia, serif;
 
   /* Contribution-graph scale, empty (0) → busiest (4), toward --acc */
   --cg-0: #efecf7;
@@ -429,7 +429,8 @@ main {
   margin-bottom: 8px;
 }
 
-.h-row h2 {
+.h-row h2,
+.resume-title {
   margin: 0;
   font-family: var(--font-serif);
   font-size: 23px;
@@ -515,6 +516,16 @@ main {
   color: var(--acc);
 }
 
+.resume-link {
+  display: inline-block;
+  color: var(--acc);
+  font-family: var(--font-sans);
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-decoration: none;
+}
+
 @media (hover: hover) {
   html:not(.touch) .quick-links a:hover {
     text-decoration: underline;
@@ -523,6 +534,45 @@ main {
 
 .quick-links .sep {
   color: var(--line);
+}
+
+/* ---- Resume experiment ---- */
+
+:root {
+  --font-morph-duration: 760ms;
+}
+
+.resume-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.resume-title {
+  width: fit-content;
+  color: var(--fg);
+}
+
+/* The live endpoints keep their layout and accessibility semantics while a
+   fixed SVG layer interpolates their paired glyph contours. */
+:root[data-font-morph-active] [data-font-morph] {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* If a translated glyph is unavailable in the outline fonts, replay shows
+   the exact destination instead of faking a font morph with moving SVG text. */
+:root[data-font-morph-fallback] [data-font-morph] {
+  opacity: 1 !important;
+}
+
+.font-morph-layer {
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 2147483646;
+  display: block;
+  pointer-events: none;
+  transform-origin: top left;
+  will-change: transform, width, height;
 }
 
 /* ---- Contribution graph ---- */
@@ -911,7 +961,8 @@ html[data-initial-scroll] .cg-scroller {
     margin-bottom: 8px;
   }
 
-  .h-row h2 {
+  .h-row h2,
+  .resume-title {
     font-size: 20px;
   }
 

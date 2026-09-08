@@ -1,3 +1,4 @@
+import { useLocale } from 'gt-react'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
 import type { DragEvent, MouseEvent } from 'react'
 import { useRef, useState } from 'react'
@@ -25,6 +26,7 @@ const HOLD_MS = 1000
  * drop a file that isn't a recording and the page refreshes.
  */
 export function Identity() {
+  const currentLocale = useLocale()
   const { status, prepare, start } = useRecordingRuntime()
   const [charging, setCharging] = useState(false)
   const [dropReady, setDropReady] = useState(false)
@@ -45,7 +47,7 @@ export function Identity() {
     holdTimer.current = setTimeout(() => {
       setCharging(false)
       justCharged.current = true
-      const locale = localeFromPath(window.location.pathname) ?? DEFAULT_LOCALE
+      const locale = localeFromPath(window.location.pathname) ?? currentLocale ?? DEFAULT_LOCALE
       start([locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)])
     }, HOLD_MS)
   }
@@ -111,7 +113,9 @@ export function Identity() {
         ? createPortal(
             <LazyReplayOverlay
               bundle={replay}
-              initialLocale={localeFromPath(window.location.pathname) ?? DEFAULT_LOCALE}
+              initialLocale={
+                localeFromPath(window.location.pathname) ?? currentLocale ?? DEFAULT_LOCALE
+              }
               onClose={() => setReplay(null)}
             />,
             document.body,
