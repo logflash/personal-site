@@ -87,6 +87,38 @@ export function MdxParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
   )
 }
 
+export function ResumeHeading({ children }: ComponentPropsWithoutRef<'h1'>) {
+  const gt = useMdxGT()
+  const source = text(children, 'Resume heading')
+
+  return (
+    <h1
+      className="resume-title"
+      data-font-morph="resume-title"
+      data-_gt-hash={translationHash(source)}
+    >
+      {gt(source)}
+    </h1>
+  )
+}
+
+export function ResumeDocumentLink({ href }: { href: string }) {
+  return (
+    <a
+      className="resume-document-link"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Open resume PDF in a new tab"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M14 5h5v5m0-5-8 8" />
+        <path d="M19 13v6H5V5h6" />
+      </svg>
+    </a>
+  )
+}
+
 export function QuickLinks({ children }: { children: ReactNode }) {
   return (
     <div className="quick-links">
@@ -338,4 +370,10 @@ export const sharedMdxComponents = {
   Project,
   ContactRows,
   ContactRow,
+}
+
+export const resumeMdxComponents = {
+  ...sharedMdxComponents,
+  h1: ResumeHeading,
+  ResumeDocumentLink,
 }

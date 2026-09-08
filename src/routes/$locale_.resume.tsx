@@ -1,10 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useGT } from 'gt-react'
 import { useLayoutEffect } from 'react'
 import { SiteShell } from '../components/SiteShell'
+import { resumeMdxComponents } from '../components/mdx/MdxContent'
+import ResumeContent from '../content/Resume.mdx'
 import { profile } from '../data/site'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
-import { translationHash } from '../lib/translationHash'
 
 export const Route = createFileRoute('/$locale_/resume')({
   beforeLoad: ({ params }) => {
@@ -22,8 +22,6 @@ export const Route = createFileRoute('/$locale_/resume')({
 })
 
 function ResumePage() {
-  const gt = useGT()
-
   // The pre-paint script handles direct loads. A layout effect keeps the SPA
   // route's sidebar state in the same commit that the morph target is sampled.
   useLayoutEffect(() => {
@@ -37,25 +35,7 @@ function ResumePage() {
 
   return (
     <SiteShell mainClassName="resume-page">
-      <h1
-        className="resume-title"
-        data-font-morph="resume-title"
-        data-_gt-hash={translationHash('Resume')}
-      >
-        {gt('Resume')}
-      </h1>
-      <a
-        className="resume-document-link"
-        href="/IanResume_14.3.pdf"
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Open resume PDF in a new tab"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M14 5h5v5m0-5-8 8" />
-          <path d="M19 13v6H5V5h6" />
-        </svg>
-      </a>
+      <ResumeContent components={resumeMdxComponents} />
     </SiteShell>
   )
 }
