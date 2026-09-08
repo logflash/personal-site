@@ -15,6 +15,7 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
+      "font-morph": ["repos/font-morph/src/index.ts"],
       "gt-rrweb": ["repos/gt-rrweb/src/index.ts"],
       "gt-rrweb/harvest": ["repos/gt-rrweb/src/harvest.ts"],
       "gt-rrweb/replay": ["repos/gt-rrweb/src/replay.ts"]

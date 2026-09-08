@@ -3,6 +3,7 @@ import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { GTProvider, getLocale, getTranslationsSnapshot } from 'gt-tanstack-start'
 import type { ReactNode } from 'react'
+import fontMorphCssUrl from '../../repos/font-morph/styles.css?url'
 import { LazyReplayOverlay } from '../components/LazyReplayOverlay'
 import {
   RecordingRuntimeContext,
@@ -69,6 +70,7 @@ export const Route = createRootRoute({
       ...(import.meta.env.DEV
         ? [
             { rel: 'stylesheet', href: fontsCssUrl },
+            { rel: 'stylesheet', href: fontMorphCssUrl },
             { rel: 'stylesheet', href: globalCssUrl },
           ]
         : []),

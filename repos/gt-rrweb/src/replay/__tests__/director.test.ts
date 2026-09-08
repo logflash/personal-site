@@ -129,6 +129,28 @@ describe('directed timeline', () => {
     expect(compressed[2].timestamp).toBe(1200);
   });
 
+  it('accepts the standalone font-morph event namespace', () => {
+    const events = [
+      event(0, {}, REPLAY_EVENT.Meta),
+      event(
+        100,
+        {
+          tag: 'font-morph',
+          payload: { duration: 600, settledTextHold: 500 },
+        },
+        REPLAY_EVENT.Custom,
+      ),
+      mutation(150),
+    ];
+    const input = analyzePointerInput(events);
+    const compressed = compressTimeline(
+      events,
+      new Set(),
+      input.isDirectedClick,
+    );
+    expect(compressed[2].timestamp).toBe(1200);
+  });
+
   it('only suppresses a repeated press when nothing changed between presses', () => {
     const noChange = [mouse(100, 1), mouse(1000, 1)];
     const withChange = [mouse(100, 1), mutation(500), mouse(1000, 1)];

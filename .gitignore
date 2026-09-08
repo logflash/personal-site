@@ -19,6 +19,7 @@ src/generated/
 .gt-*
 *.mjs
 !repos/gt-rrweb/**/*.mjs
+!repos/font-morph/**/*.mjs
 !scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json
