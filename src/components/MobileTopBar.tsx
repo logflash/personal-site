@@ -1,6 +1,6 @@
-import type { MouseEvent } from 'react'
+import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
 import { mobileNavItems } from '../data/site'
-import { useBackToTop } from '../hooks/useHashRoute'
+import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
@@ -11,26 +11,32 @@ interface MobileTopBarProps {
   suppressLocaleInteraction?: boolean
 }
 
+const rootRoute = getRouteApi('__root__')
+
 /**
  * Mobile-only top bar + pill nav. The selected pill
  * follows the hash route directly — a tap highlights immediately, and no
  * pill is selected while the page is at the top (no hash).
  */
 export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: MobileTopBarProps) {
-  const backToTop = useBackToTop()
-
-  // Back to the top-level route: scroll up and clear any #section hash.
-  const goHome = (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault()
-    backToTop()
-  }
+  const { locale } = rootRoute.useLoaderData()
+  const resumeMorphHandlers = useFontMorphNavigation('resume-title')
+  const onResumeRoute = useRouterState({
+    select: (state) => state.location.pathname.endsWith('/resume'),
+  })
 
   return (
     <div className="mobile-top">
       <header className="mobile-header">
-        <a className="identity-link" href="/" onClick={goHome}>
+        <Link
+          className="identity-link"
+          to="/$locale"
+          params={{ locale }}
+          hash="home"
+          {...(onResumeRoute ? resumeMorphHandlers : {})}
+        >
           <Identity />
-        </a>
+        </Link>
         <div className="spacer" />
         <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
         <ThemeToggle onToggle={onToggleTheme} />

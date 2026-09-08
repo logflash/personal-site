@@ -44,6 +44,18 @@ function ResumePage() {
       >
         {gt('Resume')}
       </h1>
+      <a
+        className="resume-document-link"
+        href="/IanResume_14.3.pdf"
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Open resume PDF in a new tab"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M14 5h5v5m0-5-8 8" />
+          <path d="M19 13v6H5V5h6" />
+        </svg>
+      </a>
     </SiteShell>
   )
 }
