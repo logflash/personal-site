@@ -19,3 +19,4 @@ src/generated/
 .gt-*
 *.mjs
 gt-recording-*.json
+gt-replay-*.json

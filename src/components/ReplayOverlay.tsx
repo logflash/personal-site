@@ -1,8 +1,41 @@
 import { GTReplayer } from 'gt-rrweb/replay'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
+import { harvestLocales } from 'gt-rrweb/harvest'
 import type { DragEvent } from 'react'
-import { useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { SUPPORTED_LOCALES } from '../lib/localePath'
+import {
+  createFontMorphReplayDirector,
+  prepareFontMorph,
+  prepareFontMorphReplay,
+  reserveFontMorphSettledTextHolds,
+} from '../lib/fontMorph'
 import { parseRecording } from '../lib/recordingDrop'
+import { translationHash } from '../lib/translationHash'
+import loadTranslations from '../loadTranslations'
+
+type MorphTranslationTable = Awaited<ReturnType<typeof loadTranslations>>
+type MorphTranslations = Record<string, MorphTranslationTable>
+
+function resolveMorphText(
+  translations: MorphTranslations,
+  locale: string | undefined,
+  translationHash: string | undefined,
+  recordedText: string,
+) {
+  let resolvedHash = translationHash
+  if (!resolvedHash) {
+    for (const table of Object.values(translations)) {
+      const match = Object.entries(table).find(([, value]) => value === recordedText)
+      if (match) {
+        resolvedHash = match[0]
+        break
+      }
+    }
+  }
+  const value = locale && resolvedHash ? translations[locale]?.[resolvedHash] : undefined
+  return typeof value === 'string' ? value : undefined
+}
 
 /**
  * Full-screen replay overlay, opened by dropping a recording on the avatar
@@ -20,6 +53,91 @@ export function ReplayOverlay({
   initialLocale?: string
   onClose: () => void
 }) {
+  const [directorReady, setDirectorReady] = useState(false)
+  const [morphTranslations, setMorphTranslations] = useState<MorphTranslations>({})
+  const [replayBundle, setReplayBundle] = useState<{
+    source: GTReplayerBundle
+    prepared: GTReplayerBundle
+  } | null>(null)
+  const renderFontMorph = useMemo(
+    () =>
+      createFontMorphReplayDirector((locale, translationHash, recordedText) =>
+        resolveMorphText(morphTranslations, locale, translationHash, recordedText),
+      ),
+    [morphTranslations],
+  )
+
+  // GTReplayer starts its clock as soon as it mounts. Load KUTE, both outline
+  // fonts, and locale text first so neither path preparation nor translation
+  // can join an animation midway.
+  useEffect(() => {
+    let current = true
+    setDirectorReady(false)
+    setReplayBundle(null)
+    const localeTables = Promise.all(
+      SUPPORTED_LOCALES.map(async (locale) => {
+        try {
+          return [locale, await loadTranslations(locale)] as const
+        } catch (error) {
+          console.error(`Unable to preload ${locale} replay translations`, error)
+          return [locale, {}] as const
+        }
+      }),
+    )
+
+    void (async () => {
+      const [, tables] = await Promise.all([
+        prepareFontMorph().catch((error: unknown) => {
+          console.error('Unable to preload the font morph replay director', error)
+        }),
+        localeTables,
+      ])
+      const translations = Object.fromEntries(tables)
+      const locales = [...(bundle.locales ?? [])]
+      const events = reserveFontMorphSettledTextHolds(bundle.events)
+      let preparedBundle = events === bundle.events ? bundle : { ...bundle, events }
+      if (locales.length > 1) {
+        // Older recordings can have an incomplete embedded overlay because
+        // rrweb serializes a React-created hashed element and its text as
+        // separate mutation additions. Re-harvest from the event graph with
+        // the app's current dictionaries so those route-created nodes are
+        // translated too; the patched recorder writes this complete map for
+        // new recordings at stop time.
+        const repaired = await harvestLocales(events, locales, {
+          sourceLocale: locales[0],
+          loadTranslations: async (locale) => translations[locale] ?? {},
+          hashMessage: translationHash,
+        })
+        const overlay = { ...bundle.overlay }
+        for (const [locale, entries] of Object.entries(repaired)) {
+          overlay[locale] = { ...overlay[locale], ...entries }
+        }
+        preparedBundle = { ...preparedBundle, overlay }
+      }
+      try {
+        await prepareFontMorphReplay(
+          events,
+          SUPPORTED_LOCALES,
+          (locale, translationHash, recordedText) =>
+            resolveMorphText(translations, locale, translationHash, recordedText),
+          document,
+        )
+      } catch (error) {
+        // The director's exact-destination fallback remains usable if a font
+        // resource is temporarily unavailable.
+        console.error('Unable to precompute replay font morphs', error)
+      }
+      if (!current) return
+      setMorphTranslations(translations)
+      setReplayBundle({ source: bundle, prepared: preparedBundle })
+      setDirectorReady(true)
+    })()
+
+    return () => {
+      current = false
+    }
+  }, [bundle.events])
+
   // Lock page scroll while the overlay is up: the page behind shouldn't move,
   // and hiding its scrollbar lets the full-viewport overlay center the box on
   // the true screen axes (a classic scrollbar otherwise shifts it sideways).
@@ -59,8 +177,15 @@ export function ReplayOverlay({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="replay-overlay-box">
-        <GTReplayer bundle={bundle} initialLocale={initialLocale} debug />
+      <div className="replay-overlay-box" aria-busy={!directorReady}>
+        {directorReady && replayBundle?.source === bundle ? (
+          <GTReplayer
+            bundle={replayBundle.prepared}
+            initialLocale={initialLocale}
+            onFrame={renderFontMorph}
+            debug
+          />
+        ) : null}
       </div>
     </div>
   )

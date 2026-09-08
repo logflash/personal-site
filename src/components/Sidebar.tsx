@@ -6,13 +6,14 @@ import { ThemeToggle } from './ThemeToggle'
 
 interface SidebarProps {
   onToggleTheme: () => void
+  suppressLocaleInteraction?: boolean
 }
 
 /**
  * Desktop-only sidebar. The highlighted item follows the hash route (clicks
  * only — never scroll position); no hash means Home.
  */
-export function Sidebar({ onToggleTheme }: SidebarProps) {
+export function Sidebar({ onToggleTheme, suppressLocaleInteraction }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="identity">
@@ -27,7 +28,7 @@ export function Sidebar({ onToggleTheme }: SidebarProps) {
           © {profile.copyrightYear} {profile.name}
         </span>
         <span className="footer-controls">
-          <LocaleSwitcher />
+          <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
           <ThemeToggle onToggle={onToggleTheme} />
         </span>
       </div>

@@ -9,6 +9,13 @@ export function localeFromPath(pathname: string): string | null {
   return SUPPORTED_LOCALES.includes(first) ? first : null
 }
 
+/** Replaces only the locale prefix while preserving the locale-independent route. */
+export function pathnameForLocale(pathname: string, locale: string): string {
+  const currentLocale = localeFromPath(pathname)
+  if (!currentLocale) return `/${locale}${pathname === '/' ? '' : pathname}`
+  return `/${locale}${pathname.slice(currentLocale.length + 1)}`
+}
+
 /**
  * Mirrors an explicit locale choice into gt-react's cookie so a later visit
  * to the bare `/` redirects to the locale the visitor picked last.

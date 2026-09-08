@@ -1,9 +1,11 @@
+import { record } from '@rrweb/record'
 import { GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useRef, useState } from 'react'
 import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecordingRuntime'
 import { translationHash } from '../lib/translationHash'
 import loadTranslations from '../loadTranslations'
+import { FONT_MORPH_EVENT_TAG, FONT_MORPH_RECORD_EVENT } from '../lib/fontMorph'
 
 // gt-rrweb harvest: maps the recorded hashes onto each locale's published
 // translations via the app's own loader; hashMessage extends coverage to
@@ -101,6 +103,24 @@ function RuntimeBridge({
   return null
 }
 
+/** Converts compact, app-authored animation descriptions into rrweb custom
+ * events. Per-frame SVG path mutations stay blocked from capture. */
+function SemanticEventBridge() {
+  useEffect(() => {
+    const captureFontMorph = (event: Event) => {
+      try {
+        record.addCustomEvent(FONT_MORPH_EVENT_TAG, (event as CustomEvent).detail)
+      } catch {
+        // The animation also runs outside an active recording.
+      }
+    }
+    window.addEventListener(FONT_MORPH_RECORD_EVENT, captureFontMorph)
+    return () => window.removeEventListener(FONT_MORPH_RECORD_EVENT, captureFontMorph)
+  }, [])
+
+  return null
+}
+
 export function RecordingRuntime({
   request,
   onStatusChange,
@@ -114,6 +134,7 @@ export function RecordingRuntime({
     <>
       <ResponsiveRecorder onComplete={onComplete} />
       <RuntimeBridge request={request} onStatusChange={onStatusChange} />
+      <SemanticEventBridge />
     </>
   )
 }

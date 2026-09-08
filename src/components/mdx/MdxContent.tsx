@@ -1,3 +1,4 @@
+import { Link, getRouteApi } from '@tanstack/react-router'
 import {
   Children,
   Fragment,
@@ -8,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { externalProps } from '../../lib/links'
+import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
 import { useMdxGT } from '../../lib/mdxTranslation'
 import { translationHash } from '../../lib/translationHash'
 import { SectionHeading } from '../SectionHeading'
@@ -18,6 +20,7 @@ interface SectionContextValue {
 }
 
 const SectionContext = createContext<SectionContextValue | null>(null)
+const rootRoute = getRouteApi('__root__')
 
 function text(children: ReactNode, component: string): string {
   if (typeof children === 'string') return children.trim()
@@ -115,14 +118,30 @@ export function QuickLink({
   external?: boolean
 }) {
   const gt = useMdxGT()
+  const { locale } = rootRoute.useLoaderData()
+  const resumeMorphHandlers = useFontMorphNavigation('resume-title')
   const source = translatedLabel ?? label ?? ''
+  const translatedContent = translatedLabel ? gt(translatedLabel) : source
+  const translationProps = translatedLabel ? { 'data-_gt-hash': translationHash(source) } : {}
+
+  if (resume) {
+    return (
+      <Link
+        to="/$locale/resume"
+        params={{ locale }}
+        {...resumeMorphHandlers}
+        className="resume-link"
+        data-font-morph="resume-title"
+        {...translationProps}
+      >
+        {translatedContent}
+      </Link>
+    )
+  }
+
   return (
-    <a
-      href={resume ? __RESUME_HREF__ : href}
-      {...externalProps(external)}
-      {...(translatedLabel ? { 'data-_gt-hash': translationHash(source) } : {})}
-    >
-      {translatedLabel ? gt(translatedLabel) : source}
+    <a href={href} {...externalProps(external)} {...translationProps}>
+      {translatedContent}
     </a>
   )
 }
