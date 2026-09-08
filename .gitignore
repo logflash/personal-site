@@ -18,5 +18,7 @@ src/generated/
 # General Translation recording demos
 .gt-*
 *.mjs
+!repos/gt-rrweb/**/*.mjs
+!scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json

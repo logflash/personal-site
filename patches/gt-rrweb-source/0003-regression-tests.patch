@@ -1,0 +1,1594 @@
+diff --git a/e2e/fixture-page.html b/e2e/fixture-page.html
+index 34743b1ed1f5f7c767755e3af270d8af71c40fda..e26dd24964e66f7bf7c88eee1676d4c4aa420fb1 100644
+--- a/e2e/fixture-page.html
++++ b/e2e/fixture-page.html
+@@ -40,6 +40,14 @@
+         box-sizing: border-box;
+         border: 1px solid #8884;
+       }
++      #scrollbox {
++        height: 100%;
++        overflow: auto;
++        scrollbar-width: thin;
++      }
++      #spacer {
++        height: 360px;
++      }
+       button {
+         font: inherit;
+         padding: 6px 14px;
+@@ -48,12 +56,24 @@
+   </head>
+   <body>
+     <main>
+-      <!-- data-_gt-hash marks <T> content for the harvest's hash path; the bare
+-           <p> below is covered by the string (hashMessage) path instead. -->
+-      <h1 data-_gt-hash="fx-welcome">Welcome to the fixture</h1>
+-      <p id="status">Nothing clicked yet</p>
+-      <button id="go" type="button" data-_gt-hash="fx-run">Run the demo</button>
+-      <p>Settings and Projects live here</p>
++      <div id="scrollbox">
++        <!-- A generic locale control whose visible value must follow replay locale,
++             independently of whether its option labels have overlay entries. -->
++        <label for="locale">Locale</label>
++        <select id="locale">
++          <option value="en" selected>English</option>
++          <option value="es">Español</option>
++        </select>
++        <!-- data-_gt-hash marks <T> content for the harvest's hash path; the bare
++             <p> below is covered by the string (hashMessage) path instead. -->
++        <h1 data-_gt-hash="fx-welcome">Welcome to the fixture</h1>
++        <p>Settings and Projects live here</p>
++        <div id="spacer" aria-hidden="true"></div>
++        <p id="status">Nothing clicked yet</p>
++        <button id="go" type="button" data-_gt-hash="fx-run">
++          Run the demo
++        </button>
++      </div>
+     </main>
+     <script>
+       // Each click mutates the DOM so the recording carries click→mutation pairs.
+diff --git a/e2e/fixture.json b/e2e/fixture.json
+index 32dc4d96c50d1cc7506743a1f149892761e7518a..28c003d505d70521847d6aeb03fb30820a602290 100644
+--- a/e2e/fixture.json
++++ b/e2e/fixture.json
+@@ -7,7 +7,7 @@
+         "width": 1280,
+         "height": 800
+       },
+-      "timestamp": 1787359320505
++      "timestamp": 1788853860660
+     },
+     {
+       "type": 2,
+@@ -102,7 +102,7 @@
+                       "type": 2,
+                       "tagName": "style",
+                       "attributes": {
+-                        "_cssText": "html, body { margin: 0px; height: 100%; font-family: system-ui, sans-serif; background: rgb(246, 245, 242); color: rgb(28, 28, 28); }html.dark body { background: rgb(20, 20, 22); color: rgb(236, 236, 236); }main { background: inherit; padding: 24px; box-sizing: border-box; border: 1px solid rgba(136, 136, 136, 0.267); }button { font: inherit; padding: 6px 14px; }"
++                        "_cssText": "html, body { margin: 0px; height: 100%; font-family: system-ui, sans-serif; background: rgb(246, 245, 242); color: rgb(28, 28, 28); }html.dark body { background: rgb(20, 20, 22); color: rgb(236, 236, 236); }main { background: inherit; padding: 24px; box-sizing: border-box; border: 1px solid rgba(136, 136, 136, 0.267); }#scrollbox { height: 100%; overflow: auto; scrollbar-width: thin; }#spacer { height: 360px; }button { font: inherit; padding: 6px 14px; }"
+                       },
+                       "childNodes": [
+                         {
+@@ -146,95 +146,221 @@
+                           "textContent": "\n      ",
+                           "id": 22
+                         },
+-                        {
+-                          "type": 5,
+-                          "textContent": " data-_gt-hash marks <T> content for the harvest's hash path; the bare\n           <p> below is covered by the string (hashMessage) path instead. ",
+-                          "id": 23
+-                        },
+-                        {
+-                          "type": 3,
+-                          "textContent": "\n      ",
+-                          "id": 24
+-                        },
+                         {
+                           "type": 2,
+-                          "tagName": "h1",
++                          "tagName": "div",
+                           "attributes": {
+-                            "data-_gt-hash": "fx-welcome"
++                            "id": "scrollbox"
+                           },
+                           "childNodes": [
+                             {
+                               "type": 3,
+-                              "textContent": "Welcome to the fixture",
++                              "textContent": "\n        ",
++                              "id": 24
++                            },
++                            {
++                              "type": 5,
++                              "textContent": " A generic locale control whose visible value must follow replay locale,\n             independently of whether its option labels have overlay entries. ",
++                              "id": 25
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n        ",
+                               "id": 26
+-                            }
+-                          ],
+-                          "id": 25
+-                        },
+-                        {
+-                          "type": 3,
+-                          "textContent": "\n      ",
+-                          "id": 27
+-                        },
+-                        {
+-                          "type": 2,
+-                          "tagName": "p",
+-                          "attributes": {
+-                            "id": "status"
+-                          },
+-                          "childNodes": [
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "label",
++                              "attributes": {
++                                "for": "locale"
++                              },
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "Locale",
++                                  "id": 28
++                                }
++                              ],
++                              "id": 27
++                            },
+                             {
+                               "type": 3,
+-                              "textContent": "Nothing clicked yet",
++                              "textContent": "\n        ",
+                               "id": 29
+-                            }
+-                          ],
+-                          "id": 28
+-                        },
+-                        {
+-                          "type": 3,
+-                          "textContent": "\n      ",
+-                          "id": 30
+-                        },
+-                        {
+-                          "type": 2,
+-                          "tagName": "button",
+-                          "attributes": {
+-                            "id": "go",
+-                            "type": "button",
+-                            "data-_gt-hash": "fx-run"
+-                          },
+-                          "childNodes": [
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "select",
++                              "attributes": {
++                                "id": "locale",
++                                "value": "**"
++                              },
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "\n          ",
++                                  "id": 31
++                                },
++                                {
++                                  "type": 2,
++                                  "tagName": "option",
++                                  "attributes": {
++                                    "value": "en"
++                                  },
++                                  "childNodes": [
++                                    {
++                                      "type": 3,
++                                      "textContent": "English",
++                                      "id": 33
++                                    }
++                                  ],
++                                  "id": 32
++                                },
++                                {
++                                  "type": 3,
++                                  "textContent": "\n          ",
++                                  "id": 34
++                                },
++                                {
++                                  "type": 2,
++                                  "tagName": "option",
++                                  "attributes": {
++                                    "value": "es"
++                                  },
++                                  "childNodes": [
++                                    {
++                                      "type": 3,
++                                      "textContent": "Español",
++                                      "id": 36
++                                    }
++                                  ],
++                                  "id": 35
++                                },
++                                {
++                                  "type": 3,
++                                  "textContent": "\n        ",
++                                  "id": 37
++                                }
++                              ],
++                              "id": 30
++                            },
+                             {
+                               "type": 3,
+-                              "textContent": "Run the demo",
+-                              "id": 32
+-                            }
+-                          ],
+-                          "id": 31
+-                        },
+-                        {
+-                          "type": 3,
+-                          "textContent": "\n      ",
+-                          "id": 33
+-                        },
+-                        {
+-                          "type": 2,
+-                          "tagName": "p",
+-                          "attributes": {},
+-                          "childNodes": [
++                              "textContent": "\n        ",
++                              "id": 38
++                            },
++                            {
++                              "type": 5,
++                              "textContent": " data-_gt-hash marks <T> content for the harvest's hash path; the bare\n             <p> below is covered by the string (hashMessage) path instead. ",
++                              "id": 39
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n        ",
++                              "id": 40
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "h1",
++                              "attributes": {
++                                "data-_gt-hash": "fx-welcome"
++                              },
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "Welcome to the fixture",
++                                  "id": 42
++                                }
++                              ],
++                              "id": 41
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n        ",
++                              "id": 43
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "p",
++                              "attributes": {},
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "Settings and Projects live here",
++                                  "id": 45
++                                }
++                              ],
++                              "id": 44
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n        ",
++                              "id": 46
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "div",
++                              "attributes": {
++                                "id": "spacer",
++                                "aria-hidden": "true"
++                              },
++                              "childNodes": [],
++                              "id": 47
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n        ",
++                              "id": 48
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "p",
++                              "attributes": {
++                                "id": "status"
++                              },
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "Nothing clicked yet",
++                                  "id": 50
++                                }
++                              ],
++                              "id": 49
++                            },
+                             {
+                               "type": 3,
+-                              "textContent": "Settings and Projects live here",
+-                              "id": 35
++                              "textContent": "\n        ",
++                              "id": 51
++                            },
++                            {
++                              "type": 2,
++                              "tagName": "button",
++                              "attributes": {
++                                "id": "go",
++                                "type": "button",
++                                "data-_gt-hash": "fx-run"
++                              },
++                              "childNodes": [
++                                {
++                                  "type": 3,
++                                  "textContent": "Run the demo",
++                                  "id": 53
++                                }
++                              ],
++                              "id": 52
++                            },
++                            {
++                              "type": 3,
++                              "textContent": "\n      ",
++                              "id": 54
+                             }
+                           ],
+-                          "id": 34
++                          "id": 23
+                         },
+                         {
+                           "type": 3,
+                           "textContent": "\n    ",
+-                          "id": 36
++                          "id": 55
+                         }
+                       ],
+                       "id": 21
+@@ -242,7 +368,7 @@
+                     {
+                       "type": 3,
+                       "textContent": "\n    ",
+-                      "id": 37
++                      "id": 56
+                     },
+                     {
+                       "type": 2,
+@@ -252,15 +378,15 @@
+                         {
+                           "type": 3,
+                           "textContent": "SCRIPT_PLACEHOLDER",
+-                          "id": 39
++                          "id": 58
+                         }
+                       ],
+-                      "id": 38
++                      "id": 57
+                     },
+                     {
+                       "type": 3,
+                       "textContent": "\n  \n\n",
+-                      "id": 40
++                      "id": 59
+                     }
+                   ],
+                   "id": 19
+@@ -276,7 +402,7 @@
+           "top": 0
+         }
+       },
+-      "timestamp": 1787359320509
++      "timestamp": 1788853860671
+     },
+     {
+       "type": 5,
+@@ -284,13 +410,13 @@
+         "tag": "gt-i18n",
+         "payload": {
+           "es": {
+-            "26": "Bienvenido al fixture",
+-            "32": "Ejecutar la demo",
+-            "35": "Los ajustes y proyectos viven aquí"
++            "42": "Bienvenido al fixture internacional de reproducción localizada",
++            "45": "Los ajustes y proyectos viven aquí",
++            "53": "Ejecutar la demo"
+           }
+         }
+       },
+-      "timestamp": 1787359320509
++      "timestamp": 1788853860671
+     },
+     {
+       "type": 5,
+@@ -301,50 +427,80 @@
+           "sourceLocale": "en"
+         }
+       },
+-      "timestamp": 1787359320511
++      "timestamp": 1788853860673
++    },
++    {
++      "type": 3,
++      "data": {
++        "source": 3,
++        "id": 23,
++        "x": 0,
++        "y": 90
++      },
++      "timestamp": 1788853860804
++    },
++    {
++      "type": 3,
++      "data": {
++        "source": 3,
++        "id": 23,
++        "x": 0,
++        "y": 190
++      },
++      "timestamp": 1788853860907
++    },
++    {
++      "type": 3,
++      "data": {
++        "source": 3,
++        "id": 23,
++        "x": 0,
++        "y": 285
++      },
++      "timestamp": 1788853861008
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 1,
+-        "id": 31,
+-        "x": 411.546875,
+-        "y": 376.875
++        "id": 52,
++        "x": 411.1171875,
++        "y": 536.375
+       },
+-      "timestamp": 1787359320554
++      "timestamp": 1788853861201
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 5,
+-        "id": 31
++        "id": 52
+       },
+-      "timestamp": 1787359320554
++      "timestamp": 1788853861201
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 0,
+-        "id": 31,
+-        "x": 411.546875,
+-        "y": 376.875
++        "id": 52,
++        "x": 411.1171875,
++        "y": 536.375
+       },
+-      "timestamp": 1787359320554
++      "timestamp": 1788853861202
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 2,
+-        "id": 31,
++        "id": 52,
+         "x": 411,
+-        "y": 376,
++        "y": 536,
+         "pointerType": 0
+       },
+-      "timestamp": 1787359320554
++      "timestamp": 1788853861202
+     },
+     {
+       "type": 3,
+@@ -354,57 +510,57 @@
+         "attributes": [],
+         "removes": [
+           {
+-            "parentId": 28,
+-            "id": 29
++            "parentId": 49,
++            "id": 50
+           }
+         ],
+         "adds": [
+           {
+-            "parentId": 28,
++            "parentId": 49,
+             "nextId": null,
+             "node": {
+               "type": 3,
+               "textContent": "Clicked 1 times",
+-              "id": 41
++              "id": 60
+             }
+           }
+         ]
+       },
+-      "timestamp": 1787359320554
++      "timestamp": 1788853861203
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 1,
+-        "id": 31,
++        "id": 52,
+         "x": 355,
+-        "y": 376.875
++        "y": 536.375
+       },
+-      "timestamp": 1787359321256
++      "timestamp": 1788853861915
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 0,
+-        "id": 31,
++        "id": 52,
+         "x": 355,
+-        "y": 376.875
++        "y": 536.375
+       },
+-      "timestamp": 1787359321257
++      "timestamp": 1788853861916
+     },
+     {
+       "type": 3,
+       "data": {
+         "source": 2,
+         "type": 2,
+-        "id": 31,
++        "id": 52,
+         "x": 355,
+-        "y": 376,
++        "y": 536,
+         "pointerType": 0
+       },
+-      "timestamp": 1787359321257
++      "timestamp": 1788853861916
+     },
+     {
+       "type": 3,
+@@ -414,31 +570,31 @@
+         "attributes": [],
+         "removes": [
+           {
+-            "parentId": 28,
+-            "id": 41
++            "parentId": 49,
++            "id": 60
+           }
+         ],
+         "adds": [
+           {
+-            "parentId": 28,
++            "parentId": 49,
+             "nextId": null,
+             "node": {
+               "type": 3,
+               "textContent": "Clicked 2 times",
+-              "id": 42
++              "id": 61
+             }
+           }
+         ]
+       },
+-      "timestamp": 1787359321257
++      "timestamp": 1788853861916
+     }
+   ],
+   "locales": ["en", "es"],
+   "overlay": {
+     "es": {
+-      "26": "Bienvenido al fixture",
+-      "32": "Ejecutar la demo",
+-      "35": "Los ajustes y proyectos viven aquí"
++      "42": "Bienvenido al fixture internacional de reproducción localizada",
++      "45": "Los ajustes y proyectos viven aquí",
++      "53": "Ejecutar la demo"
+     }
+   }
+ }
+diff --git a/e2e/harness/index.html b/e2e/harness/index.html
+index 4cff019e8e6564aa77e9ca2974ca948a3443d86b..95ee211efbe52489d8069da3cc1e03ad990c824d 100644
+--- a/e2e/harness/index.html
++++ b/e2e/harness/index.html
+@@ -6,7 +6,10 @@
+        ?debug=1       debug drag-drop enabled
+        ?strip=1       drop the structured locales/overlay from the bundle, so the
+                       replayer must recover them from the embedded gt-locales /
+-                      gt-i18n custom events (the events-only fallback). -->
++                      gt-i18n custom events (the events-only fallback)
++       ?touch=1       convert the pointer clusters to touch tap clusters
++       ?offscreen=1   prepend an invalid off-frame pointer interaction
++       ?advance=1     exercise the deterministic onFrame advance directive. -->
+ <html>
+   <head>
+     <meta charset="utf-8" />
+@@ -51,14 +54,66 @@
+       const params = new URLSearchParams(location.search);
+       let bundle = await fetch('/fixture.json').then((r) => r.json());
+       if (params.get('strip') === '1') bundle = { events: bundle.events };
++      if (params.get('touch') === '1') {
++        bundle = structuredClone(bundle);
++        bundle.events = bundle.events.map((event) => {
++          if (event.type !== 3 || event.data.source !== 2) return event;
++          if (event.data.type === 1) {
++            return {
++              ...event,
++              data: { ...event.data, type: 7, pointerType: 2 },
++            };
++          }
++          if (event.data.type === 0) {
++            return {
++              ...event,
++              data: { ...event.data, type: 9, pointerType: 2 },
++            };
++          }
++          if (event.data.type === 2) {
++            return { ...event, data: { ...event.data, pointerType: 2 } };
++          }
++          return event;
++        });
++      }
++      if (params.get('offscreen') === '1') {
++        bundle = structuredClone(bundle);
++        const snapshot = bundle.events.find((event) => event.type === 2);
++        bundle.events.splice(2, 0, {
++          type: 3,
++          timestamp: snapshot.timestamp + 10,
++          data: { source: 2, type: 1, id: -1, x: -200, y: 20 },
++        });
++      }
++      const frames = [];
++      let advanced = false;
+       const handle = createGTReplayer(document.getElementById('app'), bundle, {
+         initialLocale: params.get('locale') || undefined,
+         switchLocalesAllowed: params.get('locales') !== 'off',
+         debug: params.get('debug') === '1',
++        onFrame(frame) {
++          frames.push({
++            time: frame.time,
++            locale: frame.locale,
++            hasDocument: Boolean(frame.document),
++            scrollTop:
++              frame.document?.getElementById('scrollbox')?.scrollTop ?? null,
++          });
++          if (frames.length > 1000) frames.shift();
++          if (
++            params.get('advance') === '1' &&
++            !advanced &&
++            Number.isFinite(frame.time)
++          ) {
++            advanced = true;
++            return { advanceTo: 700 };
++          }
++        },
+       });
+       // Signals for the driver (run.mjs).
+       window.__GT_REPLAYER_READY__ = true;
+       window.__GT_REPLAYER_HANDLE__ = handle;
++      window.__GT_FRAMES__ = frames;
+     </script>
+   </body>
+ </html>
+diff --git a/e2e/make-fixture.mjs b/e2e/make-fixture.mjs
+index cd3496291a0a133f78ae6fd10ecfb02b86af8cca..46474f012e5f092653564bc3112e46ec808f690a 100644
+--- a/e2e/make-fixture.mjs
++++ b/e2e/make-fixture.mjs
+@@ -22,7 +22,8 @@ const LOCALES = ['en', 'es']; // source first
+ // data-_gt-hash attributes in fixture-page.html); the `str:` entry is a bare
+ // gt()-style string (matched by hashing the recorded source text, below).
+ const DICT_ES = {
+-  'fx-welcome': 'Bienvenido al fixture',
++  'fx-welcome':
++    'Bienvenido al fixture internacional de reproducción localizada',
+   'fx-run': 'Ejecutar la demo',
+   'str:Settings and Projects live here': 'Los ajustes y proyectos viven aquí',
+ };
+@@ -66,6 +67,15 @@ try {
+     });
+   });
+ 
++  // Real element scrolling exercises the directed-scroll path. Use multiple
++  // samples in one burst so the player must interpolate rather than jump.
++  for (const top of [90, 190, 290]) {
++    await page.evaluate((scrollTop) => {
++      document.getElementById('scrollbox').scrollTop = scrollTop;
++    }, top);
++    await page.waitForTimeout(140);
++  }
++
+   // Real clicks with real coordinates → click waypoints + the mutations they cause.
+   const go = await page.locator('#go').boundingBox();
+   await page.mouse.click(go.x + go.width / 2, go.y + go.height / 2);
+@@ -89,7 +99,7 @@ try {
+   // recorder's injectOverlay — the events-only fallback path reads it from here.
+   const at = Math.max(
+     0,
+-    events.findIndex((e) => e.type === 2)
++    events.findIndex((e) => e.type === 2),
+   );
+   events.splice(at + 1, 0, {
+     type: 5,
+@@ -100,16 +110,19 @@ try {
+   const es = overlay.es || {};
+   const esCount = Object.keys(es).length;
+   const clicks = events.filter(
+-    (e) => e.type === 3 && e.data.source === 2 && e.data.type === 2
++    (e) => e.type === 3 && e.data.source === 2 && e.data.type === 2,
++  ).length;
++  const scrolls = events.filter(
++    (e) => e.type === 3 && e.data.source === 3,
+   ).length;
+   const meta = events.find((e) => e.type === 4);
+   console.log(
+-    `fixture: ${events.length} events | viewport ${meta.data.width}x${meta.data.height} | clicks ${clicks} | es overlay ${esCount}`
++    `fixture: ${events.length} events | viewport ${meta.data.width}x${meta.data.height} | clicks ${clicks} | scrolls ${scrolls} | es overlay ${esCount}`,
+   );
+   // The dict has 3 entries; all must land or the fixture is broken.
+-  if (esCount < 3 || clicks < 2) {
++  if (esCount < 3 || clicks < 2 || scrolls < 2) {
+     console.error(
+-      'FIXTURE INVALID: expected ≥3 es overlay entries and ≥2 clicks'
++      'FIXTURE INVALID: expected ≥3 es overlay entries, ≥2 clicks, and ≥2 scrolls',
+     );
+     process.exitCode = 1;
+   } else {
+@@ -119,7 +132,7 @@ try {
+     const out = join(E2E_DIR, 'fixture.json');
+     writeFileSync(
+       out,
+-      JSON.stringify({ events, locales: LOCALES, overlay }, null, 2) + '\n'
++      JSON.stringify({ events, locales: LOCALES, overlay }, null, 2) + '\n',
+     );
+     try {
+       execSync(`npx oxfmt ${JSON.stringify(out)}`, { stdio: 'ignore' });
+diff --git a/e2e/run.mjs b/e2e/run.mjs
+index 697ac15179765ae49a40019cbb205edbf16c1e77..07b046d309e66e40c970527a680816589525d2b0 100644
+--- a/e2e/run.mjs
++++ b/e2e/run.mjs
+@@ -12,14 +12,17 @@ const PORT = 5642;
+ const BASE = `http://localhost:${PORT}`;
+ 
+ const SOURCE_TEXT = 'Welcome to the fixture';
+-const ES_T = ['Bienvenido al fixture', 'Ejecutar la demo']; // <T> hash path
++const ES_T = [
++  'Bienvenido al fixture internacional de reproducción localizada',
++  'Ejecutar la demo',
++]; // <T> hash path
+ const ES_STR = 'Los ajustes y proyectos viven aquí'; // gt()-string path
+ 
+ const results = [];
+ function check(name, ok, detail = '') {
+   results.push({ name, ok });
+   console.log(
+-    `${ok ? '  ✅' : '  ❌'} ${name}${!ok && detail ? ` — ${detail}` : ''}`
++    `${ok ? '  ✅' : '  ❌'} ${name}${!ok && detail ? ` — ${detail}` : ''}`,
+   );
+ }
+ 
+@@ -27,7 +30,7 @@ const pageErrors = [];
+ async function open(browser, query) {
+   const page = await newPage(browser);
+   page.on('pageerror', (e) =>
+-    pageErrors.push(`${query || '/'}: ${String(e).slice(0, 160)}`)
++    pageErrors.push(`${query || '/'}: ${String(e).slice(0, 160)}`),
+   );
+   // Real device metrics (page.setViewportSize is a no-op over CDP).
+   const cdp = await page.context().newCDPSession(page);
+@@ -43,7 +46,7 @@ async function open(browser, query) {
+     null,
+     {
+       timeout: 15000,
+-    }
++    },
+   );
+   await page.waitForTimeout(1500); // reveal gate + first frames
+   return page;
+@@ -53,9 +56,19 @@ const replayText = (page) =>
+   page.evaluate(
+     () =>
+       document.querySelector('#app #player iframe')?.contentDocument?.body
+-        ?.innerText || ''
++        ?.innerText || '',
+   );
+ 
++async function seek(page, fraction) {
++  const box = await page.locator('#app #track').boundingBox();
++  const x = box.x + box.width * fraction;
++  const y = box.y + box.height / 2;
++  await page.mouse.move(x, y);
++  await page.mouse.down();
++  await page.mouse.up();
++  await page.waitForTimeout(80);
++}
++
+ const server = await startServer(PORT);
+ const { browser, close } = await getBrowser();
+ try {
+@@ -66,7 +79,7 @@ try {
+     check('player mounts a replay iframe', (await replayText(page)).length > 0);
+     check(
+       'source render shows source text',
+-      (await replayText(page)).includes(SOURCE_TEXT)
++      (await replayText(page)).includes(SOURCE_TEXT),
+     );
+ 
+     // Capture-frame crop: the stage must take the recorded frame's 16:9 box, not
+@@ -78,7 +91,7 @@ try {
+     check(
+       'stage crops to the capture frame (16:9)',
+       Math.abs(ratio - 16 / 9) < 0.05,
+-      `ratio=${ratio.toFixed(3)}`
++      `ratio=${ratio.toFixed(3)}`,
+     );
+ 
+     // Director cursor: recorded-size (scaled), positioned inside the stage.
+@@ -100,20 +113,60 @@ try {
+     check(
+       'cursor is scaled to recording size',
+       /translate\(.+\) scale\(/.test(cursor.transform),
+-      cursor.transform
++      cursor.transform,
+     );
+     check('cursor sits inside the stage', cursor.inStage);
+ 
++    const scrollSamples = await page.evaluate(() =>
++      window.__GT_FRAMES__
++        .map((frame) => frame.scrollTop)
++        .filter((value) => typeof value === 'number'),
++    );
++    const distinctScrolls = new Set(
++      scrollSamples.map((value) => Math.round(value)),
++    );
++    check(
++      'scroll is rendered as a smooth frame sequence',
++      distinctScrolls.size > 10 &&
++        [...distinctScrolls].some(
++          (value) => ![0, 90, 190, 290].includes(value),
++        ),
++      `distinct=${distinctScrolls.size}`,
++    );
++
+     // Locale switcher: source + target flags, live in-place switching.
+     const locs = await page.evaluate(() =>
+       [...document.querySelectorAll('#app #flags button')].map(
+-        (b) => b.dataset.loc
+-      )
++        (b) => b.dataset.loc,
++      ),
+     );
+     check(
+       'flag switcher lists source-first locales',
+       JSON.stringify(locs) === JSON.stringify(['en', 'es']),
+-      JSON.stringify(locs)
++      JSON.stringify(locs),
++    );
++    const flagStyle = await page.evaluate(() => {
++      const style = getComputedStyle(
++        document.querySelector('#app #flags button'),
++      );
++      return {
++        display: style.display,
++        alignItems: style.alignItems,
++        lineHeight: style.lineHeight,
++        separators: document.querySelectorAll('#app .hudsep').length,
++      };
++    });
++    check(
++      'locale labels are vertically centered',
++      ['flex', 'inline-flex'].includes(flagStyle.display) &&
++        flagStyle.alignItems === 'center' &&
++        flagStyle.lineHeight === '17px',
++      JSON.stringify(flagStyle),
++    );
++    check(
++      'HUD has only the locale separator',
++      flagStyle.separators === 1,
++      `separators=${flagStyle.separators}`,
+     );
+ 
+     await page.click('#app #flags button[data-loc="es"]');
+@@ -121,31 +174,77 @@ try {
+     let text = await replayText(page);
+     check(
+       'es: <T> hash-path text swapped',
+-      ES_T.every((s) => text.includes(s))
++      ES_T.every((s) => text.includes(s)),
+     );
+     check('es: gt()-string-path text swapped', text.includes(ES_STR));
+     check('es: source text gone', !text.includes(SOURCE_TEXT));
++    const localizedState = await page.evaluate(async () => {
++      const idoc = document.querySelector(
++        '#app #player iframe',
++      ).contentDocument;
++      const target = idoc.getElementById('go').getBoundingClientRect();
++      const fixture = await fetch('/fixture.json').then((response) =>
++        response.json(),
++      );
++      const click = fixture.events.find(
++        (event) =>
++          event.type === 3 && event.data.source === 2 && event.data.type === 1,
++      );
++      return {
++        lang: idoc.documentElement.lang,
++        localeValue: idoc.getElementById('locale').value,
++        clickInsideTarget:
++          click.data.y >= target.top && click.data.y <= target.bottom,
++      };
++    });
++    check(
++      'locale controls and document language follow replay locale',
++      localizedState.lang === 'es' && localizedState.localeValue === 'es',
++      JSON.stringify(localizedState),
++    );
++    check(
++      'translated scrolling keeps the recorded click inside its target',
++      localizedState.clickInsideTarget,
++      JSON.stringify(localizedState),
++    );
++
++    const downloadPromise = page.waitForEvent('download');
++    await page.click('#app #downloadJson');
++    const download = await downloadPromise;
++    let downloadedJson = '';
++    for await (const chunk of await download.createReadStream()) {
++      downloadedJson += chunk.toString();
++    }
++    const downloadedBundle = JSON.parse(downloadedJson);
++    check(
++      'download control exports the unmodified recording bundle',
++      /^gt-replay-en-\d{4}-\d{2}-\d{2}\.json$/.test(
++        download.suggestedFilename(),
++      ) &&
++        downloadedBundle.events.length === 16 &&
++        downloadedBundle.locales.join(',') === 'en,es',
++    );
+ 
+     await page.click('#app #flags button[data-loc="en"]');
+     await page.waitForTimeout(600);
+     text = await replayText(page);
+     check(
+       'back to source: es text gone',
+-      text.includes(SOURCE_TEXT) && !text.includes(ES_T[0])
++      text.includes(SOURCE_TEXT) && !text.includes(ES_T[0]),
+     );
+ 
+     // Dark toggle drives the RECORDING's own theme mechanism (.dark class here).
+     const bgBefore = await page.evaluate(
+       () =>
+         getComputedStyle(
+-          document.querySelector('#app #player iframe').contentDocument.body
+-        ).backgroundColor
++          document.querySelector('#app #player iframe').contentDocument.body,
++        ).backgroundColor,
+     );
+     await page.click('#app #darkToggle');
+     await page.waitForTimeout(400);
+     const dark = await page.evaluate(() => {
+       const idoc = document.querySelector(
+-        '#app #player iframe'
++        '#app #player iframe',
+       ).contentDocument;
+       return {
+         hasClass: idoc.documentElement.classList.contains('dark'),
+@@ -155,25 +254,25 @@ try {
+     check(
+       'dark toggle applies the recorded theme mechanism',
+       dark.hasClass && dark.bg !== bgBefore,
+-      `bg ${bgBefore} → ${dark.bg}`
++      `bg ${bgBefore} → ${dark.bg}`,
+     );
+ 
+     // debug defaults OFF: a drop must be inert (no notice, no swap).
+     await page.evaluate(() => {
+       const dt = new DataTransfer();
+       dt.items.add(
+-        new File(['garbage{{{'], 'x.json', { type: 'application/json' })
++        new File(['garbage{{{'], 'x.json', { type: 'application/json' }),
+       );
+       document
+         .getElementById('app')
+         .dispatchEvent(
+-          new DragEvent('drop', { dataTransfer: dt, bubbles: true })
++          new DragEvent('drop', { dataTransfer: dt, bubbles: true }),
+         );
+     });
+     await page.waitForTimeout(300);
+     check(
+       'debug off: drop is inert',
+-      await page.evaluate(() => !document.querySelector('.gt-debug-notice'))
++      await page.evaluate(() => !document.querySelector('.gt-debug-notice')),
+     );
+     await page.close();
+   }
+@@ -184,7 +283,7 @@ try {
+     const text = await replayText(page);
+     check(
+       'initialLocale=es renders localized',
+-      ES_T.every((s) => text.includes(s)) && !text.includes(SOURCE_TEXT)
++      ES_T.every((s) => text.includes(s)) && !text.includes(SOURCE_TEXT),
+     );
+     await page.close();
+   }
+@@ -195,31 +294,150 @@ try {
+     const hud = await page.evaluate(() => ({
+       flags: document.querySelectorAll('#app #flags button').length,
+       sepHidden:
+-        document.querySelector('#app #hudsep')?.style.display === 'none',
++        document.querySelector('#app #localeSep')?.style.display === 'none',
+     }));
+     check(
+       'switchLocalesAllowed:false shows no flags',
+-      hud.flags === 0 && hud.sepHidden
++      hud.flags === 0 && hud.sepHidden,
+     );
+     check('…and still plays', (await replayText(page)).includes(SOURCE_TEXT));
+     await page.close();
+   }
+ 
++  // ---- scenario 6: seek/reseek is video-like and history-independent ---- //
++  {
++    const page = await open(browser, '');
++    await seek(page, 0.25);
++    const first = await page.evaluate(() => ({
++      cursor: document.querySelector('#app #cursor').style.transform,
++      scrollTop: document
++        .querySelector('#app #player iframe')
++        .contentDocument.getElementById('scrollbox').scrollTop,
++      opacity: document.querySelector('#app #scaler').style.opacity,
++    }));
++    await seek(page, 0.8);
++    await seek(page, 0.25);
++    const repeated = await page.evaluate(() => ({
++      cursor: document.querySelector('#app #cursor').style.transform,
++      scrollTop: document
++        .querySelector('#app #player iframe')
++        .contentDocument.getElementById('scrollbox').scrollTop,
++      opacity: document.querySelector('#app #scaler').style.opacity,
++    }));
++    check(
++      'revisiting a timestamp has no cursor or scroll hysteresis',
++      repeated.cursor === first.cursor &&
++        Math.abs(repeated.scrollTop - first.scrollTop) < 0.1,
++      `${JSON.stringify(first)} → ${JSON.stringify(repeated)}`,
++    );
++    check(
++      'scrubbing keeps the reconstructed stage visible',
++      first.opacity === '1' && repeated.opacity === '1',
++    );
++    await page.close();
++  }
++
++  // ---- scenario 7: absolute touch controls hide cursor, retain ripple --- //
++  {
++    const page = await open(browser, '?touch=1');
++    const cursorHidden = await page.evaluate(
++      () => !document.querySelector('#app #cursor').classList.contains('on'),
++    );
++    let prominentRipple = false;
++    for (const fraction of [0.35, 0.45, 0.55, 0.65, 0.75]) {
++      await seek(page, fraction);
++      const ripple = await page.evaluate(() => {
++        const ring = document.querySelector('#app .gt-ring');
++        return {
++          shown: ring.style.display !== 'none',
++          width: Number.parseFloat(ring.style.width || '0'),
++          borderWidth: ring.style.borderWidth,
++          background: ring.style.background,
++        };
++      });
++      if (
++        ripple.shown &&
++        ripple.width >= 22 &&
++        ripple.borderWidth === '3px' &&
++        ripple.background !== 'transparent'
++      ) {
++        prominentRipple = true;
++        break;
++      }
++    }
++    check('touch mode hides the synthesized cursor', cursorHidden);
++    check(
++      'touch mode retains a prominent deterministic tap ripple',
++      prominentRipple,
++    );
++    await page.close();
++  }
++
++  // ---- scenario 8: off-frame pointer data never seeds the cursor -------- //
++  {
++    const page = await open(browser, '?offscreen=1');
++    await seek(page, 0);
++    const position = await page.evaluate(() => {
++      const cursor = document
++        .querySelector('#app #cursor')
++        .getBoundingClientRect();
++      const stage = document
++        .querySelector('#app #stage')
++        .getBoundingClientRect();
++      return { cursor: cursor.toJSON(), stage: stage.toJSON() };
++    });
++    check(
++      'off-frame interactions are ignored for the initial cursor position',
++      position.cursor.left > position.stage.left + 1 &&
++        position.cursor.left <= position.stage.right &&
++        position.cursor.top >= position.stage.top &&
++        position.cursor.top <= position.stage.bottom,
++      JSON.stringify(position),
++    );
++    await page.close();
++  }
++
++  // ---- scenario 9: frame director can advance and receives teardown ----- //
++  {
++    const page = await open(browser, '?advance=1');
++    const advanced = await page.evaluate(() => {
++      const finite = window.__GT_FRAMES__.filter((frame) =>
++        Number.isFinite(frame.time),
++      );
++      return {
++        first: finite[0]?.time,
++        reached: finite.some((frame) => frame.time >= 700),
++      };
++    });
++    check(
++      'onFrame can advance to a deterministic settled timestamp',
++      advanced.first < 100 && advanced.reached,
++      JSON.stringify(advanced),
++    );
++    const teardown = await page.evaluate(() => {
++      window.__GT_REPLAYER_HANDLE__.destroy();
++      const last = window.__GT_FRAMES__.at(-1);
++      return Number.isNaN(last.time) && last.hasDocument === false;
++    });
++    check('onFrame receives an explicit teardown frame', teardown);
++    await page.close();
++  }
++
+   // ---- scenario 4: events-only bundle → embedded-overlay fallback -------- //
+   {
+     const page = await open(browser, '?strip=1&locale=es');
+     const text = await replayText(page);
+     const flags = await page.evaluate(
+-      () => document.querySelectorAll('#app #flags button').length
++      () => document.querySelectorAll('#app #flags button').length,
+     );
+     check(
+       'events-only bundle recovers locales from the stream',
+       flags === 2,
+-      `flags=${flags}`
++      `flags=${flags}`,
+     );
+     check(
+       'events-only bundle still localizes',
+-      ES_T.every((s) => text.includes(s))
++      ES_T.every((s) => text.includes(s)),
+     );
+     await page.close();
+   }
+@@ -235,32 +453,32 @@ try {
+           document
+             .getElementById('app')
+             .dispatchEvent(
+-              new DragEvent('drop', { dataTransfer: dt, bubbles: true })
++              new DragEvent('drop', { dataTransfer: dt, bubbles: true }),
+             );
+         },
+-        [content, name]
++        [content, name],
+       );
+ 
+     await drop('garbage{{{', 'broken.json');
+     await page.waitForTimeout(300);
+     const notice = await page.evaluate(
+-      () => document.querySelector('.gt-debug-notice')?.textContent || ''
++      () => document.querySelector('.gt-debug-notice')?.textContent || '',
+     );
+     check(
+       'debug: non-JSON drop fails gracefully',
+       notice.includes('Not a JSON file'),
+-      notice
++      notice,
+     );
+     check(
+       'debug: player survives a bad drop',
+-      (await replayText(page)).includes(SOURCE_TEXT)
++      (await replayText(page)).includes(SOURCE_TEXT),
+     );
+ 
+     // Drop the fixture's raw EVENTS ARRAY: hot-swap + array coercion + fallback.
+     const eventsJson = await page.evaluate(() =>
+       fetch('/fixture.json')
+         .then((r) => r.json())
+-        .then((b) => JSON.stringify(b.events))
++        .then((b) => JSON.stringify(b.events)),
+     );
+     await drop(eventsJson, 'events.json');
+     await page.waitForTimeout(2000);
+@@ -272,12 +490,12 @@ try {
+     check(
+       'debug: events-array drop hot-swaps the replay',
+       swapped.players === 1 && (await replayText(page)).includes(SOURCE_TEXT),
+-      JSON.stringify(swapped)
++      JSON.stringify(swapped),
+     );
+     check(
+       'debug: swapped replay recovers embedded locales',
+       swapped.flags === 2,
+-      `flags=${swapped.flags}`
++      `flags=${swapped.flags}`,
+     );
+     await page.close();
+   }
+@@ -285,7 +503,7 @@ try {
+   check(
+     'no page errors across all scenarios',
+     pageErrors.length === 0,
+-    pageErrors.slice(0, 3).join(' | ')
++    pageErrors.slice(0, 3).join(' | '),
+   );
+ } finally {
+   await close();
+@@ -294,6 +512,6 @@ try {
+ 
+ const failed = results.filter((r) => !r.ok);
+ console.log(
+-  `\n${results.length - failed.length}/${results.length} checks passed`
++  `\n${results.length - failed.length}/${results.length} checks passed`,
+ );
+ if (failed.length) process.exitCode = 1;
+diff --git a/src/__tests__/harvest.test.ts b/src/__tests__/harvest.test.ts
+index 9e0a5f4fa1c52cc2aebfd2ac5e90394b638eddb5..dcbdaa6f46c14f6129ed7e6fb55aadd90d979cdc 100644
+--- a/src/__tests__/harvest.test.ts
++++ b/src/__tests__/harvest.test.ts
+@@ -30,7 +30,7 @@ const el = (
+   id: number,
+   tagName: string,
+   childNodes: Ser[] = [],
+-  attributes: Record<string, unknown> = {}
++  attributes: Record<string, unknown> = {},
+ ): Ser => ({ type: 2, id, tagName, attributes, childNodes });
+ /** A tag-ids wrapper: <span data-_gt={hash} style="display:contents">…</span>. */
+ const hashSpan = (id: number, hash: string, childNodes: Ser[]): Ser =>
+@@ -43,14 +43,14 @@ const fullSnapshot = (node: Ser): eventWithTime =>
+     timestamp: 0,
+   }) as unknown as eventWithTime;
+ const mutation = (
+-  adds: { node: Ser }[] = [],
+-  texts: { id: number; value: string }[] = []
++  adds: { node: Ser; parentId?: number }[] = [],
++  texts: { id: number; value: string }[] = [],
+ ): eventWithTime =>
+   ({
+     type: EventType.IncrementalSnapshot,
+     data: {
+       source: IncrementalSource.Mutation,
+-      adds,
++      adds: adds.map((add) => ({ parentId: 1, ...add })),
+       texts,
+       removes: [],
+       attributes: [],
+@@ -150,7 +150,7 @@ describe('collectRecordedText', () => {
+       fullSnapshot(el(1, 'DIV', [text(2, 'A')])),
+       mutation(
+         [{ node: el(6, 'P', [text(7, 'Added')]) }],
+-        [{ id: 2, value: 'A2' }]
++        [{ id: 2, value: 'A2' }],
+       ),
+     ];
+     const map = collectRecordedText(events);
+@@ -174,7 +174,7 @@ describe('recordingHasHashes', () => {
+ 
+   it('false when no node carries the hash attribute', () => {
+     expect(
+-      recordingHasHashes([fullSnapshot(el(1, 'DIV', [text(2, 'x')]))])
++      recordingHasHashes([fullSnapshot(el(1, 'DIV', [text(2, 'x')]))]),
+     ).toBe(false);
+   });
+ 
+@@ -208,7 +208,7 @@ describe('collectHashNodes', () => {
+     ]);
+   });
+ 
+-  it('emits only the OUTERMOST node of a nested pair', () => {
++  it('keeps nested hashes as separate nearest-owner translation boundaries', () => {
+     const tree = el(1, 'MAIN', [
+       hashSpan(2, 'OUTER', [
+         text(3, 'a '),
+@@ -216,9 +216,13 @@ describe('collectHashNodes', () => {
+       ]),
+     ]);
+     const nodes = collectHashNodes([fullSnapshot(tree)]);
+-    expect(nodes).toHaveLength(1);
++    expect(nodes).toHaveLength(2);
+     expect(nodes[0].hash).toBe('OUTER');
+-    expect(nodes[0].textNodes.map((t) => t.id)).toEqual([3, 5]);
++    expect(nodes[0].textNodes.map((t) => t.id)).toEqual([3]);
++    expect(nodes[1]).toEqual({
++      hash: 'INNER',
++      textNodes: [{ id: 5, text: 'b' }],
++    });
+   });
+ 
+   it('finds hash nodes added by later mutations (interaction-only states)', () => {
+@@ -230,6 +234,30 @@ describe('collectHashNodes', () => {
+       { hash: 'H3', textNodes: [{ id: 10, text: 'Later' }] },
+     ]);
+   });
++
++  it('associates separately-added text with its hashed mutation parent', () => {
++    const nodes = collectHashNodes([
++      fullSnapshot(el(1, 'MAIN', [])),
++      mutation([{ parentId: 1, node: hashSpan(9, 'H3', []) }]),
++      mutation([{ parentId: 9, node: text(10, 'Later') }]),
++    ]);
++    expect(nodes).toEqual([
++      { hash: 'H3', textNodes: [{ id: 10, text: 'Later' }] },
++    ]);
++  });
++
++  it('resolves child-before-parent mutation batches without losing ownership', () => {
++    const nodes = collectHashNodes([
++      fullSnapshot(el(1, 'MAIN', [])),
++      mutation([
++        { parentId: 9, node: text(10, 'Later') },
++        { parentId: 1, node: hashSpan(9, 'H3', []) },
++      ]),
++    ]);
++    expect(nodes).toEqual([
++      { hash: 'H3', textNodes: [{ id: 10, text: 'Later' }] },
++    ]);
++  });
+ });
+ 
+ describe('overlayFromDict', () => {
+@@ -241,7 +269,7 @@ describe('overlayFromDict', () => {
+           text(7, 'Hello '),
+           el(8, 'SPAN', [text(9, 'Ian')]),
+         ]),
+-      ])
++      ]),
+     ),
+   ]);
+ 
+@@ -328,7 +356,7 @@ describe('harvestHash', () => {
+       fr: { H1: ['Utilisation'] },
+     };
+     const loadTranslations = vi.fn(
+-      async (locale: string) => dicts[locale] ?? {}
++      async (locale: string) => dicts[locale] ?? {},
+     );
+     const overlay = await harvestHash(events, ['en', 'es', 'fr'], {
+       source: 'en',
+@@ -357,7 +385,7 @@ describe('harvestHash', () => {
+         el(1, 'MAIN', [
+           hashSpan(2, 'H1', [text(3, 'Usage')]),
+           el(4, 'NAV', [text(5, 'Projects')]),
+-        ])
++        ]),
+       ),
+     ];
+     const dict: TranslationDict = { H1: ['Uso'], 'h:Projects': 'Proyectos' };
+diff --git a/src/replay/__tests__/director.test.ts b/src/replay/__tests__/director.test.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..d8375b72cf784cb7700dee2f130629e980b03f08
+--- /dev/null
++++ b/src/replay/__tests__/director.test.ts
+@@ -0,0 +1,182 @@
++import type { eventWithTime } from '@rrweb/types';
++import { describe, expect, it } from 'vitest';
++
++import {
++  REPLAY_EVENT,
++  REPLAY_SOURCE,
++  analyzePointerInput,
++  buildScrollTracks,
++  collectDirectedClicks,
++  compressTimeline,
++  detectDoubleClicks,
++  incrementalData,
++  markScrollBurstStarts,
++  replaceNativeScrollEvents,
++  scrollPositionAt,
++} from '../director';
++
++function event(
++  timestamp: number,
++  data: Record<string, unknown>,
++  type = REPLAY_EVENT.IncrementalSnapshot,
++): eventWithTime {
++  return { type, timestamp, data } as eventWithTime;
++}
++
++const mouse = (
++  timestamp: number,
++  type: number,
++  extra: Record<string, unknown> = {},
++) =>
++  event(timestamp, {
++    source: REPLAY_SOURCE.MouseInteraction,
++    type,
++    x: 20,
++    y: 30,
++    id: 4,
++    ...extra,
++  });
++
++const scroll = (timestamp: number, y: number, id = 1) =>
++  event(timestamp, { source: REPLAY_SOURCE.Scroll, id, x: 0, y });
++
++const mutation = (timestamp: number) =>
++  event(timestamp, {
++    source: REPLAY_SOURCE.Mutation,
++    adds: [{ parentId: 1, node: { type: 3, id: timestamp, textContent: 'x' } }],
++    removes: [],
++    texts: [],
++    attributes: [],
++  });
++
++describe('directed pointer input', () => {
++  it('uses the first mouse-down as the single click waypoint', () => {
++    const events = [
++      event(0, {} as Record<string, unknown>, REPLAY_EVENT.Meta),
++      mouse(100, 1),
++      mouse(110, 0),
++      mouse(120, 2),
++    ];
++    const input = analyzePointerInput(events);
++    const clicks = collectDirectedClicks(events, 0, input.isDirectedClick);
++    expect(input.usesTouchControls).toBe(false);
++    expect(clicks).toEqual([{ t: 100, x: 20, y: 30, id: 4 }]);
++  });
++
++  it('uses the synthetic click after touch-end as a tap and hides the cursor', () => {
++    const events = [
++      mouse(100, 7, { pointerType: 2 }),
++      mouse(120, 9),
++      mouse(130, 2, { pointerType: 2 }),
++    ];
++    const input = analyzePointerInput(events);
++    expect(input.usesTouchControls).toBe(true);
++    expect(collectDirectedClicks(events, 0, input.isDirectedClick)).toEqual([
++      { t: 130, x: 20, y: 30, id: 4 },
++    ]);
++  });
++
++  it('does not turn a touch swipe or cancelled gesture into a click', () => {
++    const swipe = [mouse(100, 7, { pointerType: 2 }), mouse(180, 9)];
++    const cancelled = [mouse(300, 7, { pointerType: 2 }), mouse(320, 10)];
++    for (const events of [swipe, cancelled]) {
++      const input = analyzePointerInput(events);
++      expect(input.usesTouchControls).toBe(true);
++      expect(collectDirectedClicks(events, 0, input.isDirectedClick)).toEqual(
++        [],
++      );
++    }
++  });
++});
++
++describe('directed timeline', () => {
++  it('holds click-caused mutations until the deterministic ripple completes', () => {
++    const events = [
++      event(0, {}, REPLAY_EVENT.Meta),
++      mouse(1000, 1),
++      mutation(1010),
++    ];
++    const input = analyzePointerInput(events);
++    const compressed = compressTimeline(
++      events,
++      new Set(),
++      input.isDirectedClick,
++    );
++    expect(compressed[1].timestamp).toBe(900);
++    expect(compressed[2].timestamp).toBe(1180);
++  });
++
++  it('holds later mutations for semantic animation plus settled-text time', () => {
++    const events = [
++      event(0, {}, REPLAY_EVENT.Meta),
++      event(
++        100,
++        {
++          tag: 'gt-font-morph',
++          payload: { duration: 600, settledTextHold: 500 },
++        },
++        REPLAY_EVENT.Custom,
++      ),
++      mutation(150),
++    ];
++    const input = analyzePointerInput(events);
++    const compressed = compressTimeline(
++      events,
++      new Set(),
++      input.isDirectedClick,
++    );
++    expect(compressed[1].timestamp).toBe(100);
++    expect(compressed[2].timestamp).toBe(1200);
++  });
++
++  it('only suppresses a repeated press when nothing changed between presses', () => {
++    const noChange = [mouse(100, 1), mouse(1000, 1)];
++    const withChange = [mouse(100, 1), mutation(500), mouse(1000, 1)];
++    const noChangeInput = analyzePointerInput(noChange);
++    const withChangeInput = analyzePointerInput(withChange);
++    expect(detectDoubleClicks(noChange, noChangeInput.isDirectedClick)).toEqual(
++      new Set([100]),
++    );
++    expect(
++      detectDoubleClicks(withChange, withChangeInput.isDirectedClick),
++    ).toEqual(new Set());
++  });
++});
++
++describe('directed scrolling', () => {
++  const linear = (progress: number) => progress;
++
++  it('interpolates every scroll burst smoothly and deterministically', () => {
++    const events = [scroll(0, 0), scroll(100, 100), scroll(200, 200)];
++    const tracks = buildScrollTracks(events, 0, markScrollBurstStarts(events));
++    const track = tracks.get(1)!;
++    expect(scrollPositionAt(track, 0, [], linear)).toEqual({ x: 0, y: 0 });
++    expect(scrollPositionAt(track, 50, [], linear)?.y).toBeCloseTo(50);
++    expect(scrollPositionAt(track, 150, [], linear)?.y).toBeCloseTo(150);
++    expect(scrollPositionAt(track, 150, [], linear)).toEqual(
++      scrollPositionAt(track, 150, [], linear),
++    );
++    expect(scrollPositionAt(track, 200, [], linear)).toEqual({ x: 0, y: 200 });
++  });
++
++  it('eases a singleton jump without changing its final timestamp', () => {
++    const events = [scroll(0, 0), scroll(1000, 400)];
++    const tracks = buildScrollTracks(events, 0, markScrollBurstStarts(events));
++    const track = tracks.get(1)!;
++    expect(scrollPositionAt(track, 550, [], linear)?.y).toBe(0);
++    expect(scrollPositionAt(track, 775, [], linear)?.y).toBeCloseTo(200);
++    expect(scrollPositionAt(track, 1000, [], linear)?.y).toBe(400);
++  });
++
++  it('replaces native rrweb scrolls so only the director applies position', () => {
++    const original = [scroll(100, 80), mutation(120)];
++    const replaced = replaceNativeScrollEvents(original);
++    expect(replaced[0]).toMatchObject({
++      type: REPLAY_EVENT.Custom,
++      timestamp: 100,
++      data: { tag: 'gt-directed-scroll', payload: null },
++    });
++    expect(replaced[1]).toBe(original[1]);
++    expect(incrementalData(replaced[0])).toBeNull();
++  });
++});
