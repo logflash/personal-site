@@ -31,22 +31,32 @@
     "build": "tsdown && esbuild src/outline.worker.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=dist/outline-worker.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint --quiet src e2e",
-    "typecheck": "tsc --noEmit",
-    "e2e": "corepack pnpm run build && node e2e/run.mjs"
+    "lint": "oxlint --quiet src e2e demo",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p demo/tsconfig.json",
+    "e2e": "corepack pnpm run build && node e2e/run.mjs",
+    "demo": "vite --config demo/vite.config.ts",
+    "demo:build": "vite build --config demo/vite.config.ts",
+    "demo:preview": "vite preview --config demo/vite.config.ts",
+    "demo:test": "corepack pnpm run demo:build && node demo/e2e.mjs"
   },
   "dependencies": {
     "kute.js": "2.2.6",
     "opentype.js": "^2.0.0"
   },
   "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
     "@types/node": "^22.13.5",
     "@types/opentype.js": "^1.3.10",
+    "@vitejs/plugin-react": "^4.5.0",
     "esbuild": "^0.28.2",
     "oxlint": "^1.79.0",
     "playwright-core": "^1.57.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "tsdown": "^0.21.10",
     "typescript": "^5.9.2",
+    "vite": "^7.0.0",
     "vitest": "^3.2.4"
   }
 }

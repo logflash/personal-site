@@ -60,12 +60,23 @@ export interface FontMorphConfiguration {
   createWorker?: () => Worker
 }
 
+function inferFontRole(fontFamily: string): FontMorphFontRole {
+  const families = fontFamily
+    .split(',')
+    .map((family) => family.trim().replace(/^(['"])(.*)\1$/, '$2').toLowerCase())
+
+  for (const family of families) {
+    if (family === 'sans-serif' || /(^|[\s-])sans([\s-]|$)/.test(family)) return 'sans'
+    if (family === 'serif' || /(^|[\s-])serif([\s-]|$)/.test(family)) return 'serif'
+  }
+  return 'sans'
+}
+
 const defaultConfiguration: FontMorphConfiguration = {
   fontFiles: { sans: [], serif: [] },
   recordingClass: 'font-morph-recording',
   captureSelector: '[data-font-morph-capture]',
-  resolveFontRole: (fontFamily) =>
-    fontFamily.toLowerCase().includes('serif') ? 'serif' : 'sans',
+  resolveFontRole: inferFontRole,
 }
 
 let configuration = defaultConfiguration
@@ -95,6 +106,8 @@ interface GlyphStyle {
   fontStyle: string
   fontWeight: string
   fontSizeToHeight: number
+  /** Browser alphabetic baseline as a fraction of the endpoint line box. */
+  baselineToHeight?: number
   letterSpacingEm: number
   direction: 'ltr' | 'rtl'
   color: PointColor
@@ -395,6 +408,28 @@ function logicalRect(rect: Rect, frame: CaptureFrame): Rect {
   }
 }
 
+function browserTextBaseline(
+  ownerDocument: Document,
+  text: string,
+  style: Pick<GlyphStyle, 'fontFamily' | 'fontStyle' | 'fontWeight' | 'direction'>,
+  size: number,
+  lineHeight: number,
+) {
+  const context = ownerDocument.createElement('canvas').getContext('2d')
+  if (!context) return undefined
+  context.font = `${style.fontStyle} ${style.fontWeight} ${size}px ${style.fontFamily}`
+  context.direction = style.direction
+  const metrics = context.measureText(text)
+  const ascent = metrics.fontBoundingBoxAscent
+  const descent = metrics.fontBoundingBoxDescent
+  if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) return undefined
+
+  // CSS centers the font box inside the line box and snaps its top edge to a
+  // CSS pixel. Matching that baseline prevents the SVG outline from shifting
+  // vertically when a browser-rendered endpoint takes over.
+  return Math.floor((lineHeight - ascent - descent) / 2) + ascent
+}
+
 function captureEndpoint(element: HTMLElement): GlyphEndpoint | null {
   const text = element.textContent?.trim()
   const bounds = element.getBoundingClientRect()
@@ -407,6 +442,27 @@ function captureEndpoint(element: HTMLElement): GlyphEndpoint | null {
   const logical = logicalRect(rect, frame)
   const fontSize = Number.parseFloat(style.fontSize) || 16
   const letterSpacing = Number.parseFloat(style.letterSpacing)
+  const direction = style.direction === 'rtl' ? 'rtl' : 'ltr'
+  const glyphStyle: GlyphStyle = {
+    fontRole: fontRoleFor(style.fontFamily),
+    fontFamily: style.fontFamily,
+    fontStyle: style.fontStyle,
+    fontWeight: style.fontWeight,
+    fontSizeToHeight: fontSize / logical.height,
+    letterSpacingEm: Number.isFinite(letterSpacing) ? letterSpacing / fontSize : 0,
+    direction,
+    color: parseColor(style.color),
+  }
+  const measuredBaseline = browserTextBaseline(
+    element.ownerDocument,
+    text,
+    glyphStyle,
+    fontSize,
+    logical.height,
+  )
+  if (measuredBaseline !== undefined) {
+    glyphStyle.baselineToHeight = measuredBaseline / logical.height
+  }
 
   return {
     element,
@@ -415,16 +471,7 @@ function captureEndpoint(element: HTMLElement): GlyphEndpoint | null {
     text,
     translationHash: configuration.resolveTextIdentity?.(element),
     rect,
-    style: {
-      fontRole: fontRoleFor(style.fontFamily),
-      fontFamily: style.fontFamily,
-      fontStyle: style.fontStyle,
-      fontWeight: style.fontWeight,
-      fontSizeToHeight: fontSize / logical.height,
-      letterSpacingEm: Number.isFinite(letterSpacing) ? letterSpacing / fontSize : 0,
-      direction: style.direction === 'rtl' ? 'rtl' : 'ltr',
-      color: parseColor(style.color),
-    },
+    style: glyphStyle,
   }
 }
 
@@ -462,13 +509,24 @@ function endpointFromRecorded(
 ): GlyphEndpoint {
   const frame = frameOverride ?? captureFrame(ownerDocument)
   const rect = { ...recorded.rect, width: recorded.rect.width * widthRatio }
+  const logical = logicalRect(rect, frame)
+  const style = { ...recorded.style }
+  const measuredBaseline = browserTextBaseline(
+    ownerDocument,
+    text,
+    style,
+    style.fontSizeToHeight * logical.height,
+    logical.height,
+  )
+  if (measuredBaseline !== undefined) style.baselineToHeight = measuredBaseline / logical.height
   return {
     ...recorded,
     element,
     frame,
     text,
     rect,
-    logicalRect: logicalRect(rect, frame),
+    logicalRect: logical,
+    style,
   }
 }
 
@@ -638,6 +696,8 @@ function counterpartOutlineInstance(role: FontRole): OutlineInstance {
 
 function baseline(endpoint: GlyphEndpoint, font?: FontMetrics) {
   const size = fontSize(endpoint)
+  const browserBaseline = endpoint.style.baselineToHeight
+  if (Number.isFinite(browserBaseline)) return browserBaseline! * endpoint.logicalRect.height
   if (font) {
     const scale = size / font.unitsPerEm
     const ascent = font.ascender * scale
@@ -1850,6 +1910,131 @@ function paintPreparedMorph(
         ),
       )
     }
+  }
+}
+
+export interface FontMorphProgressOptions {
+  /** The live text element whose box and font define progress 0. */
+  source: HTMLElement
+  /** The live text element whose box and font define progress 1. */
+  target: HTMLElement
+  /** Initial normalized progress. Values outside 0..1 are clamped. */
+  initialProgress?: number
+}
+
+export interface FontMorphProgressController {
+  /** The SVG layer rendered above the two reference endpoints. */
+  readonly element: SVGSVGElement
+  /** The controller's most recently rendered normalized progress. */
+  readonly progress: number
+  /** Render one deterministic frame. Values outside 0..1 are clamped. */
+  setProgress(progress: number): void
+  /** Remeasure both endpoints after an application-driven layout change. */
+  refresh(): void
+  /** Remove the SVG layer and release resize observers. */
+  destroy(): void
+}
+
+/**
+ * Creates a manually controlled font morph between two simultaneously mounted
+ * copies of the same text. Unlike {@link beginFontMorph}, this routine owns no
+ * clock: callers supply normalized progress, which makes it useful for range
+ * inputs, scroll-linked effects, animation tooling, and deterministic tests.
+ */
+export async function createFontMorphProgressController({
+  source: sourceElement,
+  target: targetElement,
+  initialProgress = 0,
+}: FontMorphProgressOptions): Promise<FontMorphProgressController> {
+  if (sourceElement.ownerDocument !== targetElement.ownerDocument) {
+    throw new Error('font-morph: controlled endpoints must share a document')
+  }
+
+  const ownerDocument = sourceElement.ownerDocument
+  await ownerDocument.fonts?.ready
+
+  const capturePair = () => {
+    const source = captureEndpoint(sourceElement)
+    const target = captureEndpoint(targetElement)
+    if (!source || !target) {
+      throw new Error('font-morph: controlled endpoints must be visible, non-empty text')
+    }
+    if (source.text !== target.text) {
+      throw new Error('font-morph: controlled endpoints must contain the same text')
+    }
+    return { source, target }
+  }
+
+  const initial = capturePair()
+  const normalized = await resolveNormalizedOutline(
+    initial.source.text,
+    outlineInstance(initial.source),
+    outlineInstance(initial.target),
+  )
+  if (!normalized.contours) {
+    throw new Error(
+      `font-morph: no prepared outline is available for controlled text "${initial.source.text}" (${normalized.fallback ?? 'unknown reason'})`,
+    )
+  }
+
+  const clampProgress = (progress: number) =>
+    Number.isFinite(progress) ? Math.min(1, Math.max(0, progress)) : 0
+  let destroyed = false
+  let currentProgress = clampProgress(initialProgress)
+  let endpoints = capturePair()
+  const layer = createInitialLayer(endpoints.source)
+  layer.classList.add('font-morph-progress-layer')
+  layer.dataset.fontMorphProgress = ''
+  layer.dataset.fontMorphSourceRole = endpoints.source.style.fontRole
+  layer.dataset.fontMorphTargetRole = endpoints.target.style.fontRole
+  let prepared = prepareOutlineMorph(layer, endpoints.source, endpoints.target, normalized)
+
+  const paint = () => {
+    paintPreparedMorph(
+      prepared,
+      currentProgress,
+      currentProgress,
+      1,
+      coordinateInterpolator,
+    )
+  }
+  const refresh = () => {
+    if (destroyed || !sourceElement.isConnected || !targetElement.isConnected) return
+    endpoints = capturePair()
+    layer.dataset.fontMorphSourceRole = endpoints.source.style.fontRole
+    layer.dataset.fontMorphTargetRole = endpoints.target.style.fontRole
+    prepared = prepareOutlineMorph(layer, endpoints.source, endpoints.target, normalized)
+    paint()
+  }
+  const setProgress = (progress: number) => {
+    if (destroyed) return
+    currentProgress = clampProgress(progress)
+    paint()
+  }
+
+  const ownerWindow = ownerDocument.defaultView
+  const resizeObserver = ownerWindow?.ResizeObserver
+    ? new ownerWindow.ResizeObserver(refresh)
+    : null
+  resizeObserver?.observe(sourceElement)
+  resizeObserver?.observe(targetElement)
+  ownerWindow?.addEventListener('resize', refresh)
+  paint()
+
+  return {
+    element: layer,
+    get progress() {
+      return currentProgress
+    },
+    setProgress,
+    refresh,
+    destroy() {
+      if (destroyed) return
+      destroyed = true
+      resizeObserver?.disconnect()
+      ownerWindow?.removeEventListener('resize', refresh)
+      layer.remove()
+    },
   }
 }
 
