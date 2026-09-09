@@ -10,9 +10,11 @@ import {
 } from 'react'
 import { externalProps } from '../../lib/links'
 import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
+import { resumeHeaderTransition } from '../../lib/headerTransitions'
 import { useMdxGT } from '../../lib/mdxTranslation'
 import { translationHash } from '../../lib/translationHash'
 import { SectionHeading } from '../SectionHeading'
+import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 
 interface SectionContextValue {
   id: string
@@ -89,16 +91,27 @@ export function MdxParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
 
 export function ResumeHeading({ children }: ComponentPropsWithoutRef<'h1'>) {
   const gt = useMdxGT()
+  const { locale } = rootRoute.useLoaderData()
   const source = text(children, 'Resume heading')
 
   return (
-    <h1
-      className="resume-title"
-      data-font-morph="resume-title"
-      data-_gt-hash={translationHash(source)}
-    >
-      {gt(source)}
-    </h1>
+    <TransitionPageHeading
+      transition={resumeHeaderTransition}
+      title={gt(source)}
+      translationHash={translationHash(source)}
+      renderAction={(handlers) => (
+        <Link
+          className="heading-control transition-page-heading-action-control"
+          to="/$locale"
+          params={{ locale }}
+          title={gt('Home')}
+          aria-label={gt('Home')}
+          {...handlers}
+        >
+          <UndoIcon />
+        </Link>
+      )}
+    />
   )
 }
 
@@ -151,7 +164,7 @@ export function QuickLink({
 }) {
   const gt = useMdxGT()
   const { locale } = rootRoute.useLoaderData()
-  const resumeMorphHandlers = useFontMorphNavigation('resume-title')
+  const resumeMorphHandlers = useFontMorphNavigation(resumeHeaderTransition.key)
   const source = translatedLabel ?? label ?? ''
   const translatedContent = translatedLabel ? gt(translatedLabel) : source
   const translationProps = translatedLabel ? { 'data-_gt-hash': translationHash(source) } : {}
@@ -163,7 +176,7 @@ export function QuickLink({
         params={{ locale }}
         {...resumeMorphHandlers}
         className="resume-link"
-        data-font-morph="resume-title"
+        data-font-morph={resumeHeaderTransition.key}
         {...translationProps}
       >
         {translatedContent}

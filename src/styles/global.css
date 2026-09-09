@@ -430,7 +430,7 @@ main {
 }
 
 .h-row h2,
-.resume-title {
+.transition-page-title {
   margin: 0;
   font-family: var(--font-serif);
   font-size: 23px;
@@ -466,31 +466,73 @@ main {
 }
 
 /* Mobile-only: shown in a section heading while a #section hash is set. */
-.back-to-top {
-  display: none;
+.heading-control {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
   background: none;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--mut);
+  border: 0;
+  color: var(--acc);
   cursor: pointer;
   padding: 0;
   flex: none;
 }
 
-.back-to-top:active {
+.heading-control:active {
   color: var(--fg);
-  border-color: var(--mut);
 }
 
 @media (hover: hover) {
-  html:not(.touch) .back-to-top:hover {
+  html:not(.touch) .heading-control:hover {
     color: var(--fg);
-    border-color: var(--mut);
   }
+}
+
+.back-to-top {
+  display: none;
+}
+
+/* ---- Reusable route-level transitioning headings ---- */
+
+.transition-page-heading {
+  position: relative;
+  width: fit-content;
+}
+
+.transition-page-heading-action {
+  position: absolute;
+  top: 50%;
+  right: 100%;
+  margin-right: 8px;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.15s;
+}
+
+.transition-page-heading-action:focus-within {
+  opacity: 1;
+}
+
+.transition-page-heading-action[data-transition-action-hovered] {
+  opacity: 1;
+}
+
+/* Live morphs remove the active attribute when they settle. During replay,
+   fallback marks both normal settlement and an early off-screen cut while the
+   recorded active-attribute removal may still be waiting later in the stream. */
+:root[data-font-morph-active]:not([data-font-morph-fallback]) .transition-page-heading-action {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
+}
+
+.transition-page-heading-action-control svg {
+  width: 17px;
+  height: 17px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ---- Home ---- */
@@ -543,7 +585,7 @@ main {
   min-height: 100dvh;
 }
 
-.resume-title {
+.transition-page-title {
   width: fit-content;
   color: var(--fg);
 }
@@ -959,7 +1001,7 @@ html[data-initial-scroll] .cg-scroller {
   }
 
   .h-row h2,
-  .resume-title {
+  .transition-page-title {
     font-size: 20px;
   }
 
@@ -971,8 +1013,47 @@ html[data-initial-scroll] .cg-scroller {
     pointer-events: auto;
   }
 
+  .heading-control {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    color: var(--mut);
+  }
+
+  .heading-control:active {
+    border-color: var(--mut);
+  }
+
+  .transition-page-heading {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .transition-page-heading-action {
+    position: static;
+    order: 2;
+    margin-right: 0;
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .transition-page-title {
+    order: 1;
+  }
+
   .back-to-top {
     display: flex;
+  }
+
+  @media (hover: hover) {
+    html:not(.touch) .heading-control:hover {
+      border-color: var(--mut);
+    }
   }
 
   .intro {

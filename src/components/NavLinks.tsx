@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { navItems, type NavItem } from '../data/site'
 import { useBackToTop } from '../hooks/useHashRoute'
 import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
+import { resumeHeaderTransition } from '../lib/headerTransitions'
 import { translationHash } from '../lib/translationHash'
 import { useTranslate } from '../lib/i18n'
 
@@ -16,7 +17,7 @@ export function NavLinks({ items = navItems }: NavLinksProps) {
   const translate = useTranslate()
   const { locale } = rootRoute.useLoaderData()
   const backToTop = useBackToTop()
-  const resumeMorphHandlers = useFontMorphNavigation('resume-title')
+  const resumeMorphHandlers = useFontMorphNavigation(resumeHeaderTransition.key)
   const onResumeRoute = useRouterState({
     select: (state) => state.location.pathname.endsWith('/resume'),
   })
