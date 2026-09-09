@@ -35,7 +35,7 @@ export function SectionHeading({ id, title, translationHash, tight }: SectionHea
       {scrolled && (
         <button
           type="button"
-          className="back-to-top"
+          className="heading-control back-to-top"
           title={gt('Back to top')}
           aria-label={gt('Back to top')}
           onClick={backToTop}
