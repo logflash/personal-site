@@ -116,6 +116,9 @@ try {
         targetRole: document.querySelector('[data-font-morph-progress]')?.getAttribute(
           'data-font-morph-target-role',
         ),
+        firstGlyphCutouts: [...(layerElement?.querySelectorAll('path[fill="black"]') ?? [])]
+          .map((path) => path.getBBox())
+          .filter((box) => box.x < 200 && box.width > 1 && box.height > 1).length,
         paths: document.querySelectorAll('[data-font-morph-progress] path').length,
       }
     })
@@ -236,6 +239,13 @@ try {
       verticallyAligned(right.layerInk, right.targetInk),
       `${locale}: the target outline must share the live serif baseline`,
     )
+    if (locale === 'en') {
+      assert.equal(
+        right.firstGlyphCutouts,
+        0,
+        'the target R must not subtract its overlapping upper-left serif',
+      )
+    }
     assert(left.paths > 0 && middle.paths === left.paths && right.paths === left.paths)
   }
 

@@ -157,6 +157,7 @@ interface OutlineContour {
   index: number
   path: string
   polygon: Polygon
+  winding: number
   depth: number
   parentIndex: number | null
   center: [number, number]
@@ -768,9 +769,21 @@ function createInitialLayer(endpoint: GlyphEndpoint, replay = false) {
   return layer
 }
 
-function renderOptions(instance: OutlineInstance): RenderOptions {
+function variationCoordinate(font: Font, tag: string, value: number) {
+  const axes = (
+    font as unknown as {
+      tables?: { fvar?: { axes?: { tag: string; minValue: number; maxValue: number }[] } }
+    }
+  ).tables?.fvar?.axes
+  const axis = axes?.find((candidate) => candidate.tag === tag)
+  return axis ? Math.min(axis.maxValue, Math.max(axis.minValue, value)) : value
+}
+
+function renderOptions(instance: OutlineInstance, font: Font): RenderOptions {
   const variation =
-    instance.role === 'sans' ? { wght: instance.weight } : { opsz: instance.opticalSize }
+    instance.role === 'sans'
+      ? { wght: variationCoordinate(font, 'wght', instance.weight) }
+      : { opsz: variationCoordinate(font, 'opsz', instance.opticalSize) }
   return {
     kerning: true,
     letterSpacing: 0,
@@ -819,6 +832,20 @@ function splitContours(commands: PathCommand[]) {
   }
   if (current.length) contours.push(current)
   return contours.filter((contour) => contour.some((command) => command.type !== 'M'))
+}
+
+function contourWinding(commands: PathCommand[]) {
+  const points: Polygon = []
+  for (const command of commands) {
+    if (command.type !== 'Z') points.push([command.x, command.y])
+  }
+  let doubledArea = 0
+  for (let index = 0; index < points.length; index += 1) {
+    const current = points[index]
+    const next = points[(index + 1) % points.length]
+    doubledArea += current[0] * next[1] - next[0] * current[1]
+  }
+  return Math.sign(doubledArea) || 1
 }
 
 function pointInPolygon(point: [number, number], polygon: Polygon) {
@@ -895,14 +922,18 @@ function combinedBounds(contours: OutlineContour[]): Rect {
   }
 }
 
-function classifyContours(paths: string[], runtime: KuteMorphRuntime): OutlineContour[] {
-  const contours: OutlineContour[] = paths.map((path, index) => {
+function classifyContours(
+  inputs: { path: string; winding: number }[],
+  runtime: KuteMorphRuntime,
+): OutlineContour[] {
+  const contours: OutlineContour[] = inputs.map(({ path, winding }, index) => {
     const polygon = runtime.getInterpolationPoints(path, path, MORPH_PRECISION)[0]
     const { area, center } = polygonStats(polygon)
     return {
       index,
       path,
       polygon,
+      winding,
       depth: 0,
       parentIndex: null,
       center,
@@ -918,12 +949,18 @@ function classifyContours(paths: string[], runtime: KuteMorphRuntime): OutlineCo
         (candidate) =>
           candidate !== contour &&
           candidate.area > contour.area &&
+          candidate.winding !== contour.winding &&
           pointInPolygon(sample, candidate.polygon),
       )
       .sort((left, right) => left.area - right.area)
     contour.parentIndex = containers[0]?.index ?? null
-    contour.depth = containers.length
   }
+  const contourDepth = (contour: OutlineContour): number => {
+    if (contour.parentIndex === null) return 0
+    const parent = contours[contour.parentIndex]
+    return parent ? contourDepth(parent) + 1 : 0
+  }
+  for (const contour of contours) contour.depth = contourDepth(contour)
   return contours
 }
 
@@ -955,10 +992,13 @@ function buildOutline(
     0,
     canonicalBaseline,
     MORPH_VIEWBOX_SIZE,
-    renderOptions(instance),
+    renderOptions(instance, font),
   )
   return paths.map((path) => {
-    const contours = splitContours(path.commands).map((commands) => contourPath(commands))
+    const contours = splitContours(path.commands).map((commands) => ({
+      path: contourPath(commands),
+      winding: contourWinding(commands),
+    }))
     const classified = classifyContours(contours, runtime)
     return { contours: classified, bounds: combinedBounds(classified) }
   })
