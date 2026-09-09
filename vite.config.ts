@@ -20,6 +20,9 @@ export default defineConfig({
   define: {
     __INLINE_CSS__: JSON.stringify(inlineCss),
   },
+  // The outline fallback loads its compiler dependencies inside a module
+  // worker. ES output permits those lazy chunks and keeps them out of the page.
+  worker: { format: 'es' },
   // Resolve the vendored packages' TypeScript directly so local changes
   // participate in Vite HMR and a clean checkout does not require committed dist.
   resolve: {

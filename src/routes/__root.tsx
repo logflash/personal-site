@@ -65,6 +65,20 @@ export const Route = createRootRoute({
             crossOrigin: 'anonymous' as const,
           }))
         : []),
+      // The locale-sized manifest replaces runtime OpenType parsing and KUTE
+      // correspondence. Fetch it with the document so the first transition is
+      // ready even when a user taps before the post-hydration idle callback.
+      ...(loaderData?.locale
+        ? [
+            {
+              rel: 'preload',
+              as: 'fetch',
+              type: 'application/json',
+              href: `/font-morph/${loaderData.locale}.json`,
+              crossOrigin: 'anonymous' as const,
+            },
+          ]
+        : []),
       // Dev only: linked stylesheets keep CSS editing live; production
       // inlines the CSS below to remove the only render-blocking requests.
       ...(import.meta.env.DEV

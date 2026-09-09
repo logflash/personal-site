@@ -14,6 +14,7 @@ src/routeTree.gen.ts
 
 # Derived from authored MDX for General Translation's source extractor
 src/generated/
+public/font-morph/*.json
 
 # General Translation recording demos
 .gt-*
@@ -21,5 +22,6 @@ src/generated/
 !repos/gt-rrweb/**/*.mjs
 !repos/font-morph/**/*.mjs
 !scripts/vendor-gt-rrweb.mjs
+!scripts/generate-font-morph-data.mjs
 gt-recording-*.json
 gt-replay-*.json
