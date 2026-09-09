@@ -4,11 +4,11 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
-import { extname, join, normalize } from 'node:path'
+import { extname, resolve, sep } from 'node:path'
 import { gzipSync } from 'node:zlib'
 
 const PORT = process.env.PORT ?? 3000
-const CLIENT_DIR = 'dist/client'
+const CLIENT_DIR = resolve('dist/client')
 const MIME = {
   '.js': 'text/javascript',
   '.css': 'text/css',
@@ -42,8 +42,9 @@ function send(req, res, status, headers, body) {
 createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(req.url.split('?')[0])
-    const filePath = normalize(join(CLIENT_DIR, pathname))
-    if (pathname !== '/' && filePath.startsWith(CLIENT_DIR) && existsSync(filePath)) {
+    const filePath = resolve(CLIENT_DIR, `.${pathname}`)
+    const isClientAsset = filePath.startsWith(`${CLIENT_DIR}${sep}`)
+    if (pathname !== '/' && isClientAsset && existsSync(filePath)) {
       const data = await readFile(filePath).catch(() => null)
       if (data) {
         send(

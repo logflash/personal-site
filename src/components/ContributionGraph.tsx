@@ -1,11 +1,26 @@
-import { T, Var, useGT } from 'gt-react'
 import { memo, useMemo } from 'react'
+import { T, Var } from 'gt-react'
 import { profile } from '../data/site'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
+import { StructuredTranslation, useTranslate } from '../lib/i18n'
 
 const DAYS_PER_WEEK = 7
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
 const MIN_LABEL_GAP_WEEKS = 3
+const CONTRIBUTION_SUMMARY_HASH = '4a68cb0d1371a99a'
+
+// Scan-only source for `gt translate`. This export is never imported, so the
+// function and gt-react bindings are tree-shaken from the browser bundle.
+export function ContributionSummaryTranslationSource() {
+  return (
+    <T>
+      <span>
+        <Var>{0}</Var> Github contributions
+      </span>{' '}
+      <span>in the last year</span>
+    </T>
+  )
+}
 
 /** Column-major weeks, padded so each column starts on Sunday. */
 function toWeeks(days: ContributionDay[]): (ContributionDay | null)[][] {
@@ -56,7 +71,7 @@ interface ContributionGraphProps {
  * largest (~400 nodes).
  */
 export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
-  const gt = useGT()
+  const gt = useTranslate()
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -109,12 +124,12 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
       <div className="cg-meta">
         {/* Halves are nowrap, so a line break can only happen between them */}
         <a href={`https://github.com/${profile.githubUser}`} target="_blank" rel="noreferrer">
-          <T>
-            <span>
-              <Var>{data.total.lastYear}</Var> Github contributions
-            </span>{' '}
-            <span>in the last year</span>
-          </T>
+          <StructuredTranslation
+            hash={CONTRIBUTION_SUMMARY_HASH}
+            variables={{ _gt_value_2: data.total.lastYear }}
+          >
+            <span>{data.total.lastYear} Github contributions</span> <span>in the last year</span>
+          </StructuredTranslation>
         </a>
         <span className="cg-legend" aria-hidden="true">
           {gt('less')}

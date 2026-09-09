@@ -1,10 +1,10 @@
 import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
-import { useMessages } from 'gt-react'
 import type { MouseEvent } from 'react'
 import { navItems, type NavItem } from '../data/site'
 import { useBackToTop } from '../hooks/useHashRoute'
 import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { translationHash } from '../lib/translationHash'
+import { useTranslate } from '../lib/i18n'
 
 interface NavLinksProps {
   items?: NavItem[]
@@ -13,7 +13,7 @@ interface NavLinksProps {
 const rootRoute = getRouteApi('__root__')
 
 export function NavLinks({ items = navItems }: NavLinksProps) {
-  const m = useMessages()
+  const translate = useTranslate()
   const { locale } = rootRoute.useLoaderData()
   const backToTop = useBackToTop()
   const resumeMorphHandlers = useFontMorphNavigation('resume-title')
@@ -30,10 +30,10 @@ export function NavLinks({ items = navItems }: NavLinksProps) {
 
   return (
     <>
-      {/* useMessages renders bare translated text, so preserve the source hash
+      {/* String translations render as bare text, so preserve the source hash
           explicitly for locale-independent gt-rrweb overlays. */}
       {items.map(({ id, label }) => {
-        const content = m(label)
+        const content = translate(label)
         const sharedProps = {
           'data-section': id,
           'data-_gt-hash': translationHash(label),

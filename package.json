@@ -13,7 +13,7 @@
     "prebuild": "node scripts/sync-mdx-messages.js && corepack pnpm run sync:font-morph",
     "build": "vite build && tsc --noEmit",
     "start": "node scripts/serve.mjs",
-    "translate": "node scripts/sync-mdx-messages.js && gt translate && corepack pnpm run sync:font-morph",
+    "translate": "node scripts/sync-mdx-messages.js && gt translate && node scripts/sync-mdx-messages.js && corepack pnpm run sync:font-morph",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/sync-mdx-messages.js && node scripts/check-email-identities.mjs && oxlint --quiet . && oxfmt --check .",
     "lint:fix": "oxlint --quiet --fix . && oxfmt ."

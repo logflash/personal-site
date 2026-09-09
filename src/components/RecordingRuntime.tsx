@@ -1,9 +1,9 @@
 import { record } from '@rrweb/record'
+import { hashMessage } from 'gt-i18n/internal'
 import { GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useRef, useState } from 'react'
 import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecordingRuntime'
-import { translationHash } from '../lib/translationHash'
 import loadTranslations from '../loadTranslations'
 import { FONT_MORPH_EVENT_TAG, FONT_MORPH_RECORD_EVENT } from '../lib/fontMorph'
 
@@ -12,7 +12,9 @@ import { FONT_MORPH_EVENT_TAG, FONT_MORPH_RECORD_EVENT } from '../lib/fontMorph'
 // gt()/useGT()/msg() strings, which render as bare text with no DOM hash.
 const harvest: HarvestOptions = {
   loadTranslations,
-  hashMessage: translationHash,
+  // RecordingRuntime is lazy-loaded after the avatar hold starts, so GT's
+  // general-purpose ICU hasher stays out of the initial page bundle.
+  hashMessage: (message) => hashMessage(message, { $format: 'ICU' }),
 }
 
 const MOBILE_VIEWPORT = '(max-width: 880px)'

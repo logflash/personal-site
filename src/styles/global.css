@@ -311,7 +311,7 @@ main {
   gap: 8px;
 }
 
-/* gt-react's LocaleSelector renders a native <select>; match the site chrome */
+/* The locale switcher is a native <select>; match it to the site chrome. */
 .side-footer select,
 .mobile-header select {
   appearance: none;
