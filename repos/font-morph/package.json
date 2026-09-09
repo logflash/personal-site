@@ -2,7 +2,7 @@
   "name": "font-morph",
   "version": "0.0.0",
   "description": "A lightweight JavaScript library for morphing the same text between different fonts.",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "main": "dist/index.cjs",
@@ -24,10 +24,11 @@
         "default": "./dist/index.mjs"
       }
     },
+    "./outline-worker.js": "./dist/outline-worker.js",
     "./styles.css": "./styles.css"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown && esbuild src/outline.worker.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=dist/outline-worker.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint --quiet src e2e",

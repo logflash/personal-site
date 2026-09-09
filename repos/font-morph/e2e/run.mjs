@@ -4,6 +4,7 @@ import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import opentype from 'opentype.js'
+import { compileFontMorphManifest } from '../dist/index.mjs'
 import { getBrowser, newPage } from './browser.mjs'
 
 function glyphPath({ serif }) {
@@ -71,7 +72,12 @@ const html = `<!doctype html>
     <style>
       @font-face { font-family: "Fixture Sans"; src: url("/sans.otf"); }
       @font-face { font-family: "Fixture Serif"; src: url("/serif.otf"); }
-      :root { --font-morph-duration: 640ms; }
+      :root {
+        --font-morph-duration: 640ms;
+        --font-morph-sans-weight: 400;
+        --font-morph-serif-weight: 400;
+        --font-morph-serif-optical-size: 104;
+      }
       body { margin: 0; min-height: 100vh; background: #fff; }
       #fixture { position: relative; height: 600px; }
       .endpoint { position: absolute; display: inline-block; white-space: pre; line-height: 1; }
@@ -86,30 +92,56 @@ const html = `<!doctype html>
   </body>
 </html>`
 
-const [{ text: bundle }] = (
-  await build({
-    entryPoints: [fileURLToPath(new URL('./fixture.ts', import.meta.url))],
-    bundle: true,
-    format: 'esm',
-    platform: 'browser',
-    target: 'es2022',
-    write: false,
-  })
-).outputFiles
+const fixtureBuild = await build({
+  entryPoints: [fileURLToPath(new URL('./fixture.ts', import.meta.url))],
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2022',
+  write: false,
+})
+const [{ text: bundle }] = fixtureBuild.outputFiles
+const workerBundle = await readFile(new URL('../dist/outline-worker.js', import.meta.url))
+
+const sansFont = fixtureFont('Fixture Sans', false)
+const serifFont = fixtureFont('Fixture Serif', true)
+const preparedManifest = await compileFontMorphManifest(
+  {
+    sans: [sansFont.buffer.slice(sansFont.byteOffset, sansFont.byteOffset + sansFont.byteLength)],
+    serif: [serifFont.buffer.slice(serifFont.byteOffset, serifFont.byteOffset + serifFont.byteLength)],
+  },
+  [
+    {
+      text: 'ee',
+      source: { role: 'sans', weight: 400, opticalSize: 0 },
+      target: { role: 'serif', weight: 400, opticalSize: 104 },
+    },
+  ],
+)
 
 const assets = new Map([
   ['/', ['text/html; charset=utf-8', Buffer.from(html)]],
   ['/bundle.js', ['text/javascript; charset=utf-8', Buffer.from(bundle)]],
+  ['/outline-worker.js', ['text/javascript; charset=utf-8', workerBundle]],
+  [
+    '/prepared.json',
+    ['application/json; charset=utf-8', Buffer.from(JSON.stringify(preparedManifest))],
+  ],
   ['/favicon.ico', ['image/x-icon', Buffer.alloc(0)]],
   [
     '/styles.css',
     ['text/css; charset=utf-8', Buffer.from(await readFile(new URL('../styles.css', import.meta.url)))],
   ],
-  ['/sans.otf', ['font/otf', fixtureFont('Fixture Sans', false)]],
-  ['/serif.otf', ['font/otf', fixtureFont('Fixture Serif', true)]],
+  ['/sans.otf', ['font/otf', sansFont]],
+  ['/serif.otf', ['font/otf', serifFont]],
+  ['/sans-outline.otf', ['font/otf', sansFont]],
+  ['/serif-outline.otf', ['font/otf', serifFont]],
 ])
 
+const requests = new Map()
+
 const server = createServer((request, response) => {
+  requests.set(request.url, (requests.get(request.url) ?? 0) + 1)
   const asset = assets.get(request.url ?? '/')
   if (!asset) {
     response.writeHead(404).end('Not found')
@@ -142,6 +174,8 @@ try {
     return performance.now() - started
   })
   assert(preparation >= 0, 'preparation should complete')
+  assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
+  assert.equal(requests.get('/serif-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
   assert.equal(await page.evaluate(() => window.fontMorphFixture.start()), true)
 
   await page.waitForSelector('.font-morph-layer path', { state: 'attached' })
@@ -168,18 +202,29 @@ try {
     await page.waitForTimeout(65)
   }
 
-  const contourCounts = new Set(samples.map((sample) => sample.paths.length))
+  // Resizing a real browser can outlast the fixture's animation on slower CI
+  // machines. Completed frames are valid; inspect every sample captured while
+  // the morph layer was still active.
+  const activeSamples = samples.filter((sample) => sample.paths.length > 0)
+  assert(activeSamples.length >= 5, 'the live morph should expose enough frames to inspect')
+  const contourCounts = new Set(activeSamples.map((sample) => sample.paths.length))
   assert.deepEqual([...contourCounts], [4], 'each glyph boundary and hole should remain separate')
   assert(
-    samples.every(
+    activeSamples.every(
       (sample) =>
         sample.fills.filter((fill) => fill === 'white').length === 2 &&
         sample.fills.filter((fill) => fill === 'black').length === 2,
     ),
     'both glyphs should retain one outer boundary and one hole',
   )
-  assert(new Set(samples.map((sample) => sample.paths.join('|'))).size >= 5, 'outlines should interpolate across frames')
-  assert(new Set(samples.map((sample) => `${sample.transform}|${sample.width}`)).size >= 5, 'the shared box should interpolate and track layout')
+  assert(
+    new Set(activeSamples.map((sample) => sample.paths.join('|'))).size >= 5,
+    'outlines should interpolate across frames',
+  )
+  assert(
+    new Set(activeSamples.map((sample) => `${sample.transform}|${sample.width}`)).size >= 5,
+    'the shared box should interpolate and track layout',
+  )
 
   await page.waitForFunction(() => !document.querySelector('.font-morph-layer'), null, {
     timeout: 3_000,
@@ -197,7 +242,14 @@ try {
   assert.equal(settled.active, false)
   assert.equal(settled.fallback, false)
   assert.equal(settled.events, 1, 'a completed morph should emit one semantic event')
+  assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'forward morph should use prepared data')
 
+  // The tracking assertion above deliberately moved the destination to an
+  // uncompiled optical size. Restore the compiled endpoint before exercising
+  // the reverse prepared-data path; worker fallback is tested separately.
+  await page.evaluate(() =>
+    document.querySelector('[data-font-morph="sample"]')?.classList.remove('moved'),
+  )
   assert.equal(await page.evaluate(() => window.fontMorphFixture.reverse()), true)
   await page.waitForSelector('.font-morph-layer path', { state: 'attached' })
   await page.waitForFunction(() => !document.querySelector('.font-morph-layer'), null, {
@@ -208,11 +260,19 @@ try {
     true,
     'the same routine should morph in both font directions',
   )
+  assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'reverse morph should use prepared data')
 
   await page.evaluate(async () => {
     window.fontMorphFixture.show('serif')
     await window.fontMorphFixture.prepareReplay()
   })
+  assert.equal(
+    requests.get('/sans-outline.otf') ?? 0,
+    0,
+    `replay preparation should use prepared data: ${JSON.stringify(
+      await page.evaluate(() => window.fontMorphFixture.workerRequests),
+    )}`,
+  )
   const replayPathAt = (time) =>
     page.evaluate((replayTime) => {
       window.fontMorphFixture.replayAt(replayTime)
@@ -234,6 +294,16 @@ try {
   )
   await page.evaluate(() => window.fontMorphFixture.stopReplay())
   assert.equal(await page.locator('.font-morph-director-layer').count(), 0)
+  assert.equal(
+    requests.get('/sans-outline.otf') ?? 0,
+    0,
+    'prepared live and replay paths should stay off the compiler worker',
+  )
+  assert.equal(requests.get('/serif-outline.otf') ?? 0, 0)
+
+  await page.evaluate(() => window.fontMorphFixture.prepareUnknown())
+  assert.equal(requests.get('/sans-outline.otf'), 1, 'unknown text should use the worker fallback')
+  assert.equal(requests.get('/serif-outline.otf'), 1, 'unknown text should use the worker fallback')
   assert.deepEqual(errors, [])
 
   console.log(`font-morph browser checks passed (preparation ${preparation.toFixed(1)}ms)`)

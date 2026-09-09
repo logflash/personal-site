@@ -8,5 +8,7 @@ describe('font-morph package entry', () => {
     expect(fontMorph.beginFontMorph).toBeTypeOf('function')
     expect(fontMorph.prepareFontMorphReplay).toBeTypeOf('function')
     expect(fontMorph.createFontMorphReplayDirector).toBeTypeOf('function')
+    expect(fontMorph.createFontMorphCompiler).toBeTypeOf('function')
+    expect(fontMorph.compileFontMorphManifest).toBeTypeOf('function')
   })
 })

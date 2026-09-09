@@ -67,9 +67,9 @@ export function ReplayOverlay({
     [morphTranslations],
   )
 
-  // GTReplayer starts its clock as soon as it mounts. Load KUTE, both outline
-  // fonts, and locale text first so neither path preparation nor translation
-  // can join an animation midway.
+  // GTReplayer starts its clock as soon as it mounts. Load build-generated
+  // outlines and locale text first so neither path preparation nor translation
+  // can join an animation midway. Unknown text falls back to the worker.
   useEffect(() => {
     let current = true
     setDirectorReady(false)

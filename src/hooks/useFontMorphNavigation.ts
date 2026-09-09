@@ -24,10 +24,9 @@ export function useFontMorphNavigation(key: string) {
   }, [key])
 
   useEffect(() => {
-    // Fetch/parse the outline faces and run KUTE's contour correspondence as
-    // soon as the initial page has become interactive. This is intentionally
-    // idle work: it removes preparation from the click path without delaying
-    // first paint or hydration.
+    // Decode the build-generated, locale-sized correspondence manifest as soon
+    // as the initial page is interactive. Unknown text is prepared in a worker;
+    // neither path can add OpenType parsing to the main-thread click path.
     if ('requestIdleCallback' in window) {
       const idleId = window.requestIdleCallback(prepare, { timeout: 1_500 })
       return () => window.cancelIdleCallback(idleId)
