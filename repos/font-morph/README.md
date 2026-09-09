@@ -70,6 +70,19 @@ event and frame types, so a host can connect them to any deterministic replay cl
 The replay reader also accepts the legacy `gt-font-morph` event tag, keeping recordings
 from before this package extraction compatible.
 
+## React + TypeScript demo
+
+The isolated demo renders the real controlled-progress API against English, Spanish,
+and Japanese text. Its two low-opacity endpoints stay mounted while a range input
+scrubs the topology-preserving SVG outline between their exact boxes.
+
+```sh
+corepack pnpm --filter font-morph demo
+```
+
+The demo is served by Vite with hot reloading. It lives entirely under `demo/` and is
+not bundled into the package or the parent personal site.
+
 ## Verification
 
 ```sh
@@ -77,4 +90,5 @@ corepack pnpm --filter font-morph lint
 corepack pnpm --filter font-morph typecheck
 corepack pnpm --filter font-morph test
 corepack pnpm --filter font-morph e2e
+corepack pnpm --filter font-morph demo:test
 ```
