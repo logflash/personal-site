@@ -1,7 +1,6 @@
 import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { GTProvider, getLocale, getTranslationsSnapshot } from 'gt-tanstack-start'
 import type { ReactNode } from 'react'
 import fontMorphCssUrl from '../../repos/font-morph/styles.css?url'
 import { LazyReplayOverlay } from '../components/LazyReplayOverlay'
@@ -12,6 +11,8 @@ import {
   type RecordingRuntimeStatus,
 } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
+import { TranslationProvider } from '../lib/i18n'
+import loadTranslations from '../loadTranslations'
 import fontsCssUrl from '../styles/fonts.css?url'
 import globalCssUrl from '../styles/global.css?url'
 
@@ -32,10 +33,10 @@ const INITIAL_LAYOUT_SCRIPT = `try{document.querySelectorAll('.cg-scroller').for
 
 export const Route = createRootRoute({
   loader: async ({ location }) => {
-    // The path prefix is the source of truth; gtMiddleware's cookie/header
-    // detection only decides where the bare `/` redirects (routes/index.tsx).
-    const locale = localeFromPath(location.pathname) ?? getLocale() ?? DEFAULT_LOCALE
-    return { locale, translations: await getTranslationsSnapshot(locale) }
+    // The path prefix is the source of truth; the bare `/` route performs
+    // cookie/header detection before redirecting here (routes/index.tsx).
+    const locale = localeFromPath(location.pathname) ?? DEFAULT_LOCALE
+    return { locale, translations: await loadTranslations(locale) }
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -44,18 +45,22 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'icon', type: 'image/png', href: '/avatar.png' },
-      // Preload every self-hosted latin font file. IBM Plex Sans is one shared
-      // variable resource for all four declared weights, so one preload warms
-      // every sans face without four copies competing on a cold visit.
-      ...['ibm-plex-sans-400-latin', 'jetbrains-mono-400-latin', 'source-serif-4-600-latin'].map(
-        (font) => ({
-          rel: 'preload',
-          as: 'font',
-          type: 'font/woff2',
-          href: `/fonts/${font}.woff2`,
-          crossOrigin: 'anonymous' as const,
-        }),
-      ),
+      // All three faces still start fetching from the document, preserving a
+      // flicker-free warm refresh. Only the above-the-fold body face competes
+      // at high priority; mono/serif and morph preparation remain eager but
+      // cannot delay the LCP face or the hydration entry on a cold mobile link.
+      ...[
+        ['ibm-plex-sans-400-latin', 'high'],
+        ['jetbrains-mono-400-latin', 'low'],
+        ['source-serif-4-600-latin', 'low'],
+      ].map(([font, fetchPriority]) => ({
+        rel: 'preload',
+        as: 'font',
+        type: 'font/woff2',
+        href: `/fonts/${font}.woff2`,
+        crossOrigin: 'anonymous' as const,
+        fetchPriority,
+      })),
       ...(loaderData?.locale === 'ja'
         ? ['noto-sans-jp-400-outline', 'noto-serif-jp-600-outline'].map((font) => ({
             rel: 'preload',
@@ -76,6 +81,7 @@ export const Route = createRootRoute({
               type: 'application/json',
               href: `/font-morph/${loaderData.locale}.json`,
               crossOrigin: 'anonymous' as const,
+              fetchPriority: 'low',
             },
           ]
         : []),
@@ -140,11 +146,11 @@ function RootDocument({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: the theme script may set data-theme pre-hydration
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: DISPLAY_BOOT_SCRIPT }} />
+        <script>{DISPLAY_BOOT_SCRIPT}</script>
         <HeadContent />
       </head>
       <body>
-        <GTProvider locale={locale} translations={translations}>
+        <TranslationProvider locale={locale} translations={translations}>
           <RecordingRuntimeContext.Provider value={recorderControls}>
             {children}
             {RecordingRuntime ? (
@@ -162,8 +168,8 @@ function RootDocument({ children }: { children: ReactNode }) {
               />
             ) : null}
           </RecordingRuntimeContext.Provider>
-        </GTProvider>
-        <script dangerouslySetInnerHTML={{ __html: INITIAL_LAYOUT_SCRIPT }} />
+        </TranslationProvider>
+        <script>{INITIAL_LAYOUT_SCRIPT}</script>
         <Scripts />
       </body>
     </html>

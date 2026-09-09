@@ -1,8 +1,6 @@
 // Identity and navigation stay in TypeScript because they are shared by page
 // chrome, route metadata, and server loaders. Long-form page copy lives in
 // src/content/*.mdx.
-import { msg } from 'gt-react'
-
 export interface NavItem {
   id: string
   label: string
@@ -18,11 +16,11 @@ export const profile = {
 }
 
 export const navItems: NavItem[] = [
-  { id: 'home', label: msg('Home') },
-  { id: 'about', label: msg('About') },
-  { id: 'research', label: msg('Research') },
-  { id: 'projects', label: msg('Projects') },
-  { id: 'contact', label: msg('Contact') },
+  { id: 'home', label: 'Home' },
+  { id: 'about', label: 'About' },
+  { id: 'research', label: 'Research' },
+  { id: 'projects', label: 'Projects' },
+  { id: 'contact', label: 'Contact' },
 ]
 
 // The mobile pill nav omits Home: the top bar isn't sticky, so a back-to-top

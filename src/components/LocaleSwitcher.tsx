@@ -1,7 +1,12 @@
-import { getLocaleProperties, useLocale } from 'gt-react'
 import { useRef } from 'react'
 import loadTranslations from '../loadTranslations'
-import { SUPPORTED_LOCALES, pathnameForLocale, persistLocaleCookie } from '../lib/localePath'
+import { useLocale } from '../lib/i18n'
+import {
+  LOCALE_NATIVE_NAMES,
+  SUPPORTED_LOCALES,
+  pathnameForLocale,
+  persistLocaleCookie,
+} from '../lib/localePath'
 
 const prefetchedDocuments = new Set<string>()
 
@@ -80,7 +85,7 @@ export function LocaleSwitcher({ suppressInteraction = false }: { suppressIntera
     >
       {SUPPORTED_LOCALES.map((code) => (
         <option key={code} value={code}>
-          {getLocaleProperties(code).nativeName}
+          {LOCALE_NATIVE_NAMES[code] ?? code}
         </option>
       ))}
     </select>

@@ -1,6 +1,7 @@
 import { GTReplayer } from 'gt-rrweb/replay'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
 import { harvestLocales } from 'gt-rrweb/harvest'
+import { hashMessage } from 'gt-i18n/internal'
 import type { DragEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
@@ -11,7 +12,6 @@ import {
   reserveFontMorphSettledTextHolds,
 } from '../lib/fontMorph'
 import { parseRecording } from '../lib/recordingDrop'
-import { translationHash } from '../lib/translationHash'
 import loadTranslations from '../loadTranslations'
 
 type MorphTranslationTable = Awaited<ReturnType<typeof loadTranslations>>
@@ -106,7 +106,7 @@ export function ReplayOverlay({
         const repaired = await harvestLocales(events, locales, {
           sourceLocale: locales[0],
           loadTranslations: async (locale) => translations[locale] ?? {},
-          hashMessage: translationHash,
+          hashMessage: (message) => hashMessage(message, { $format: 'ICU' }),
         })
         const overlay = { ...bundle.overlay }
         for (const [locale, entries] of Object.entries(repaired)) {

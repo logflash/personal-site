@@ -1,11 +1,11 @@
-import { useGT } from 'gt-react'
+import { useTranslate } from '../lib/i18n'
 
 interface ThemeToggleProps {
   onToggle: () => void
 }
 
 export function ThemeToggle({ onToggle }: ThemeToggleProps) {
-  const gt = useGT()
+  const gt = useTranslate()
   return (
     <button
       type="button"

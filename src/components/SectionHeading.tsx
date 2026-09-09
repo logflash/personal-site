@@ -1,6 +1,6 @@
-import { useGT } from 'gt-react'
 import { useBackToTop } from '../hooks/useHashRoute'
 import { useScrolled } from '../hooks/useScrolled'
+import { useTranslate } from '../lib/i18n'
 
 interface SectionHeadingProps {
   id: string
@@ -18,7 +18,7 @@ interface SectionHeadingProps {
  * scrolled, jumping back to the top.
  */
 export function SectionHeading({ id, title, translationHash, tight }: SectionHeadingProps) {
-  const gt = useGT()
+  const gt = useTranslate()
   const scrolled = useScrolled()
   const backToTop = useBackToTop()
 

@@ -1,4 +1,3 @@
-import { useLocale } from 'gt-react'
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
 import type { DragEvent, MouseEvent, ReactNode } from 'react'
 import { useRef, useState } from 'react'
@@ -7,6 +6,7 @@ import { profile } from '../data/site'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromPath } from '../lib/localePath'
 import { parseRecording } from '../lib/recordingDrop'
+import { useLocale } from '../lib/i18n'
 import { LazyReplayOverlay } from './LazyReplayOverlay'
 
 /** Hold duration before the avatar gesture starts a localized recording. */
