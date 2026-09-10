@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import * as compiler from '../compiler'
+import * as sdf from '../sdf-runtime'
 import * as fontMorph from '../index'
 
 describe('font-morph package entry', () => {
@@ -10,5 +12,13 @@ describe('font-morph package entry', () => {
     expect(fontMorph.createFontMorphReplayDirector).toBeTypeOf('function')
     expect(fontMorph.createFontMorphCompiler).toBeTypeOf('function')
     expect(fontMorph.compileFontMorphManifest).toBeTypeOf('function')
+    expect(fontMorph.fontMorphPreparedKey).toBeTypeOf('function')
+  })
+
+  it('exposes separate compiler and dependency-free SDF APIs', () => {
+    expect(compiler.parseFontMorphFont).toBeTypeOf('function')
+    expect(compiler.shapeFontMorphRun).toBeTypeOf('function')
+    expect(compiler.compileSdfGlyphPair).toBeTypeOf('function')
+    expect(sdf.renderFontMorphSdfFrame).toBeTypeOf('function')
   })
 })

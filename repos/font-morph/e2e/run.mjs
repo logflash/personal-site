@@ -4,7 +4,12 @@ import { createServer } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
 import opentype from 'opentype.js'
-import { compileFontMorphManifest } from '../dist/index.mjs'
+import { compileFontMorphManifest, fontMorphPreparedKey } from '../dist/index.mjs'
+import {
+  compileSdfGlyphPairs,
+  parseFontMorphFont,
+  shapeFontMorphInstantiatedRun,
+} from '../dist/compiler/index.mjs'
 import { getBrowser, newPage } from './browser.mjs'
 
 function glyphPath({ serif }) {
@@ -73,7 +78,8 @@ const html = `<!doctype html>
       @font-face { font-family: "Fixture Sans"; src: url("/sans.otf"); }
       @font-face { font-family: "Fixture Serif"; src: url("/serif.otf"); }
       :root {
-        --font-morph-duration: 640ms;
+        /* Keep the live test open long enough for resize sampling on slow CI. */
+        --font-morph-duration: 1600ms;
         --font-morph-sans-weight: 400;
         --font-morph-serif-weight: 400;
         --font-morph-serif-optical-size: 104;
@@ -105,19 +111,64 @@ const workerBundle = await readFile(new URL('../dist/outline-worker.js', import.
 
 const sansFont = fixtureFont('Fixture Sans', false)
 const serifFont = fixtureFont('Fixture Serif', true)
-const preparedManifest = await compileFontMorphManifest(
+const sourceInstance = { role: 'sans', weight: 400, opticalSize: 0 }
+const targetInstance = { role: 'serif', weight: 400, opticalSize: 104 }
+const sourceInput = {
+  data: sansFont.buffer.slice(sansFont.byteOffset, sansFont.byteOffset + sansFont.byteLength),
+}
+const targetInput = {
+  data: serifFont.buffer.slice(serifFont.byteOffset, serifFont.byteOffset + serifFont.byteLength),
+}
+const outlineManifest = await compileFontMorphManifest(
   {
-    sans: [sansFont.buffer.slice(sansFont.byteOffset, sansFont.byteOffset + sansFont.byteLength)],
-    serif: [serifFont.buffer.slice(serifFont.byteOffset, serifFont.byteOffset + serifFont.byteLength)],
+    sans: [sourceInput.data],
+    serif: [targetInput.data],
   },
   [
     {
       text: 'ee',
-      source: { role: 'sans', weight: 400, opticalSize: 0 },
-      target: { role: 'serif', weight: 400, opticalSize: 104 },
+      source: sourceInstance,
+      target: targetInstance,
     },
   ],
 )
+const sourceParsed = parseFontMorphFont(sourceInput)
+const targetParsed = parseFontMorphFont(targetInput)
+const [sdfGlyph] = compileSdfGlyphPairs(sourceInput, targetInput, ['e'], {
+  size: 64,
+  pixelsPerEm: 512,
+  maximumDistance: 64,
+  supersampling: 4,
+})
+const serializeEndpoint = ({ distance, ...endpoint }) => ({
+  ...endpoint,
+  distanceBase64: Buffer.from(distance).toString('base64'),
+})
+const preparedManifest = {
+  version: 2,
+  outlines: outlineManifest.outlines,
+  sdfMorphs: {
+    [fontMorphPreparedKey('ee', sourceInstance, targetInstance)]: {
+      sourceRun: shapeFontMorphInstantiatedRun(sourceParsed.outlineFont, {
+        text: 'ee',
+        fontInstanceId: sourceParsed.instance.id,
+        language: 'en',
+      }),
+      targetRun: shapeFontMorphInstantiatedRun(targetParsed.outlineFont, {
+        text: 'ee',
+        fontInstanceId: targetParsed.instance.id,
+        language: 'en',
+      }),
+      glyphs: {
+        e: {
+          ...sdfGlyph,
+          source: serializeEndpoint(sdfGlyph.source),
+          target: serializeEndpoint(sdfGlyph.target),
+        },
+      },
+    },
+  },
+}
 
 const assets = new Map([
   ['/', ['text/html; charset=utf-8', Buffer.from(html)]],
@@ -178,7 +229,9 @@ try {
   assert.equal(requests.get('/serif-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
   assert.equal(await page.evaluate(() => window.fontMorphFixture.start()), true)
 
-  await page.waitForSelector('.font-morph-layer path', { state: 'attached' })
+  await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {
+    state: 'attached',
+  })
   const samples = []
   for (let index = 0; index < 8; index += 1) {
     if (index === 3) {
@@ -188,12 +241,34 @@ try {
     samples.push(
       await page.evaluate(() => {
         const layer = document.querySelector('.font-morph-layer')
+        if (!(layer instanceof HTMLCanvasElement)) return null
+        const pixels = layer.getContext('2d')?.getImageData(0, 0, layer.width, layer.height).data
+        if (!pixels) return null
+        let alphaPixels = 0
+        let minX = layer.width
+        let minY = layer.height
+        let maxX = -1
+        let maxY = -1
+        let hash = 2_166_136_261
+        for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
+          const alpha = pixels[pixel * 4 + 3]
+          hash = Math.imul(hash ^ alpha, 16_777_619) >>> 0
+          if (!alpha) continue
+          alphaPixels += 1
+          const x = pixel % layer.width
+          const y = Math.floor(pixel / layer.width)
+          minX = Math.min(minX, x)
+          minY = Math.min(minY, y)
+          maxX = Math.max(maxX, x)
+          maxY = Math.max(maxY, y)
+        }
         const endpoint = document.querySelector('[data-font-morph="sample"]')
         return {
-          paths: [...(layer?.querySelectorAll('path') ?? [])].map((path) => path.getAttribute('d')),
-          fills: [...(layer?.querySelectorAll('path') ?? [])].map((path) => path.getAttribute('fill')),
-          transform: layer?.style.transform,
-          width: layer?.style.width,
+          renderer: layer.dataset.fontMorphRenderer,
+          hash,
+          alphaPixels,
+          inkBounds: { minX, minY, maxX, maxY },
+          canvas: { width: layer.width, height: layer.height },
           endpoint: endpoint?.getBoundingClientRect().toJSON(),
           active: document.documentElement.dataset.fontMorphActive,
         }
@@ -205,25 +280,30 @@ try {
   // Resizing a real browser can outlast the fixture's animation on slower CI
   // machines. Completed frames are valid; inspect every sample captured while
   // the morph layer was still active.
-  const activeSamples = samples.filter((sample) => sample.paths.length > 0)
+  const activeSamples = samples.filter(Boolean)
   assert(activeSamples.length >= 5, 'the live morph should expose enough frames to inspect')
-  const contourCounts = new Set(activeSamples.map((sample) => sample.paths.length))
-  assert.deepEqual([...contourCounts], [4], 'each glyph boundary and hole should remain separate')
+  assert(
+    activeSamples.every((sample) => sample.renderer === 'sdf' && sample.alphaPixels > 0),
+    'every active distance-field frame should contain visible ink',
+  )
+  assert(
+    new Set(activeSamples.map((sample) => sample.hash)).size >= 4,
+    'distance fields should interpolate across frames',
+  )
+  assert(
+    activeSamples.some((sample) => sample.canvas.width === 900) &&
+      activeSamples.some((sample) => sample.canvas.width === 760),
+    'the renderer should resize with the viewport during the transition',
+  )
+  assert(
+    new Set(activeSamples.map((sample) => sample.inkBounds.minX)).size >= 3,
+    'the interpolated ink should track a destination that moves during the transition',
+  )
   assert(
     activeSamples.every(
-      (sample) =>
-        sample.fills.filter((fill) => fill === 'white').length === 2 &&
-        sample.fills.filter((fill) => fill === 'black').length === 2,
+      (sample) => sample.inkBounds.maxX >= sample.inkBounds.minX,
     ),
-    'both glyphs should retain one outer boundary and one hole',
-  )
-  assert(
-    new Set(activeSamples.map((sample) => sample.paths.join('|'))).size >= 5,
-    'outlines should interpolate across frames',
-  )
-  assert(
-    new Set(activeSamples.map((sample) => `${sample.transform}|${sample.width}`)).size >= 5,
-    'the shared box should interpolate and track layout',
+    'every rendered frame should retain a non-empty ink box',
   )
 
   await page.waitForFunction(() => !document.querySelector('.font-morph-layer'), null, {
@@ -242,6 +322,11 @@ try {
   assert.equal(settled.active, false)
   assert.equal(settled.fallback, false)
   assert.equal(settled.events, 1, 'a completed morph should emit one semantic event')
+  assert.doesNotMatch(
+    JSON.stringify(await page.evaluate(() => window.fontMorphFixture.events[0])),
+    /distanceBase64|glyphs|sdfMorphs/,
+    'recordings should contain only the semantic transition event, never build geometry',
+  )
   assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'forward morph should use prepared data')
 
   // The tracking assertion above deliberately moved the destination to an
@@ -251,7 +336,9 @@ try {
     document.querySelector('[data-font-morph="sample"]')?.classList.remove('moved'),
   )
   assert.equal(await page.evaluate(() => window.fontMorphFixture.reverse()), true)
-  await page.waitForSelector('.font-morph-layer path', { state: 'attached' })
+  await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {
+    state: 'attached',
+  })
   await page.waitForFunction(() => !document.querySelector('.font-morph-layer'), null, {
     timeout: 3_000,
   })
@@ -273,24 +360,34 @@ try {
       await page.evaluate(() => window.fontMorphFixture.workerRequests),
     )}`,
   )
-  const replayPathAt = (time) =>
+  const replayFrameAt = (time) =>
     page.evaluate((replayTime) => {
       window.fontMorphFixture.replayAt(replayTime)
-      return [...document.querySelectorAll('.font-morph-director-layer path')].map((path) =>
-        path.getAttribute('d'),
-      )
+      const layer = document.querySelector('.font-morph-director-layer')
+      if (!(layer instanceof HTMLCanvasElement)) return null
+      const pixels = layer.getContext('2d')?.getImageData(0, 0, layer.width, layer.height).data
+      if (!pixels) return null
+      let alphaPixels = 0
+      let hash = 2_166_136_261
+      for (let pixel = 0; pixel < pixels.length / 4; pixel += 1) {
+        const alpha = pixels[pixel * 4 + 3]
+        hash = Math.imul(hash ^ alpha, 16_777_619) >>> 0
+        if (alpha) alphaPixels += 1
+      }
+      return { renderer: layer.dataset.fontMorphRenderer, hash, alphaPixels }
     }, time)
-  const early = await replayPathAt(120)
-  const middle = await replayPathAt(320)
-  const late = await replayPathAt(520)
-  assert.equal(early.length, 4)
+  const early = await replayFrameAt(120)
+  const middle = await replayFrameAt(320)
+  const late = await replayFrameAt(520)
+  assert.equal(early?.renderer, 'sdf')
+  assert((early?.alphaPixels ?? 0) > 0)
   assert.notDeepEqual(early, middle)
   assert.notDeepEqual(middle, late)
-  await replayPathAt(580)
+  await replayFrameAt(580)
   assert.deepEqual(
-    await replayPathAt(120),
+    await replayFrameAt(120),
     early,
-    'rewinding should reconstruct outlines solely from replay time',
+    'rewinding should reconstruct distance fields solely from replay time',
   )
   await page.evaluate(() => window.fontMorphFixture.stopReplay())
   assert.equal(await page.locator('.font-morph-director-layer').count(), 0)

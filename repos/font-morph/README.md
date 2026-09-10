@@ -2,11 +2,11 @@
 
 A lightweight JavaScript library for morphing the same text between different fonts.
 
-The library turns matching text elements into topology-preserving SVG outline
-animations. It supports build-generated KUTE correspondence, worker-only runtime
-compilation, per-contour interpolation, responsive destination tracking,
-deterministic time-based replay, Unicode fallback fonts, and a final handoff to
-browser-rendered text.
+The library turns matching text elements into continuous font-shape animations.
+Its preferred renderer interpolates build-generated signed-distance fields; the
+earlier prepared SVG/KUTE renderer remains as a compatibility fallback for text
+that has not been compiled. Both paths support responsive destination tracking,
+deterministic time-based replay, Unicode fallback fonts, and exact settled DOM text.
 
 This package currently lives as a local workspace repository while its public API and
 tests mature. It has no upstream remote or vendored third-party source.
@@ -14,8 +14,12 @@ tests mature. It has no upstream remote or vendored third-party source.
 ## Usage
 
 Generate a serializable manifest for known text during the host application's build.
-The compiler receives font buffers and viewport-independent font instances; its normalized
-output contains no viewport dimensions or DOM nodes.
+The compiler receives font buffers and viewport-independent font instances; its output
+contains no viewport dimensions or DOM nodes. Host applications can combine prepared
+SDF glyph pairs and shaped runs in a version-2 manifest while retaining version-1
+outlines as a fallback. The personal-site integration discovers its strings, locales,
+font stacks, responsive weights, and optical sizes automatically from MDX, translation
+catalogs, and CSS.
 
 ```ts
 import { compileFontMorphManifest } from 'font-morph'
@@ -32,7 +36,7 @@ const manifest = await compileFontMorphManifest(
 )
 ```
 
-Configure outline URLs and a manifest loader once, mark both text endpoints with
+Configure font URLs and a manifest loader once, mark both text endpoints with
 the same `data-font-morph` value, call `prepareFontMorph()` before interaction when
 possible, then call `beginFontMorph()` immediately before the DOM changes.
 
@@ -65,16 +69,19 @@ If neither prepared data nor a worker is available, the library immediately reve
 the settled browser-rendered text instead of parsing fonts on the main thread.
 
 The core package has no dependency on a router, UI framework, recording library,
-or application-specific translations. Its optional replay helpers accept structural
+or application-specific translations. Its optional replay helpers accept semantic
 event and frame types, so a host can connect them to any deterministic replay clock.
 The replay reader also accepts the legacy `gt-font-morph` event tag, keeping recordings
-from before this package extraction compatible.
+from before this package extraction compatible. Recordings store only the semantic
+transition identity, timing, normalized endpoint boxes, and text styles; SDF textures,
+SVG paths, and per-frame output never enter the recording.
 
 ## React + TypeScript demo
 
-The isolated demo renders the real controlled-progress API against English, Spanish,
-and Japanese text. Its two low-opacity endpoints stay mounted while a range input
-scrubs the topology-preserving SVG outline between their exact boxes.
+The isolated demo renders English, Spanish, and Japanese text. Its two low-opacity
+endpoints stay mounted while a range input scrubs the morph between their exact boxes.
+Use `?renderer=sdf` for the signed-distance renderer; the default view retains the
+controlled SVG fallback for comparison.
 
 ```sh
 corepack pnpm --filter font-morph demo

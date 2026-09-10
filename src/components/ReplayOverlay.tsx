@@ -68,7 +68,7 @@ export function ReplayOverlay({
   )
 
   // GTReplayer starts its clock as soon as it mounts. Load build-generated
-  // outlines and locale text first so neither path preparation nor translation
+  // morph data and locale text first so neither preparation nor translation
   // can join an animation midway. Unknown text falls back to the worker.
   useEffect(() => {
     let current = true

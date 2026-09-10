@@ -1466,9 +1466,13 @@ function createPlayerInstance(
     // we're mid/post-scrub (engine mode, visible doc morphed), hand rendering back
     // first so the mirror + DOM are authoritative again.
     if (engineMode) {
+      // Read the engine clock before changing which clock curTime() selects.
+      // Otherwise a locale switch after scrubbing seeks back to the stale,
+      // frozen visible-player time and host frame directors receive a rewind.
+      const timelineTime = curTime();
       engineMode = false;
       revealGateArmed = true;
-      replayer.pause(curTime());
+      replayer.pause(timelineTime);
     }
     try {
       const isSource = !loc || loc === SOURCE_LOCALE;
@@ -1478,16 +1482,22 @@ function createPlayerInstance(
       }
       // revert previously-swapped nodes to their recorded source text
       const oldOverlay = overlay;
-      if (oldOverlay && mirror) {
+      const revertOverlay = (targetMirror: ReplayMirror | null) => {
+        if (!oldOverlay || !targetMirror) return;
         for (const nid of swapped) {
-          const n = mirror.getNode(nid);
+          const n = targetMirror.getNode(nid);
           if (n && n.nodeType === 3) {
             const src = RECORDED_SRC.get(nid);
             if (src !== undefined && n.textContent === oldOverlay[nid])
               n.textContent = src;
           }
         }
-      }
+      };
+      revertOverlay(mirror);
+      // The hidden scrub engine is persistent. Reset it too, otherwise seeking
+      // after a second locale switch morphs stale translated text back into the
+      // visible replay document.
+      revertOverlay(engineMirror);
       swapped.clear();
       overlay = newOverlay;
       ACTIVE_LOCALE = loc;

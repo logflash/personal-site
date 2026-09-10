@@ -337,6 +337,31 @@ try {
     await page.close();
   }
 
+  // ---- locale switch after engine-backed scrub preserves replay time ----- //
+  {
+    const page = await open(browser, '');
+    await seek(page, 0.8);
+    const before = await page.locator('#app #time').textContent();
+    await page.click('#app #flags button[data-loc="es"]');
+    await page.waitForTimeout(150);
+    const after = await page.locator('#app #time').textContent();
+    check(
+      'locale switching after a scrub preserves the engine timestamp',
+      before === after,
+      `${before} → ${after}`,
+    );
+    await seek(page, 0.45);
+    await page.click('#app #flags button[data-loc="en"]');
+    await page.waitForTimeout(150);
+    await seek(page, 0.45);
+    const text = await replayText(page);
+    check(
+      'seeking after repeated locale switches does not restore stale engine text',
+      text.includes(SOURCE_TEXT) && !text.includes(ES_T[0]),
+    );
+    await page.close();
+  }
+
   // ---- scenario 7: absolute touch controls hide cursor, retain ripple --- //
   {
     const page = await open(browser, '?touch=1');

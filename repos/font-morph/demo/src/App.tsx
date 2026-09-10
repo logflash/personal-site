@@ -3,6 +3,7 @@ import {
   createFontMorphProgressController,
   type FontMorphProgressController,
 } from '../../src/index'
+import { SdfApp } from './SdfApp'
 
 const SAMPLES = {
   en: { label: 'English', text: 'Resume', sourceLabel: 'Sans serif', targetLabel: 'Serif' },
@@ -13,7 +14,7 @@ const SAMPLES = {
 type Locale = keyof typeof SAMPLES
 type Status = 'loading' | 'ready' | 'error'
 
-export function App() {
+function KuteApp() {
   const [locale, setLocale] = useState<Locale>('en')
   const [progress, setProgress] = useState(0)
   const [status, setStatus] = useState<Status>('loading')
@@ -146,4 +147,10 @@ export function App() {
       </p>
     </main>
   )
+}
+
+export function App() {
+  return new URLSearchParams(window.location.search).get('renderer') === 'sdf'
+    ? <SdfApp />
+    : <KuteApp />
 }
