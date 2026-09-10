@@ -11,11 +11,7 @@ export {
   type FontMorphOutlineContour,
 } from './outline'
 export { glyphDistanceField } from './distanceField'
-export {
-  compileSdfGlyphPair,
-  compileSdfGlyphPairs,
-  type FontMorphSdfCompileOptions,
-} from './sdf'
+export { compileSdfGlyphPair, compileSdfGlyphPairs, type FontMorphSdfCompileOptions } from './sdf'
 export { rasterizeFontMorphGlyph, rasterPixelPoint, type FontMorphRaster } from './rasterize'
 export {
   shapeFontMorphInstantiatedRun,
@@ -32,10 +28,9 @@ export type {
 export type {
   FontMorphSdfEndpoint,
   FontMorphSdfGlyphPair,
-  FontMorphSdfLandmark,
-  FontMorphSdfLandmarkOverride,
   FontMorphSerializedSdfEndpoint,
   FontMorphSerializedSdfGlyphPair,
+  FontMorphSdfWarpControl,
   FontMorphSdfWarpRegion,
 } from '../contracts/sdf'
 export { stableStringify } from '../contracts/stableJson'
