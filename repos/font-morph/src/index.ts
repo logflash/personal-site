@@ -1,6 +1,13 @@
 /// <reference path="./kute.d.ts" />
+/// <reference path="./fontkit.d.ts" />
 
 import type { Font, PathCommand, RenderOptions } from 'opentype.js'
+import type { FontMorphCompiledRun } from './contracts/font'
+import type {
+  FontMorphSdfGlyphPair,
+  FontMorphSerializedSdfGlyphPair,
+} from './contracts/sdf'
+import { renderFontMorphSdfFrame } from './sdf-runtime'
 
 const DEFAULT_DURATION_MS = 760
 const DESTINATION_TIMEOUT_MS = 10_000
@@ -14,6 +21,32 @@ const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 export type FontMorphFontRole = 'sans' | 'serif'
 type FontRole = FontMorphFontRole
 type Polygon = [number, number][]
+
+interface FontMorphOutlinePathCommand {
+  command: 'moveTo' | 'lineTo' | 'quadraticCurveTo' | 'bezierCurveTo' | 'closePath'
+  args: number[]
+}
+
+interface FontMorphOutlineGlyph {
+  path: { commands: FontMorphOutlinePathCommand[] }
+}
+
+interface FontMorphOutlineFont {
+  unitsPerEm: number
+  getVariation(axes: Record<string, number>): FontMorphOutlineFont
+  layout(
+    text: string,
+    features?: Record<string, boolean>,
+  ): {
+    glyphs: FontMorphOutlineGlyph[]
+    positions: {
+      xAdvance: number
+      yAdvance: number
+      xOffset: number
+      yOffset: number
+    }[]
+  }
+}
 export type MorphTextResolver = (
   locale: string | undefined,
   translationHash: string | undefined,
@@ -151,6 +184,7 @@ interface KuteMorphRuntime {
 
 interface OutlineRuntime extends KuteMorphRuntime {
   fonts: Record<FontRole, Font[]>
+  outlineFonts: Record<FontRole, FontMorphOutlineFont[]>
 }
 
 interface OutlineContour {
@@ -212,10 +246,26 @@ export interface FontMorphPreparedOutline {
 
 type NormalizedOutline = FontMorphPreparedOutline
 
-export interface FontMorphPreparedManifest {
+export interface FontMorphPreparedOutlineManifest {
   version: 1
   outlines: Record<string, FontMorphPreparedOutline>
 }
+
+export interface FontMorphPreparedSdfMorph {
+  sourceRun: FontMorphCompiledRun
+  targetRun: FontMorphCompiledRun
+  glyphs: Record<string, FontMorphSerializedSdfGlyphPair>
+}
+
+export interface FontMorphPreparedSdfManifest {
+  version: 2
+  outlines: Record<string, FontMorphPreparedOutline>
+  sdfMorphs: Record<string, FontMorphPreparedSdfMorph>
+}
+
+export type FontMorphPreparedManifest =
+  | FontMorphPreparedOutlineManifest
+  | FontMorphPreparedSdfManifest
 
 export interface FontMorphCompileRequest {
   text: string
@@ -233,18 +283,38 @@ interface PreparedOutline {
 }
 
 interface PreparedMorph {
+  renderer: 'outline'
   layer: SVGSVGElement
   source: GlyphEndpoint
   target: GlyphEndpoint
   contours: ContourMorph[] | null
 }
 
+interface PreparedSdfData {
+  sourceRun: FontMorphCompiledRun
+  targetRun: FontMorphCompiledRun
+  glyphs: Record<string, FontMorphSdfGlyphPair>
+}
+
+interface PreparedSdfMorph {
+  renderer: 'sdf'
+  layer: HTMLCanvasElement
+  source: GlyphEndpoint
+  target: GlyphEndpoint
+  data: PreparedSdfData
+  glyphCanvases: Map<string, HTMLCanvasElement>
+  glyphImages: Map<string, ImageData>
+  frames: Map<string, Float32Array<ArrayBuffer>>
+}
+
+type RenderedMorph = PreparedMorph | PreparedSdfMorph
+
 interface ReplayMorphState {
   event: object
   document: Document
   locale?: string
-  layer: SVGSVGElement
-  prepared: PreparedMorph
+  layer: SVGSVGElement | HTMLCanvasElement
+  prepared: RenderedMorph
   generation: number
   sawTarget: boolean
   lastTime: number
@@ -258,7 +328,7 @@ interface ReplayMorphState {
 interface ActiveMorph {
   key: string
   source: GlyphEndpoint
-  layer: SVGSVGElement
+  layer: SVGSVGElement | HTMLCanvasElement
   startedAt: number
   observer: MutationObserver
   timeout: number
@@ -271,6 +341,7 @@ interface ActiveMorph {
 const recordedMorphCache = new WeakMap<FontMorphEvent[], ReturnType<typeof indexMorphs>>()
 let replayOutlineCache = new WeakMap<RecordedFontMorph, Map<string, PreparedOutline>>()
 const normalizedOutlineCache = new Map<string, NormalizedOutline>()
+const preparedSdfCache = new Map<string, PreparedSdfData>()
 
 export const FONT_MORPH_RECORD_EVENT = 'font-morph:record'
 export const FONT_MORPH_EVENT_TAG = 'font-morph'
@@ -323,6 +394,7 @@ export function configureFontMorph(options: FontMorphConfiguration) {
   outlinePreparationPromises.clear()
   replayOutlineCache = new WeakMap()
   normalizedOutlineCache.clear()
+  preparedSdfCache.clear()
 }
 
 function selectorFor(key: string) {
@@ -708,7 +780,11 @@ function baseline(endpoint: GlyphEndpoint, font?: FontMetrics) {
   return endpoint.logicalRect.height * 0.8
 }
 
-function setLayerBox(layer: SVGSVGElement, rect: Rect, ownerDocument: Document) {
+function setLayerBox(
+  layer: SVGSVGElement | HTMLCanvasElement,
+  rect: Rect,
+  ownerDocument: Document,
+) {
   const frame = captureFrame(ownerDocument)
   const screen = {
     left: frame.screen.left + rect.left * frame.screen.width,
@@ -964,9 +1040,11 @@ function classifyContours(
   return contours
 }
 
-function outlineFont(text: string, fonts: readonly Font[]) {
+function outlineFontIndex(text: string, fonts: readonly Font[]) {
   const characters = [...text]
-  return fonts.find((candidate) => characters.every((character) => candidate.hasChar(character)))
+  return fonts.findIndex((candidate) =>
+    characters.every((character) => candidate.hasChar(character)),
+  )
 }
 
 function fontMetrics(font: Font): FontMetrics {
@@ -980,6 +1058,7 @@ function fontMetrics(font: Font): FontMetrics {
 function buildOutline(
   text: string,
   font: Font,
+  outlineFont: FontMorphOutlineFont,
   instance: OutlineInstance,
   runtime: KuteMorphRuntime,
 ): GlyphOutline[] {
@@ -987,13 +1066,33 @@ function buildOutline(
   // letter spacing are cheap affine transforms applied only after navigation
   // reveals the target.
   const canonicalBaseline = (font.ascender / font.unitsPerEm) * MORPH_VIEWBOX_SIZE
-  const paths = font.getPaths(
-    text,
-    0,
-    canonicalBaseline,
-    MORPH_VIEWBOX_SIZE,
-    renderOptions(instance, font),
-  )
+  const variation = (renderOptions(instance, font) as RenderOptions & {
+    variation?: Record<string, number>
+  }).variation ?? {}
+  let variableFont = outlineFont
+  if (Object.keys(variation).length) {
+    try {
+      variableFont = outlineFont.getVariation(variation)
+    } catch {
+      // Static fallback faces share the same semantic role but have no fvar
+      // table. Their sole outline is already the requested font instance.
+    }
+  }
+  const run = variableFont.layout(text, { clig: false, liga: false, rlig: false })
+  const scale = MORPH_VIEWBOX_SIZE / variableFont.unitsPerEm
+  let runX = 0
+  let runY = 0
+  const paths = run.glyphs.map((glyph, index) => {
+    const position = run.positions[index]
+    const offsetX = runX + position.xOffset
+    const offsetY = runY + position.yOffset
+    const commands = glyph.path.commands.map((command) =>
+      positionedFontkitCommand(command, scale, canonicalBaseline, offsetX, offsetY),
+    )
+    runX += position.xAdvance
+    runY += position.yAdvance
+    return { commands }
+  })
   return paths.map((path) => {
     const contours = splitContours(path.commands).map((commands) => ({
       path: contourPath(commands),
@@ -1002,6 +1101,38 @@ function buildOutline(
     const classified = classifyContours(contours, runtime)
     return { contours: classified, bounds: combinedBounds(classified) }
   })
+}
+
+function positionedFontkitCommand(
+  command: FontMorphOutlinePathCommand,
+  scale: number,
+  baseline: number,
+  offsetX: number,
+  offsetY: number,
+): PathCommand {
+  const x = (value: number) => (offsetX + value) * scale
+  const y = (value: number) => baseline - (offsetY + value) * scale
+  const [x1 = 0, y1 = 0, x2 = 0, y2 = 0, x3 = 0, y3 = 0] = command.args
+  switch (command.command) {
+    case 'moveTo':
+      return { type: 'M', x: x(x1), y: y(y1) }
+    case 'lineTo':
+      return { type: 'L', x: x(x1), y: y(y1) }
+    case 'quadraticCurveTo':
+      return { type: 'Q', x1: x(x1), y1: y(y1), x: x(x2), y: y(y2) }
+    case 'bezierCurveTo':
+      return {
+        type: 'C',
+        x1: x(x1),
+        y1: y(y1),
+        x2: x(x2),
+        y2: y(y2),
+        x: x(x3),
+        y: y(y3),
+      }
+    case 'closePath':
+      return { type: 'Z' }
+  }
 }
 
 function relativeContourMetrics(contour: OutlineContour, glyph: GlyphOutline) {
@@ -1460,9 +1591,10 @@ function localBoundaryCorrespondence(source: Polygon, target: Polygon): [Polygon
 async function createOutlineRuntime(
   fontBuffers: Record<FontRole, readonly ArrayBuffer[]>,
 ): Promise<OutlineRuntime> {
-  const [opentype, kuteSvgMorph] = await Promise.all([
+  const [opentype, kuteSvgMorph, fontkit] = await Promise.all([
     import('opentype.js'),
     import('kute.js/dist/kute.esm.js'),
+    import('fontkit'),
   ])
   const opentypeModule = opentype as unknown as {
     parse?: (buffer: ArrayBuffer) => Font
@@ -1470,6 +1602,12 @@ async function createOutlineRuntime(
   }
   const parseFont = opentypeModule.parse ?? opentypeModule.default?.parse
   if (!parseFont) throw new Error('opentype.js does not expose its parser')
+  const fontkitModule = fontkit as unknown as {
+    create?: (buffer: Uint8Array) => FontMorphOutlineFont
+    default?: { create?: (buffer: Uint8Array) => FontMorphOutlineFont }
+  }
+  const createFont = fontkitModule.create ?? fontkitModule.default?.create
+  if (!createFont) throw new Error('fontkit does not expose its parser')
   return {
     fonts: Object.fromEntries(
       Object.entries(fontBuffers).map(([role, buffers]) => [
@@ -1477,6 +1615,12 @@ async function createOutlineRuntime(
         buffers.map((buffer) => parseFont(buffer)),
       ]),
     ) as Record<FontRole, Font[]>,
+    outlineFonts: Object.fromEntries(
+      Object.entries(fontBuffers).map(([role, buffers]) => [
+        role,
+        buffers.map((buffer) => createFont(new Uint8Array(buffer))),
+      ]),
+    ) as Record<FontRole, FontMorphOutlineFont[]>,
     getInterpolationPoints: kuteSvgMorph.default.Util.getInterpolationPoints,
     interpolateCoordinates,
   }
@@ -1497,6 +1641,15 @@ function outlineCacheKey(
     opticalSize: Math.round(instance.opticalSize * 10) / 10,
   })
   return JSON.stringify([text, canonical(sourceInstance), canonical(targetInstance)])
+}
+
+/** Stable build/runtime identity for one text and pair of font instances. */
+export function fontMorphPreparedKey(
+  text: string,
+  source: FontMorphOutlineInstance,
+  target: FontMorphOutlineInstance,
+) {
+  return outlineCacheKey(text, source, target)
 }
 
 function normalizedOutline(
@@ -1527,9 +1680,9 @@ function normalizedOutline(
     return normalized
   }
 
-  const sourceFont = outlineFont(text, runtime.fonts[sourceInstance.role])
-  const targetFont = outlineFont(text, runtime.fonts[targetInstance.role])
-  if (!sourceFont || !targetFont) {
+  const sourceFontIndex = outlineFontIndex(text, runtime.fonts[sourceInstance.role])
+  const targetFontIndex = outlineFontIndex(text, runtime.fonts[targetInstance.role])
+  if (sourceFontIndex < 0 || targetFontIndex < 0) {
     const normalized: NormalizedOutline = {
       contours: null,
       fallback: 'unsupported-glyph',
@@ -1538,8 +1691,23 @@ function normalizedOutline(
     return normalized
   }
 
-  const sourceGlyphs = buildOutline(text, sourceFont, sourceInstance, runtime)
-  const targetGlyphs = buildOutline(text, targetFont, targetInstance, runtime)
+  const sourceFont = runtime.fonts[sourceInstance.role][sourceFontIndex]
+  const targetFont = runtime.fonts[targetInstance.role][targetFontIndex]
+
+  const sourceGlyphs = buildOutline(
+    text,
+    sourceFont,
+    runtime.outlineFonts[sourceInstance.role][sourceFontIndex],
+    sourceInstance,
+    runtime,
+  )
+  const targetGlyphs = buildOutline(
+    text,
+    targetFont,
+    runtime.outlineFonts[targetInstance.role][targetFontIndex],
+    targetInstance,
+    runtime,
+  )
   if (sourceGlyphs.length !== targetGlyphs.length) {
     const normalized: NormalizedOutline = {
       contours: null,
@@ -1609,7 +1777,7 @@ export async function createFontMorphCompiler(
   // (for example Latin first, then CJK). Keep their negative glyph results
   // isolated so a primary-font miss cannot poison a full-stack retry.
   const compilerCache = new Map<string, NormalizedOutline>()
-  return (requests: readonly FontMorphCompileRequest[]): FontMorphPreparedManifest => {
+  return (requests: readonly FontMorphCompileRequest[]): FontMorphPreparedOutlineManifest => {
     const outlines: Record<string, FontMorphPreparedOutline> = {}
     for (const request of requests) {
       const source = { ...request.source }
@@ -1626,7 +1794,7 @@ export async function createFontMorphCompiler(
 export async function compileFontMorphManifest(
   fontBuffers: Record<FontMorphFontRole, readonly ArrayBuffer[]>,
   requests: readonly FontMorphCompileRequest[],
-): Promise<FontMorphPreparedManifest> {
+): Promise<FontMorphPreparedOutlineManifest> {
   const compile = await createFontMorphCompiler(fontBuffers)
   return compile(requests)
 }
@@ -1660,10 +1828,84 @@ function cachedNormalizedOutline(
 }
 
 function registerPreparedManifest(manifest: FontMorphPreparedManifest | undefined) {
-  if (!manifest || manifest.version !== 1) return
+  if (!manifest || (manifest.version !== 1 && manifest.version !== 2)) return
   for (const [key, outline] of Object.entries(manifest.outlines)) {
     normalizedOutlineCache.set(key, outline)
   }
+  if (manifest.version !== 2) return
+  for (const [key, morph] of Object.entries(manifest.sdfMorphs)) {
+    preparedSdfCache.set(key, {
+      sourceRun: morph.sourceRun,
+      targetRun: morph.targetRun,
+      glyphs: Object.fromEntries(
+        Object.entries(morph.glyphs).map(([unicode, glyph]) => {
+          const { distanceBase64: sourceDistance, ...source } = glyph.source
+          const { distanceBase64: targetDistance, ...target } = glyph.target
+          return [
+            unicode,
+            {
+              ...glyph,
+              source: { ...source, distance: decodeBase64(sourceDistance) },
+              target: { ...target, distance: decodeBase64(targetDistance) },
+            },
+          ]
+        }),
+      ),
+    })
+  }
+}
+
+function decodeBase64(value: string) {
+  const binary = atob(value)
+  return Uint8Array.from(binary, (character) => character.charCodeAt(0))
+}
+
+function reversePreparedSdf(morph: PreparedSdfData): PreparedSdfData {
+  return {
+    sourceRun: morph.targetRun,
+    targetRun: morph.sourceRun,
+    glyphs: Object.fromEntries(
+      Object.entries(morph.glyphs).map(([unicode, glyph]) => [
+        unicode,
+        {
+          ...glyph,
+          source: glyph.target,
+          target: glyph.source,
+          warpRegions: glyph.warpRegions.map((region) => ({
+            ...region,
+            source: region.target,
+            target: region.source,
+          })),
+        },
+      ]),
+    ),
+  }
+}
+
+function cachedPreparedSdf(
+  text: string,
+  source: OutlineInstance,
+  target: OutlineInstance,
+) {
+  const key = outlineCacheKey(text, source, target)
+  const cached = preparedSdfCache.get(key)
+  if (cached) return cached
+  const reverse = preparedSdfCache.get(outlineCacheKey(text, target, source))
+  if (!reverse) return undefined
+  const prepared = reversePreparedSdf(reverse)
+  preparedSdfCache.set(key, prepared)
+  return prepared
+}
+
+async function resolvePreparedSdf(
+  text: string,
+  source: OutlineInstance,
+  target: OutlineInstance,
+) {
+  const cached = cachedPreparedSdf(text, source, target)
+  if (cached) return cached
+  await loadPreparedManifest(text)
+  return cachedPreparedSdf(text, source, target)
 }
 
 async function loadPreparedManifest(text: string) {
@@ -1826,17 +2068,16 @@ function materializeOutline(
  * is prepared in the configured worker so the click path remains warm without
  * blocking rendering.
  */
-export function prepareFontMorph(key?: string): Promise<void> {
+export async function prepareFontMorph(key?: string): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
   const endpoint = key ? findEndpointElement(key) : undefined
   const captured = endpoint ? captureEndpoint(endpoint) : null
   if (!captured) return Promise.resolve()
   const targetRole: FontRole = captured.style.fontRole === 'sans' ? 'serif' : 'sans'
-  return resolveNormalizedOutline(
-    captured.text,
-    outlineInstance(captured),
-    counterpartOutlineInstance(targetRole),
-  ).then(() => undefined)
+  const source = outlineInstance(captured)
+  const target = counterpartOutlineInstance(targetRole)
+  const prepared = await resolvePreparedSdf(captured.text, source, target)
+  if (!prepared) await resolveNormalizedOutline(captured.text, source, target)
 }
 
 function mountPreparedOutline(
@@ -1847,7 +2088,7 @@ function mountPreparedOutline(
 ): PreparedMorph {
   if (!prepared.contours) {
     layer.dataset.fontMorphFallback = prepared.fallback ?? 'unavailable'
-    return { layer, source, target, contours: null }
+    return { renderer: 'outline', layer, source, target, contours: null }
   }
 
   const maskId = `font-morph-mask-${++nextMaskId}`
@@ -1876,7 +2117,7 @@ function mountPreparedOutline(
   fill.setAttribute('mask', `url(#${maskId})`)
   definitions.append(mask)
   layer.replaceChildren(definitions, fill)
-  return { layer, source, target, contours }
+  return { renderer: 'outline', layer, source, target, contours }
 }
 
 function prepareOutlineMorph(
@@ -1886,6 +2127,141 @@ function prepareOutlineMorph(
   normalized: NormalizedOutline,
 ) {
   return mountPreparedOutline(layer, source, target, materializeOutline(source, target, normalized))
+}
+
+function createSdfLayer(endpoint: GlyphEndpoint, replay: boolean) {
+  const layer = endpoint.element.ownerDocument.createElement('canvas')
+  layer.classList.add(replay ? 'font-morph-director-layer' : 'font-morph-layer')
+  if (!replay) layer.classList.add('rr-block')
+  layer.dataset.fontMorphRenderer = 'sdf'
+  layer.setAttribute('aria-hidden', 'true')
+  layer.style.cssText +=
+    'position:fixed;inset:0 auto auto 0;z-index:2147483646;display:block;pointer-events:none;transform-origin:top left;'
+  endpoint.element.ownerDocument.body.append(layer)
+  return layer
+}
+
+function mountPreparedSdf(
+  source: GlyphEndpoint,
+  target: GlyphEndpoint,
+  data: PreparedSdfData,
+  replay: boolean,
+): PreparedSdfMorph {
+  return {
+    renderer: 'sdf',
+    layer: createSdfLayer(source, replay),
+    source,
+    target,
+    data,
+    glyphCanvases: new Map(),
+    glyphImages: new Map(),
+    frames: new Map(),
+  }
+}
+
+function sdfGlyphBox(
+  endpoint: GlyphEndpoint,
+  run: FontMorphCompiledRun,
+  glyph: FontMorphCompiledRun['glyphs'][number],
+  compiled: FontMorphSdfGlyphPair['source'],
+): Rect {
+  const scaleX = endpoint.rect.width / Math.max(Number.EPSILON, run.advanceWidth)
+  const scaleY = endpoint.style.fontSizeToHeight * endpoint.rect.height
+  const lineBaseline = endpoint.rect.top + baseline(endpoint) / endpoint.frame.logicalHeight
+  const bounds = compiled.textureBounds
+  return {
+    left: endpoint.rect.left + (glyph.x + bounds.xMin) * scaleX,
+    top: lineBaseline - (glyph.y + bounds.yMax) * scaleY,
+    width: (bounds.xMax - bounds.xMin) * scaleX,
+    height: (bounds.yMax - bounds.yMin) * scaleY,
+  }
+}
+
+function paintPreparedSdf(
+  prepared: PreparedSdfMorph,
+  geometryProgress: number,
+  outlineProgress: number,
+  opacity = 1,
+) {
+  const { layer, source, target, data, glyphCanvases, glyphImages, frames } = prepared
+  const ownerDocument = layer.ownerDocument
+  const frame = captureFrame(ownerDocument)
+  const ratio = Math.min(3, ownerDocument.defaultView?.devicePixelRatio || 1)
+  const pixelWidth = Math.max(1, Math.round(frame.screen.width * ratio))
+  const pixelHeight = Math.max(1, Math.round(frame.screen.height * ratio))
+  if (layer.width !== pixelWidth) layer.width = pixelWidth
+  if (layer.height !== pixelHeight) layer.height = pixelHeight
+  layer.style.width = `${frame.screen.width}px`
+  layer.style.height = `${frame.screen.height}px`
+  layer.style.transform = `translate3d(${frame.screen.left}px, ${frame.screen.top}px, 0)`
+  const context = layer.getContext('2d')
+  if (!context) return
+  context.setTransform(ratio, 0, 0, ratio, 0, 0)
+  context.clearRect(0, 0, frame.screen.width, frame.screen.height)
+  context.imageSmoothingEnabled = true
+  context.globalAlpha = opacity
+  const colorProgress = smoothColorProgress(outlineProgress)
+  const color = {
+    red: Math.round(interpolate(source.style.color.red, target.style.color.red, colorProgress)),
+    green: Math.round(
+      interpolate(source.style.color.green, target.style.color.green, colorProgress),
+    ),
+    blue: Math.round(
+      interpolate(source.style.color.blue, target.style.color.blue, colorProgress),
+    ),
+  }
+  const renderedGlyphs = new Set<string>()
+
+  for (let index = 0; index < data.sourceRun.glyphs.length; index += 1) {
+    const sourceGlyph = data.sourceRun.glyphs[index]
+    const targetGlyph = data.targetRun.glyphs[index]
+    const compiled = data.glyphs[sourceGlyph.unicode]
+    if (!compiled || !targetGlyph) continue
+    let glyphCanvas = glyphCanvases.get(sourceGlyph.unicode)
+    if (!glyphCanvas) {
+      glyphCanvas = ownerDocument.createElement('canvas')
+      glyphCanvas.width = compiled.size
+      glyphCanvas.height = compiled.size
+      glyphCanvases.set(sourceGlyph.unicode, glyphCanvas)
+    }
+    if (!renderedGlyphs.has(sourceGlyph.unicode)) {
+      let sdfFrame = frames.get(sourceGlyph.unicode)
+      if (!sdfFrame) {
+        sdfFrame = new Float32Array(compiled.size * compiled.size)
+        frames.set(sourceGlyph.unicode, sdfFrame)
+      }
+      renderFontMorphSdfFrame(compiled, outlineProgress, sdfFrame)
+      const glyphContext = glyphCanvas.getContext('2d')
+      if (!glyphContext) continue
+      let image = glyphImages.get(sourceGlyph.unicode)
+      if (!image) {
+        image = glyphContext.createImageData(compiled.size, compiled.size)
+        glyphImages.set(sourceGlyph.unicode, image)
+      }
+      for (let pixel = 0; pixel < sdfFrame.length; pixel += 1) {
+        const coverage = Math.max(0, Math.min(1, 0.5 + (sdfFrame[pixel] - 128) / 12))
+        image.data[pixel * 4] = color.red
+        image.data[pixel * 4 + 1] = color.green
+        image.data[pixel * 4 + 2] = color.blue
+        image.data[pixel * 4 + 3] = Math.round(coverage * 255)
+      }
+      glyphContext.putImageData(image, 0, 0)
+      renderedGlyphs.add(sourceGlyph.unicode)
+    }
+    const box = interpolateRect(
+      sdfGlyphBox(source, data.sourceRun, sourceGlyph, compiled.source),
+      sdfGlyphBox(target, data.targetRun, targetGlyph, compiled.target),
+      geometryProgress,
+    )
+    context.drawImage(
+      glyphCanvas,
+      box.left * frame.screen.width,
+      box.top * frame.screen.height,
+      box.width * frame.screen.width,
+      box.height * frame.screen.height,
+    )
+  }
+  context.globalAlpha = 1
 }
 
 function polygonPath(points: Polygon) {
@@ -2163,30 +2539,48 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     return
   }
 
-  let prepared: PreparedMorph = { layer: morph.layer, source: morph.source, target, contours: null }
+  let prepared: RenderedMorph
   try {
-    const normalized = await resolveNormalizedOutline(
+    const sourceInstance = outlineInstance(morph.source)
+    const targetInstance = outlineInstance(target)
+    const sdf = await resolvePreparedSdf(
       morph.source.text,
-      outlineInstance(morph.source),
-      outlineInstance(target),
+      sourceInstance,
+      targetInstance,
     )
     if (activeMorph !== morph) return
-    prepared = prepareOutlineMorph(morph.layer, morph.source, target, normalized)
+    if (sdf) {
+      prepared = mountPreparedSdf(morph.source, target, sdf, false)
+      morph.layer.remove()
+      morph.layer = prepared.layer
+    } else {
+      const normalized = await resolveNormalizedOutline(
+        morph.source.text,
+        sourceInstance,
+        targetInstance,
+      )
+      if (activeMorph !== morph) return
+      if (!(morph.layer instanceof SVGSVGElement)) {
+        cleanup(morph)
+        return
+      }
+      prepared = prepareOutlineMorph(morph.layer, morph.source, target, normalized)
+    }
   } catch (error) {
-    console.error('Unable to prepare SVG font outlines', error)
+    console.error('Unable to prepare font morph geometry', error)
     cleanup(morph)
     return
   }
   if (activeMorph !== morph) return
   // Do not imitate a font morph by merely moving live sans-serif text. If a
   // glyph's topology cannot be paired safely, reveal the destination now.
-  if (!prepared.contours) {
+  if (prepared.renderer === 'outline' && !prepared.contours) {
     cleanup(morph)
     return
   }
 
   const duration = Math.max(1, readDuration())
-  startEndpointHandoff(morph, target.element, duration, 0)
+  if (prepared.renderer === 'outline') startEndpointHandoff(morph, target.element, duration, 0)
   emitRecordedMorph(
     morph.key,
     Math.max(0, performance.now() - morph.startedAt),
@@ -2208,13 +2602,15 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
       morph.source.element,
     )
     // Navigation, active-navbar styling, resizing, orientation changes, and
-    // scrolling can all reflow the destination while the outline is moving.
+    // scrolling can all reflow the destination while the morph is moving.
     // Follow the semantic endpoint itself instead of freezing its first pixel
     // box. If that endpoint leaves the capture frame (or is replaced by a
     // different locale/message), settle on the real post-navigation DOM.
     if (currentTarget) {
       prepared.target = currentTarget
-      startEndpointHandoff(morph, currentTarget.element, duration, linearProgress)
+      if (prepared.renderer === 'outline') {
+        startEndpointHandoff(morph, currentTarget.element, duration, linearProgress)
+      }
     }
     const currentRect = interpolateRect(morph.source.rect, prepared.target.rect, geometryProgress)
     if (!currentTarget && !isInCaptureFrame(currentRect)) {
@@ -2225,19 +2621,23 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
       cleanup(morph)
       return
     }
-    // Position/size retain the shared-element ease, but KUTE's contour and
-    // color interpolation stay linear so the serifs develop throughout the
-    // full transition instead of being compressed into one part of it.
-    const handoff = currentTarget
-      ? endpointHandoffOpacities(linearProgress, duration)
-      : { source: 1, destination: 0 }
-    paintPreparedMorph(
-      prepared,
-      geometryProgress,
-      linearProgress,
-      handoff.source,
-      coordinateInterpolator,
-    )
+    // Position/size retain the shared-element ease, but shape and color
+    // interpolation stay linear so the serifs develop throughout the full
+    // transition instead of being compressed into one part of it.
+    if (prepared.renderer === 'sdf') {
+      paintPreparedSdf(prepared, geometryProgress, linearProgress)
+    } else {
+      const handoff = currentTarget
+        ? endpointHandoffOpacities(linearProgress, duration)
+        : { source: 1, destination: 0 }
+      paintPreparedMorph(
+        prepared,
+        geometryProgress,
+        linearProgress,
+        handoff.source,
+        coordinateInterpolator,
+      )
+    }
 
     if (linearProgress < 1) {
       morph.frame = requestAnimationFrame(paint)
@@ -2445,11 +2845,7 @@ function replayText(
   return resolveText?.(locale, translationHash, payload.source.text) ?? payload.source.text
 }
 
-/**
- * Computes KUTE's expensive point correspondence before a replayer starts its
- * wall clock. Cached templates contain no DOM nodes and can therefore be
- * mounted into the replay iframe synchronously on their first visible frame.
- */
+/** Prepares locale-specific SDF data or the legacy KUTE fallback before replay. */
 export async function prepareFontMorphReplay(
   events: FontMorphEvent[],
   locales: readonly (string | undefined)[],
@@ -2497,6 +2893,15 @@ export async function prepareFontMorphReplay(
         endpointElement,
         frame,
       )
+      const sdf = await resolvePreparedSdf(
+        translatedText,
+        outlineInstance(source),
+        outlineInstance(target),
+      )
+      if (sdf) {
+        localeCache.set(cacheKey, { contours: null, fallback: 'sdf' })
+        continue
+      }
       const sourceKey = endpointKey(source)
       const targetKey = endpointKey(target)
       const directionKey = `${sourceKey}>${targetKey}`
@@ -2523,9 +2928,10 @@ export async function prepareFontMorphReplay(
 }
 
 /**
- * Deterministic replay director. KUTE prepares the corresponding contour
- * samples, while every rendered path derives from absolute replay time. That
- * makes seeking and rewinding video-like instead of carrying tween state.
+ * Deterministic replay director. Build-generated SDF data is preferred and
+ * prepared SVG contours remain the compatibility fallback. Every rendered
+ * frame derives from absolute replay time, making seeking and rewinding
+ * video-like instead of carrying tween state.
  */
 export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
   let state: ReplayMorphState | null = null
@@ -2561,7 +2967,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
     }
 
     // The deterministic replay timeline reserves a reading hold after the
-    // outline reaches its destination. Reveal the real translated DOM during
+    // morph reaches its destination. Reveal the real translated DOM during
     // that interval. Visibility belongs to the director because locale text,
     // layout, scrolling, and viewport changes can all alter the answer.
     if (frame.time >= active.end) {
@@ -2619,38 +3025,57 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
         frame.document,
         endpointElement,
       )
-      const layer = createInitialLayer(source, true)
       const currentGeneration = generation
-      const normalized = cachedNormalizedOutline(
+      const sdf = cachedPreparedSdf(
         translatedText,
         outlineInstance(source),
         outlineInstance(target),
       )
-      const preparedOutline = normalized
-        ? materializeOutline(source, target, normalized)
-        : { contours: null, fallback: 'not-prepared' }
-      state = {
-        event: active.event,
-        document: frame.document,
-        locale: frame.locale,
-        layer,
-        prepared: mountPreparedOutline(layer, source, target, preparedOutline),
-        generation: currentGeneration,
-        sawTarget: false,
-        lastTime: frame.time,
-        handoffTarget: null,
-      }
+      if (sdf) {
+        const prepared = mountPreparedSdf(source, target, sdf, true)
+        state = {
+          event: active.event,
+          document: frame.document,
+          locale: frame.locale,
+          layer: prepared.layer,
+          prepared,
+          generation: currentGeneration,
+          sawTarget: false,
+          lastTime: frame.time,
+          handoffTarget: null,
+        }
+      } else {
+        const layer = createInitialLayer(source, true)
+        const normalized = cachedNormalizedOutline(
+          translatedText,
+          outlineInstance(source),
+          outlineInstance(target),
+        )
+        const preparedOutline = normalized
+          ? materializeOutline(source, target, normalized)
+          : { contours: null, fallback: 'not-prepared' }
+        state = {
+          event: active.event,
+          document: frame.document,
+          locale: frame.locale,
+          layer,
+          prepared: mountPreparedOutline(layer, source, target, preparedOutline),
+          generation: currentGeneration,
+          sawTarget: false,
+          lastTime: frame.time,
+          handoffTarget: null,
+        }
 
-      const settleWithoutMorph = () => {
-        layer.replaceChildren()
-        layer.style.display = 'none'
-        layer.ownerDocument.documentElement.dataset.fontMorphFallback = ''
+        const cachedOutline = replayOutlineCache.get(active.payload)?.get(frame.locale ?? '')
+        if (cachedOutline && state.generation === currentGeneration) {
+          state.prepared = mountPreparedOutline(layer, source, target, cachedOutline)
+        }
+        if (state.prepared.renderer === 'outline' && !state.prepared.contours) {
+          layer.replaceChildren()
+          layer.style.display = 'none'
+          layer.ownerDocument.documentElement.dataset.fontMorphFallback = ''
+        }
       }
-      const cachedOutline = replayOutlineCache.get(active.payload)?.get(frame.locale ?? '')
-      if (cachedOutline && state.generation === currentGeneration) {
-        state.prepared = mountPreparedOutline(layer, source, target, cachedOutline)
-      }
-      if (!state.prepared.contours) settleWithoutMorph()
     }
 
     state.lastTime = frame.time
@@ -2687,30 +3112,38 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
     state.layer.style.display = 'block'
     frame.document.documentElement.removeAttribute('data-font-morph-fallback')
 
-    if (!state.prepared.contours) {
+    if (state.prepared.renderer === 'outline' && !state.prepared.contours) {
       // Keep the source outline stationary during its recorded lead-in. Never
       // scale fallback text and replace it with contours halfway through.
       setLayerBox(state.layer, state.prepared.source.rect, frame.document)
       return
     }
-    const handoff = currentTarget
-      ? endpointHandoffOpacities(linearProgress, active.payload.duration)
-      : { source: 1, destination: 0 }
-    setReplayHandoff(state, currentTarget?.element ?? null, handoff.destination)
-    paintPreparedMorph(
-      state.prepared,
-      geometryProgress,
-      linearProgress,
-      handoff.source,
-      coordinateInterpolator,
-    )
+    if (state.prepared.renderer === 'sdf') {
+      // Distance-field endpoints are generated from the same variation-correct
+      // outlines as the settled browser face, so no SVG/live-text handoff is
+      // needed. Rendering remains a pure function of absolute replay time.
+      restoreReplayHandoff(state)
+      paintPreparedSdf(state.prepared, geometryProgress, linearProgress)
+    } else {
+      const handoff = currentTarget
+        ? endpointHandoffOpacities(linearProgress, active.payload.duration)
+        : { source: 1, destination: 0 }
+      setReplayHandoff(state, currentTarget?.element ?? null, handoff.destination)
+      paintPreparedMorph(
+        state.prepared,
+        geometryProgress,
+        linearProgress,
+        handoff.source,
+        coordinateInterpolator,
+      )
+    }
   }
 }
 
 /**
  * Captures the currently mounted endpoint and waits for navigation to mount
  * another element with the same key. The recorded geometry is relative to the
- * configured capture frame; SVG viewBox coordinates contain no viewport pixels.
+ * configured capture frame; recordings contain no renderer frames or geometry.
  */
 export function beginFontMorph(key: string) {
   if (

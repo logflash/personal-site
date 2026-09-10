@@ -106,7 +106,7 @@ function RuntimeBridge({
 }
 
 /** Converts compact, app-authored animation descriptions into rrweb custom
- * events. Per-frame SVG path mutations stay blocked from capture. */
+ * events. Per-frame renderer output stays blocked from capture. */
 function SemanticEventBridge() {
   useEffect(() => {
     const captureFontMorph = (event: Event) => {

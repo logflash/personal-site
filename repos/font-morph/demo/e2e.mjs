@@ -265,9 +265,121 @@ try {
   assert.equal(presentation.sourceOpacity, '0.16')
   assert.equal(presentation.targetOpacity, '0.16')
   assert.equal(presentation.locales, 3)
+
+  await page.goto(`http://127.0.0.1:${address.port}/?renderer=sdf`, {
+    waitUntil: 'networkidle',
+  })
+  await page.waitForSelector('[data-demo-status="ready"]')
+  await page.evaluate(() => document.fonts.ready)
+  const setSdfProgress = async (locale, value) => {
+    const requestedProgress = value / 1000
+    const expectedPrefix = `${locale}:${requestedProgress}:`
+    const currentValue = Number(await page.locator('#progress').inputValue())
+    if (currentValue === value) {
+      const nudge = value === 1000 ? 990 : value + 10
+      const previousFrame = await page.locator('[data-font-morph-sdf]').getAttribute(
+        'data-font-morph-sdf-frame',
+      )
+      await setProgress(nudge)
+      await page.waitForFunction(
+        ([expectedLocale, expectedProgress, previous]) => {
+          const frame = document.querySelector('[data-font-morph-sdf]')?.dataset.fontMorphSdfFrame
+          return frame?.startsWith(`${expectedLocale}:${expectedProgress}:`) && frame !== previous
+        },
+        [locale, nudge / 1000, previousFrame],
+      )
+    }
+    const previousFrame = await page.locator('[data-font-morph-sdf]').getAttribute(
+      'data-font-morph-sdf-frame',
+    )
+    await setProgress(value)
+    await page.waitForFunction(
+      ([prefix, previous]) => {
+        const frame = document.querySelector('[data-font-morph-sdf]')?.dataset.fontMorphSdfFrame
+        return frame?.startsWith(prefix) && frame !== previous
+      },
+      [expectedPrefix, previousFrame],
+    )
+    await page.evaluate(() => new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    ))
+    await page.evaluate(async () => {
+      let previous = ''
+      let stableFrames = 0
+      while (stableFrames < 4) {
+        await new Promise((resolve) => requestAnimationFrame(resolve))
+        const current = document.querySelector('[data-font-morph-sdf]')?.dataset.fontMorphSdfFrame ?? ''
+        stableFrames = current === previous ? stableFrames + 1 : 0
+        previous = current
+      }
+    })
+  }
+
+  for (const [locale, expected] of Object.entries(expectedText)) {
+    await page.locator('#locale').selectOption(locale)
+    await page.waitForFunction(
+      ([expectedLocale, expectedText]) =>
+        document.querySelector('[data-demo-endpoint="source"]')?.getAttribute('lang') ===
+          expectedLocale &&
+        document.querySelector('[data-demo-endpoint="source"]')?.textContent === expectedText,
+      [locale, expected],
+    )
+
+    const canvasFrame = () => page.evaluate(async () => {
+      const canvas = document.querySelector('[data-font-morph-sdf]')
+      const context = canvas.getContext('2d')
+      const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data
+      const alpha = Uint8Array.from(
+        { length: rgba.length / 4 },
+        (_, index) => rgba[index * 4 + 3],
+      )
+      const digest = await crypto.subtle.digest('SHA-256', alpha)
+      return {
+        frame: [...new Uint8Array(digest)]
+          .map((value) => value.toString(16).padStart(2, '0'))
+          .join(''),
+        inkPixels: alpha.filter(Boolean).length,
+        width: canvas.width,
+        height: canvas.height,
+        marker: canvas.dataset.fontMorphSdfFrame,
+        stage: document.querySelector('.stage')?.getBoundingClientRect().toJSON(),
+        source: document.querySelector('[data-demo-endpoint="source"]')?.getBoundingClientRect().toJSON(),
+        target: document.querySelector('[data-demo-endpoint="target"]')?.getBoundingClientRect().toJSON(),
+        sourceOpacity: getComputedStyle(
+          document.querySelector('[data-demo-endpoint="source"]'),
+        ).opacity,
+        targetOpacity: getComputedStyle(
+          document.querySelector('[data-demo-endpoint="target"]'),
+        ).opacity,
+      }
+    })
+
+    await setSdfProgress(locale, 0)
+    const sourceFrame = await canvasFrame()
+    await setSdfProgress(locale, 500)
+    const middleFrame = await canvasFrame()
+    await setSdfProgress(locale, 1000)
+    const targetFrame = await canvasFrame()
+    await setSdfProgress(locale, 0)
+    const rewoundSourceFrame = await canvasFrame()
+
+    assert(sourceFrame.inkPixels > 0, `${locale}: the source distance-field frame must render ink`)
+    assert(middleFrame.inkPixels > 0, `${locale}: the intermediate distance-field frame must render ink`)
+    assert(targetFrame.inkPixels > 0, `${locale}: the target distance-field frame must render ink`)
+    assert.notEqual(sourceFrame.frame, middleFrame.frame)
+    assert.notEqual(middleFrame.frame, targetFrame.frame)
+    assert.equal(
+      sourceFrame.frame,
+      rewoundSourceFrame.frame,
+      `${locale}: rewinding must reconstruct the same source pixels without hysteresis\n${JSON.stringify({ sourceFrame, rewoundSourceFrame }, null, 2)}`,
+    )
+    assert.equal(sourceFrame.sourceOpacity, '0.16')
+    assert.equal(sourceFrame.targetOpacity, '0.16')
+  }
+
   assert.deepEqual(errors, [])
 
-  console.log('font-morph React demo checks passed for en, es, and ja')
+  console.log('font-morph React demo checks passed for KUTE and SDF in en, es, and ja')
   await context.close()
 } finally {
   await close()

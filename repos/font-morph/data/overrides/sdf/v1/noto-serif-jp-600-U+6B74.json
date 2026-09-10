@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "canonicalVersion": "v1",
+  "fontSha256": "e4fc18cf006b9c853e1f83236fd21fe5a82f34453a0dc509d4a35f473dcc3224",
+  "unicode": "歴",
+  "glyphId": 492,
+  "landmarks": [
+    {
+      "manifoldId": "top-horizontal",
+      "center": [0.5, 0.120419],
+      "radius": [0.52356, 0.17801]
+    }
+  ]
+}
