@@ -16,7 +16,8 @@ declare global {
       workerRequests: unknown[]
       prepare: () => Promise<void>
       prepareUnknown: () => Promise<void>
-      start: () => boolean
+      begin: () => boolean
+      simulateBrowserTextScaling: () => void
       moveDestination: () => void
       reverse: () => boolean
       prepareReplay: () => Promise<void>
@@ -92,10 +93,9 @@ window.fontMorphFixture = {
     )
     await prepareFontMorph('sample')
   },
-  start: () => {
-    const started = beginFontMorph('sample')
-    if (started) swap('serif')
-    return started
+  begin: () => beginFontMorph('sample'),
+  simulateBrowserTextScaling: () => {
+    document.documentElement.classList.add('simulated-mobile-text-scaling')
   },
   moveDestination: () => {
     document.querySelector<HTMLElement>('[data-font-morph="sample"]')?.classList.add('moved')
