@@ -89,6 +89,7 @@ const html = `<!doctype html>
       .endpoint { position: absolute; display: inline-block; white-space: pre; line-height: 1; }
       .sans { left: 32px; top: 48px; color: rgb(72 35 128); font: 400 52px/1 "Fixture Sans"; }
       .serif { left: 310px; top: 230px; color: rgb(15 70 105); font: 400 104px/1 "Fixture Serif"; }
+      :root.simulated-mobile-text-scaling .serif { font-size: 109px; }
       .serif.moved { left: 55vw; top: 28vh; font-size: 84px; }
     </style>
   </head>
@@ -227,7 +228,35 @@ try {
   assert(preparation >= 0, 'preparation should complete')
   assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
   assert.equal(requests.get('/serif-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
-  assert.equal(await page.evaluate(() => window.fontMorphFixture.start()), true)
+  await page.evaluate(() => window.fontMorphFixture.simulateBrowserTextScaling())
+  assert.equal(await page.evaluate(() => window.fontMorphFixture.begin()), true)
+  await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="dom"]')
+  const initialText = await page.evaluate(() => {
+    const source = document.querySelector('[data-font-morph="sample"]')
+    const layer = document.querySelector('[data-font-morph-renderer="dom"]')
+    const textWidth = (element) => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      return range.getBoundingClientRect().width
+    }
+    const sourceStyle = getComputedStyle(source)
+    const layerStyle = getComputedStyle(layer)
+    return {
+      sourceWidth: textWidth(source),
+      layerWidth: textWidth(layer),
+      sourceFont: sourceStyle.font,
+      layerFont: layerStyle.font,
+      sourceSpacing: sourceStyle.letterSpacing,
+      layerSpacing: layerStyle.letterSpacing,
+    }
+  })
+  assert.equal(initialText.layerFont, initialText.sourceFont)
+  assert.equal(initialText.layerSpacing, initialText.sourceSpacing)
+  assert(
+    Math.abs(initialText.layerWidth - initialText.sourceWidth) < 0.1,
+    `the pre-navigation source must retain its exact horizontal metrics: ${JSON.stringify(initialText)}`,
+  )
+  await page.evaluate(() => window.fontMorphFixture.show('serif'))
 
   await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {
     state: 'attached',

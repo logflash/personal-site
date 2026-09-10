@@ -328,7 +328,7 @@ interface ReplayMorphState {
 interface ActiveMorph {
   key: string
   source: GlyphEndpoint
-  layer: SVGSVGElement | HTMLCanvasElement
+  layer: SVGSVGElement | HTMLElement
   startedAt: number
   observer: MutationObserver
   timeout: number
@@ -743,27 +743,57 @@ function numericFontWeight(value: string, fallback: number) {
   return Number.isFinite(weight) ? weight : fallback
 }
 
+function configuredInstanceValue(
+  ownerDocument: Document,
+  property: string,
+  fallback: number,
+) {
+  const ownerWindow = ownerDocument.defaultView
+  const rootStyle = ownerWindow?.getComputedStyle(ownerDocument.documentElement)
+  const value = Number.parseFloat(rootStyle?.getPropertyValue(property) ?? '')
+  return Number.isFinite(value) ? value : fallback
+}
+
 function outlineInstance(endpoint: GlyphEndpoint): OutlineInstance {
   const role = endpoint.style.fontRole
+  const computedWeight = numericFontWeight(
+    endpoint.style.fontWeight,
+    role === 'sans' ? 500 : 600,
+  )
   return {
     role,
-    weight: numericFontWeight(endpoint.style.fontWeight, role === 'sans' ? 500 : 600),
-    // Optical size is part of the serif-role outline identity. Excluding sans
-    // font size avoids duplicate cached outlines that differ only by scale.
-    opticalSize: role === 'serif' ? fontSize(endpoint) : 0,
+    // The build derives font identities from these authored variables. Some
+    // mobile browsers apply accessibility text scaling to computed sizes, so
+    // deriving identity from the laid-out size can miss otherwise valid SDF
+    // data. Geometry still uses the real measured endpoint box and font size.
+    weight: configuredInstanceValue(
+      endpoint.element.ownerDocument,
+      `--font-morph-${role}-weight`,
+      computedWeight,
+    ),
+    opticalSize:
+      role === 'serif'
+        ? configuredInstanceValue(
+            endpoint.element.ownerDocument,
+            '--font-morph-serif-optical-size',
+            fontSize(endpoint),
+          )
+        : 0,
   }
 }
 
-function counterpartOutlineInstance(role: FontRole): OutlineInstance {
-  const rootStyle = getComputedStyle(document.documentElement)
-  const value = (property: string, fallback: number) => {
-    const parsed = Number.parseFloat(rootStyle.getPropertyValue(property))
-    return Number.isFinite(parsed) ? parsed : fallback
-  }
+function counterpartOutlineInstance(role: FontRole, ownerDocument: Document): OutlineInstance {
   return {
     role,
-    weight: value(`--font-morph-${role}-weight`, role === 'sans' ? 500 : 600),
-    opticalSize: role === 'serif' ? value('--font-morph-serif-optical-size', 23) : 0,
+    weight: configuredInstanceValue(
+      ownerDocument,
+      `--font-morph-${role}-weight`,
+      role === 'sans' ? 500 : 600,
+    ),
+    opticalSize:
+      role === 'serif'
+        ? configuredInstanceValue(ownerDocument, '--font-morph-serif-optical-size', 23)
+        : 0,
   }
 }
 
@@ -781,7 +811,7 @@ function baseline(endpoint: GlyphEndpoint, font?: FontMetrics) {
 }
 
 function setLayerBox(
-  layer: SVGSVGElement | HTMLCanvasElement,
+  layer: SVGSVGElement | HTMLElement,
   rect: Rect,
   ownerDocument: Document,
 ) {
@@ -842,6 +872,51 @@ function createInitialLayer(endpoint: GlyphEndpoint, replay = false) {
   setLayerBox(layer, endpoint.rect, endpoint.element.ownerDocument)
   setLayerColor(layer, endpoint.style.color)
   endpoint.element.ownerDocument.body.append(layer)
+  return layer
+}
+
+const INITIAL_TEXT_STYLE_PROPERTIES = [
+  'color',
+  'font-family',
+  'font-feature-settings',
+  'font-kerning',
+  'font-optical-sizing',
+  'font-size',
+  'font-stretch',
+  'font-style',
+  'font-synthesis',
+  'font-variant-ligatures',
+  'font-variation-settings',
+  'font-weight',
+  'letter-spacing',
+  'line-height',
+  'text-decoration',
+  'text-transform',
+] as const
+
+/**
+ * Preserve the browser's exact source glyphs while navigation is pending.
+ * An SVG text approximation needs an aspect-ratio correction and visibly
+ * compresses on browsers whose mobile text metrics differ from desktop.
+ */
+function createInitialDomLayer(endpoint: GlyphEndpoint) {
+  const ownerDocument = endpoint.element.ownerDocument
+  const ownerWindow = ownerDocument.defaultView
+  const computed = ownerWindow?.getComputedStyle(endpoint.element)
+  const layer = ownerDocument.createElement('span')
+  layer.classList.add('font-morph-layer', 'rr-block')
+  layer.dataset.fontMorphRenderer = 'dom'
+  layer.setAttribute('aria-hidden', 'true')
+  layer.textContent = endpoint.text
+  layer.style.cssText +=
+    'position:fixed;inset:0 auto auto 0;z-index:2147483646;display:block;overflow:visible;pointer-events:none;transform-origin:top left;white-space:pre;'
+  if (computed) {
+    for (const property of INITIAL_TEXT_STYLE_PROPERTIES) {
+      layer.style.setProperty(property, computed.getPropertyValue(property))
+    }
+  }
+  setLayerBox(layer, endpoint.rect, ownerDocument)
+  ownerDocument.body.append(layer)
   return layer
 }
 
@@ -2075,7 +2150,7 @@ export async function prepareFontMorph(key?: string): Promise<void> {
   if (!captured) return Promise.resolve()
   const targetRole: FontRole = captured.style.fontRole === 'sans' ? 'serif' : 'sans'
   const source = outlineInstance(captured)
-  const target = counterpartOutlineInstance(targetRole)
+  const target = counterpartOutlineInstance(targetRole, captured.element.ownerDocument)
   const prepared = await resolvePreparedSdf(captured.text, source, target)
   if (!prepared) await resolveNormalizedOutline(captured.text, source, target)
 }
@@ -2560,11 +2635,10 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
         targetInstance,
       )
       if (activeMorph !== morph) return
-      if (!(morph.layer instanceof SVGSVGElement)) {
-        cleanup(morph)
-        return
-      }
-      prepared = prepareOutlineMorph(morph.layer, morph.source, target, normalized)
+      const outlineLayer = createInitialLayer(morph.source)
+      prepared = prepareOutlineMorph(outlineLayer, morph.source, target, normalized)
+      morph.layer.remove()
+      morph.layer = outlineLayer
     }
   } catch (error) {
     console.error('Unable to prepare font morph geometry', error)
@@ -3158,7 +3232,7 @@ export function beginFontMorph(key: string) {
   if (!sourceElement) return false
   const source = captureEndpoint(sourceElement)
   if (!source || !isInCaptureFrame(source.rect)) return false
-  const layer = createInitialLayer(source)
+  const layer = createInitialDomLayer(source)
 
   const observer = new MutationObserver(() => {
     const destination = findEndpointElement(key, sourceElement)
