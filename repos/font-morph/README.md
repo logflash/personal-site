@@ -21,19 +21,22 @@ outlines as a fallback. The personal-site integration discovers its strings, loc
 font stacks, responsive weights, and optical sizes automatically from MDX, translation
 catalogs, and CSS.
 
+Structural registration is also automatic. During compilation, the library samples
+each glyph pair, detects intermediate components or counters that do not occur at
+either endpoint, and deterministically selects local, font-space warp controls that
+remove those artifacts. Stable glyphs keep a zero-control fast path. No character,
+font, or site-specific correction files are loaded at build time or runtime.
+
 ```ts
 import { compileFontMorphManifest } from 'font-morph'
 
-const manifest = await compileFontMorphManifest(
-  { sans: [sansBuffer], serif: [serifBuffer] },
-  [
-    {
-      text: 'Resume',
-      source: { role: 'sans', weight: 500, opticalSize: 0 },
-      target: { role: 'serif', weight: 600, opticalSize: 23 },
-    },
-  ],
-)
+const manifest = await compileFontMorphManifest({ sans: [sansBuffer], serif: [serifBuffer] }, [
+  {
+    text: 'Resume',
+    source: { role: 'sans', weight: 500, opticalSize: 0 },
+    target: { role: 'serif', weight: 600, opticalSize: 23 },
+  },
+])
 ```
 
 Configure font URLs and a manifest loader once, mark both text endpoints with

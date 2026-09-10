@@ -15,7 +15,6 @@ const gtConfig = JSON.parse(await readFile(resolve(projectRoot, 'gt.config.json'
 const locales = [gtConfig.defaultLocale, ...gtConfig.locales]
 const contentDirectory = resolve(projectRoot, 'src/content')
 const publicFontDirectory = resolve(projectRoot, 'public/fonts')
-const sdfOverrideDirectory = resolve(projectRoot, 'repos/font-morph/data/overrides/sdf/v1')
 const globalCss = await readFile(resolve(projectRoot, 'src/styles/global.css'), 'utf8')
 const morphCss = await readFile(resolve(projectRoot, 'repos/font-morph/styles.css'), 'utf8')
 
@@ -275,13 +274,6 @@ const buffers = Object.fromEntries(
   ]),
 )
 const manifest = await compileFontMorphManifest(buffers, requests)
-const landmarkOverrides = await Promise.all(
-  (await readdir(sdfOverrideDirectory))
-    .filter((file) => file.endsWith('.json'))
-    .sort()
-    .map(async (file) => JSON.parse(await readFile(resolve(sdfOverrideDirectory, file), 'utf8'))),
-)
-
 // Resolve fallback faces and supported variation axes from the CSS-selected
 // stacks. Equivalent font-instance pairs share one SDF compilation so adding
 // locales or repeated text does not multiply build work.
@@ -321,7 +313,6 @@ for (const [groupKey, group] of [...sdfGroups].sort(([left], [right]) =>
       pixelsPerEm: 512,
       maximumDistance: 64,
       supersampling: 4,
-      landmarkOverrides,
     },
   )
   compiledSdfGroups.set(

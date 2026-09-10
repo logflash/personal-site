@@ -50,8 +50,8 @@ function regionOffset(
 
 /**
  * Evaluates one precompiled distance-field glyph at an absolute progress value.
- * Structural matching is absent from this runtime; reviewed landmark regions
- * have already been paired by canonical manifold ID during compilation.
+ * Structural matching is absent from this runtime; automatic local registration
+ * has already been resolved deterministically during compilation.
  */
 export function renderFontMorphSdfFrame(
   pair: FontMorphSdfGlyphPair,
@@ -76,7 +76,7 @@ export function renderFontMorphSdfFrame(
     return output
   }
 
-  // With no structural landmarks, both sampling coordinates are the current
+  // With no structural registration, both sampling coordinates are the current
   // integer texel. Avoid two clamped bilinear samples per pixel—the result is
   // exactly the same linear distance interpolation with far less runtime work.
   if (pair.warpRegions.length === 0) {
@@ -124,7 +124,6 @@ export function renderFontMorphSdfFrame(
 
 export type {
   FontMorphSdfGlyphPair,
-  FontMorphSdfLandmark,
-  FontMorphSdfLandmarkOverride,
+  FontMorphSdfWarpControl,
   FontMorphSdfWarpRegion,
 } from '../contracts/sdf'
