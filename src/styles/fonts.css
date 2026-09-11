@@ -153,6 +153,14 @@
 }
 
 @font-face {
+  font-family: 'Noto Sans JP';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/noto-sans-jp-600-subset.woff2') format('woff2');
+}
+
+@font-face {
   font-family: 'Noto Serif JP';
   font-style: normal;
   font-weight: 600;
