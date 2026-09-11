@@ -96,6 +96,12 @@
             time: frame.time,
             locale: frame.locale,
             hasDocument: Boolean(frame.document),
+            hasOverlay:
+              frame.overlayRoot?.id === 'director' &&
+              frame.overlayRoot.ownerDocument === document &&
+              frame.overlayRoot.parentElement?.id === 'scaler',
+            overlayWidth: frame.overlayRoot?.style.width || null,
+            overlayHeight: frame.overlayRoot?.style.height || null,
             scrollTop:
               frame.document?.getElementById('scrollbox')?.scrollTop ?? null,
           });

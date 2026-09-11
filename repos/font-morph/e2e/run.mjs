@@ -91,10 +91,12 @@ const html = `<!doctype html>
       .serif { left: 310px; top: 230px; color: rgb(15 70 105); font: 400 104px/1 "Fixture Serif"; }
       :root.simulated-mobile-text-scaling .serif { font-size: 109px; }
       .serif.moved { left: 55vw; top: 28vh; font-size: 84px; }
+      #replay-overlay { position: fixed; inset: 0; pointer-events: none; }
     </style>
   </head>
   <body>
     <main id="fixture"><span class="endpoint sans" data-font-morph="sample">ee</span></main>
+    <div id="replay-overlay"></div>
     <script type="module" src="/bundle.js"></script>
   </body>
 </html>`
@@ -410,6 +412,11 @@ try {
   const late = await replayFrameAt(520)
   assert.equal(early?.renderer, 'sdf')
   assert((early?.alphaPixels ?? 0) > 0)
+  assert.equal(
+    await page.locator('#replay-overlay > .font-morph-director-layer').count(),
+    1,
+    'replay rendering should mount in the supplied host overlay',
+  )
   assert.notDeepEqual(early, middle)
   assert.notDeepEqual(middle, late)
   await replayFrameAt(580)

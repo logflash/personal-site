@@ -116,7 +116,14 @@ window.fontMorphFixture = {
     if (serifEndpoint) serifEndpoint.style.fontSizeToHeight *= 1.00004
     return prepareFontMorphReplay(replayEvents, ['en'], () => undefined, document)
   },
-  replayAt: (time) => replayDirector({ time, document, locale: 'en', events: replayEvents }),
+  replayAt: (time) =>
+    replayDirector({
+      time,
+      document,
+      locale: 'en',
+      events: replayEvents,
+      overlayRoot: document.getElementById('replay-overlay'),
+    }),
   show: swap,
   stopReplay: () => replayDirector({ time: Number.NaN, document: null, events: replayEvents }),
 }

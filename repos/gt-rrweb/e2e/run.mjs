@@ -93,6 +93,18 @@ try {
       Math.abs(ratio - 16 / 9) < 0.05,
       `ratio=${ratio.toFixed(3)}`,
     );
+    const semanticOverlay = await page.evaluate(() =>
+      window.__GT_FRAMES__.find(
+        (frame) => frame.hasOverlay && frame.overlayWidth && frame.overlayHeight,
+      ),
+    );
+    check(
+      'frame directors receive a safe overlay aligned to the capture frame',
+      Boolean(semanticOverlay) &&
+        Number.parseFloat(semanticOverlay.overlayWidth) > 0 &&
+        Number.parseFloat(semanticOverlay.overlayHeight) > 0,
+      JSON.stringify(semanticOverlay),
+    );
 
     // Director cursor: recorded-size (scaled), positioned inside the stage.
     const cursor = await page.evaluate(() => {
@@ -442,7 +454,11 @@ try {
     const teardown = await page.evaluate(() => {
       window.__GT_REPLAYER_HANDLE__.destroy();
       const last = window.__GT_FRAMES__.at(-1);
-      return Number.isNaN(last.time) && last.hasDocument === false;
+      return (
+        Number.isNaN(last.time) &&
+        last.hasDocument === false &&
+        last.hasOverlay === false
+      );
     });
     check('onFrame receives an explicit teardown frame', teardown);
     await page.close();

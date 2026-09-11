@@ -64,6 +64,8 @@ export interface FontMorphReplayFrame<Event extends FontMorphEvent = FontMorphEv
   document: Document | null
   locale?: string
   events: Event[]
+  /** Optional host layer aligned to the visible replay capture frame. */
+  overlayRoot?: HTMLElement | null
 }
 
 export interface FontMorphConfiguration {
@@ -288,6 +290,7 @@ interface PreparedMorph {
   source: GlyphEndpoint
   target: GlyphEndpoint
   contours: ContourMorph[] | null
+  overlayRoot?: HTMLElement
 }
 
 interface PreparedSdfData {
@@ -305,6 +308,7 @@ interface PreparedSdfMorph {
   glyphCanvases: Map<string, HTMLCanvasElement>
   glyphImages: Map<string, ImageData>
   frames: Map<string, Float32Array<ArrayBuffer>>
+  overlayRoot?: HTMLElement
 }
 
 type RenderedMorph = PreparedMorph | PreparedSdfMorph
@@ -810,12 +814,34 @@ function baseline(endpoint: GlyphEndpoint, font?: FontMetrics) {
   return endpoint.logicalRect.height * 0.8
 }
 
+function overlayDimension(root: HTMLElement, property: 'width' | 'height') {
+  const authored = Number.parseFloat(root.style[property])
+  if (Number.isFinite(authored) && authored > 0) return authored
+  return Math.max(1, property === 'width' ? root.clientWidth : root.clientHeight)
+}
+
+function renderingFrame(
+  ownerDocument: Document,
+  overlayRoot?: HTMLElement,
+  logicalFrame?: CaptureFrame,
+): CaptureFrame {
+  if (!overlayRoot) return captureFrame(ownerDocument)
+  const width = overlayDimension(overlayRoot, 'width')
+  const height = overlayDimension(overlayRoot, 'height')
+  return {
+    screen: { left: 0, top: 0, width, height },
+    logicalWidth: logicalFrame?.logicalWidth ?? width,
+    logicalHeight: logicalFrame?.logicalHeight ?? height,
+  }
+}
+
 function setLayerBox(
   layer: SVGSVGElement | HTMLElement,
   rect: Rect,
   ownerDocument: Document,
+  overlayRoot?: HTMLElement,
 ) {
-  const frame = captureFrame(ownerDocument)
+  const frame = renderingFrame(ownerDocument, overlayRoot)
   const screen = {
     left: frame.screen.left + rect.left * frame.screen.width,
     top: frame.screen.top + rect.top * frame.screen.height,
@@ -859,19 +885,24 @@ function createTextFallback(layer: SVGSVGElement, endpoint: GlyphEndpoint) {
   layer.replaceChildren(text)
 }
 
-function createInitialLayer(endpoint: GlyphEndpoint, replay = false) {
-  const layer = createSvgElement(endpoint.element.ownerDocument, 'svg')
+function createInitialLayer(
+  endpoint: GlyphEndpoint,
+  replay = false,
+  overlayRoot?: HTMLElement,
+) {
+  const ownerDocument = overlayRoot?.ownerDocument ?? endpoint.element.ownerDocument
+  const layer = createSvgElement(ownerDocument, 'svg')
   layer.classList.add(replay ? 'font-morph-director-layer' : 'font-morph-layer')
   if (!replay) layer.classList.add('rr-block')
   layer.setAttribute('viewBox', `0 0 ${MORPH_VIEWBOX_SIZE} ${MORPH_VIEWBOX_SIZE}`)
   layer.setAttribute('preserveAspectRatio', 'none')
   layer.setAttribute('aria-hidden', 'true')
-  layer.style.cssText +=
-    'position:fixed;inset:0 auto auto 0;z-index:2147483646;display:block;overflow:visible;pointer-events:none;transform-origin:top left;'
+  layer.style.cssText += `${overlayRoot ? 'position:absolute' : 'position:fixed'};inset:0 auto auto 0;z-index:2147483646;display:block;overflow:visible;pointer-events:none;transform-origin:top left;`
   createTextFallback(layer, endpoint)
-  setLayerBox(layer, endpoint.rect, endpoint.element.ownerDocument)
+  setLayerBox(layer, endpoint.rect, endpoint.element.ownerDocument, overlayRoot)
   setLayerColor(layer, endpoint.style.color)
-  endpoint.element.ownerDocument.body.append(layer)
+  const renderParent = overlayRoot ?? endpoint.element.ownerDocument.body
+  renderParent.append(layer)
   return layer
 }
 
@@ -2160,10 +2191,11 @@ function mountPreparedOutline(
   source: GlyphEndpoint,
   target: GlyphEndpoint,
   prepared: PreparedOutline,
+  overlayRoot?: HTMLElement,
 ): PreparedMorph {
   if (!prepared.contours) {
     layer.dataset.fontMorphFallback = prepared.fallback ?? 'unavailable'
-    return { renderer: 'outline', layer, source, target, contours: null }
+    return { renderer: 'outline', layer, source, target, contours: null, overlayRoot }
   }
 
   const maskId = `font-morph-mask-${++nextMaskId}`
@@ -2192,7 +2224,7 @@ function mountPreparedOutline(
   fill.setAttribute('mask', `url(#${maskId})`)
   definitions.append(mask)
   layer.replaceChildren(definitions, fill)
-  return { renderer: 'outline', layer, source, target, contours }
+  return { renderer: 'outline', layer, source, target, contours, overlayRoot }
 }
 
 function prepareOutlineMorph(
@@ -2204,15 +2236,16 @@ function prepareOutlineMorph(
   return mountPreparedOutline(layer, source, target, materializeOutline(source, target, normalized))
 }
 
-function createSdfLayer(endpoint: GlyphEndpoint, replay: boolean) {
-  const layer = endpoint.element.ownerDocument.createElement('canvas')
+function createSdfLayer(endpoint: GlyphEndpoint, replay: boolean, overlayRoot?: HTMLElement) {
+  const ownerDocument = overlayRoot?.ownerDocument ?? endpoint.element.ownerDocument
+  const layer = ownerDocument.createElement('canvas')
   layer.classList.add(replay ? 'font-morph-director-layer' : 'font-morph-layer')
   if (!replay) layer.classList.add('rr-block')
   layer.dataset.fontMorphRenderer = 'sdf'
   layer.setAttribute('aria-hidden', 'true')
-  layer.style.cssText +=
-    'position:fixed;inset:0 auto auto 0;z-index:2147483646;display:block;pointer-events:none;transform-origin:top left;'
-  endpoint.element.ownerDocument.body.append(layer)
+  layer.style.cssText += `${overlayRoot ? 'position:absolute' : 'position:fixed'};inset:0 auto auto 0;z-index:2147483646;display:block;pointer-events:none;transform-origin:top left;`
+  const renderParent = overlayRoot ?? endpoint.element.ownerDocument.body
+  renderParent.append(layer)
   return layer
 }
 
@@ -2221,16 +2254,18 @@ function mountPreparedSdf(
   target: GlyphEndpoint,
   data: PreparedSdfData,
   replay: boolean,
+  overlayRoot?: HTMLElement,
 ): PreparedSdfMorph {
   return {
     renderer: 'sdf',
-    layer: createSdfLayer(source, replay),
+    layer: createSdfLayer(source, replay, overlayRoot),
     source,
     target,
     data,
     glyphCanvases: new Map(),
     glyphImages: new Map(),
     frames: new Map(),
+    overlayRoot,
   }
 }
 
@@ -2258,9 +2293,10 @@ function paintPreparedSdf(
   outlineProgress: number,
   opacity = 1,
 ) {
-  const { layer, source, target, data, glyphCanvases, glyphImages, frames } = prepared
+  const { layer, source, target, data, glyphCanvases, glyphImages, frames, overlayRoot } =
+    prepared
   const ownerDocument = layer.ownerDocument
-  const frame = captureFrame(ownerDocument)
+  const frame = renderingFrame(ownerDocument, overlayRoot, source.frame)
   const ratio = Math.min(3, ownerDocument.defaultView?.devicePixelRatio || 1)
   const pixelWidth = Math.max(1, Math.round(frame.screen.width * ratio))
   const pixelHeight = Math.max(1, Math.round(frame.screen.height * ratio))
@@ -2374,6 +2410,7 @@ function paintPreparedMorph(
     layer,
     interpolateRect(source.rect, target.rect, geometryProgress),
     layer.ownerDocument,
+    prepared.overlayRoot,
   )
   const colorProgress = smoothColorProgress(outlineProgress)
   setLayerColor(layer, {
@@ -3079,6 +3116,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       state.event !== active.event ||
       state.document !== frame.document ||
       state.locale !== frame.locale ||
+      state.prepared.overlayRoot !== (frame.overlayRoot ?? undefined) ||
       !state.layer.isConnected
     ) {
       clear()
@@ -3106,7 +3144,13 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
         outlineInstance(target),
       )
       if (sdf) {
-        const prepared = mountPreparedSdf(source, target, sdf, true)
+        const prepared = mountPreparedSdf(
+          source,
+          target,
+          sdf,
+          true,
+          frame.overlayRoot ?? undefined,
+        )
         state = {
           event: active.event,
           document: frame.document,
@@ -3119,7 +3163,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           handoffTarget: null,
         }
       } else {
-        const layer = createInitialLayer(source, true)
+        const layer = createInitialLayer(source, true, frame.overlayRoot ?? undefined)
         const normalized = cachedNormalizedOutline(
           translatedText,
           outlineInstance(source),
@@ -3133,7 +3177,13 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           document: frame.document,
           locale: frame.locale,
           layer,
-          prepared: mountPreparedOutline(layer, source, target, preparedOutline),
+          prepared: mountPreparedOutline(
+            layer,
+            source,
+            target,
+            preparedOutline,
+            frame.overlayRoot ?? undefined,
+          ),
           generation: currentGeneration,
           sawTarget: false,
           lastTime: frame.time,
@@ -3142,7 +3192,13 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
 
         const cachedOutline = replayOutlineCache.get(active.payload)?.get(frame.locale ?? '')
         if (cachedOutline && state.generation === currentGeneration) {
-          state.prepared = mountPreparedOutline(layer, source, target, cachedOutline)
+          state.prepared = mountPreparedOutline(
+            layer,
+            source,
+            target,
+            cachedOutline,
+            frame.overlayRoot ?? undefined,
+          )
         }
         if (state.prepared.renderer === 'outline' && !state.prepared.contours) {
           layer.replaceChildren()
@@ -3189,7 +3245,12 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
     if (state.prepared.renderer === 'outline' && !state.prepared.contours) {
       // Keep the source outline stationary during its recorded lead-in. Never
       // scale fallback text and replace it with contours halfway through.
-      setLayerBox(state.layer, state.prepared.source.rect, frame.document)
+      setLayerBox(
+        state.layer,
+        state.prepared.source.rect,
+        frame.document,
+        state.prepared.overlayRoot,
+      )
       return
     }
     if (state.prepared.renderer === 'sdf') {
