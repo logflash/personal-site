@@ -913,7 +913,7 @@ main {
 }
 
 .resume-skill-migration-layer {
-  position: fixed;
+  position: absolute;
   z-index: 1000;
   top: 0;
   left: 0;
@@ -924,7 +924,7 @@ main {
 }
 
 .resume-skill-migration-layer .resume-skill-migrating-dot {
-  position: fixed;
+  position: absolute;
   display: block;
   background: var(--resume-skill-dot-color) !important;
   border-radius: 50%;
