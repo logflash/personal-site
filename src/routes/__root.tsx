@@ -65,7 +65,7 @@ export const Route = createRootRoute({
         ? [
             ['noto-sans-jp-400-outline.ttf', 'font/ttf'],
             ['noto-sans-jp-600-subset.woff2', 'font/woff2'],
-            ['noto-serif-jp-600-outline.ttf', 'font/ttf'],
+            ['noto-serif-jp-600-subset.woff2', 'font/woff2'],
           ].map(([font, type]) => ({
             rel: 'preload',
             as: 'font',
