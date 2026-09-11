@@ -9,8 +9,11 @@ import {
   collectDirectedClicks,
   compressTimeline,
   detectDoubleClicks,
+  firstScrollTimeBetween,
   incrementalData,
   markScrollBurstStarts,
+  projectPointIntoRect,
+  rectAtScrollPosition,
   replaceNativeScrollEvents,
   scrollPositionAt,
 } from '../director';
@@ -86,6 +89,51 @@ describe('directed pointer input', () => {
         [],
       );
     }
+  });
+});
+
+describe('directed pointer target projection', () => {
+  it('preserves a recorded point while it remains inside the target', () => {
+    expect(
+      projectPointIntoRect(
+        { x: 40, y: 30 },
+        { left: 10, top: 20, right: 80, bottom: 60 },
+      ),
+    ).toEqual({ x: 40, y: 30 });
+  });
+
+  it('follows the nearest target edge continuously instead of jumping to its center', () => {
+    const point = { x: 40, y: 30 };
+    const positions = [39, 39.5, 40, 40.5, 41].map(
+      (left) =>
+        projectPointIntoRect(point, {
+          left,
+          top: 20,
+          right: left + 80,
+          bottom: 60,
+        }).x,
+    );
+    expect(positions).toEqual([40, 40, 40.5, 41, 41.5]);
+    expect(Math.max(...positions.slice(1).map((x, index) => x - positions[index]))).toBe(0.5);
+  });
+
+  it('keeps corrected click points just inside a translated target', () => {
+    expect(
+      projectPointIntoRect(
+        { x: 10, y: 100 },
+        { left: 60, top: 20, right: 100, bottom: 80 },
+      ),
+    ).toEqual({ x: 60.5, y: 79.5 });
+  });
+
+  it('reconstructs a target rectangle at its click-time scroll position', () => {
+    expect(
+      rectAtScrollPosition(
+        { left: 20, top: -280, right: 120, bottom: -240 },
+        { x: 0, y: 700 },
+        { x: 0, y: 0 },
+      ),
+    ).toEqual({ left: 20, top: 420, right: 120, bottom: 460 });
   });
 });
 
@@ -179,6 +227,14 @@ describe('directed scrolling', () => {
       scrollPositionAt(track, 150, [], linear),
     );
     expect(scrollPositionAt(track, 200, [], linear)).toEqual({ x: 0, y: 200 });
+  });
+
+  it('finds the first scroll between pointer waypoints', () => {
+    const events = [scroll(200, 0), scroll(300, 100), scroll(600, 200)];
+    const tracks = buildScrollTracks(events, 0, markScrollBurstStarts(events));
+    expect(firstScrollTimeBetween(tracks, 100, 500)).toBe(200);
+    expect(firstScrollTimeBetween(tracks, 300, 500)).toBeNull();
+    expect(firstScrollTimeBetween(tracks, 300, 700)).toBe(600);
   });
 
   it('eases a singleton jump without changing its final timestamp', () => {

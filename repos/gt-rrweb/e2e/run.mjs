@@ -191,10 +191,29 @@ try {
     check('es: gt()-string-path text swapped', text.includes(ES_STR));
     check('es: source text gone', !text.includes(SOURCE_TEXT));
     const localizedState = await page.evaluate(async () => {
-      const idoc = document.querySelector(
-        '#app #player iframe',
-      ).contentDocument;
+      const iframe = document.querySelector('#app #player iframe');
+      const idoc = iframe.contentDocument;
       const target = idoc.getElementById('go').getBoundingClientRect();
+      const iframeRect = iframe.getBoundingClientRect();
+      const scale = iframeRect.width / iframe.offsetWidth;
+      const fxRect = document.querySelector('#app #fx').getBoundingClientRect();
+      const cursorTransform = document
+        .querySelector('#app #cursor')
+        .style.transform.match(
+          /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/,
+        );
+      const cursor = cursorTransform
+        ? {
+            x: fxRect.left + Number(cursorTransform[1]),
+            y: fxRect.top + Number(cursorTransform[2]),
+          }
+        : null;
+      const targetHost = {
+        left: iframeRect.left + target.left * scale,
+        top: iframeRect.top + target.top * scale,
+        right: iframeRect.left + target.right * scale,
+        bottom: iframeRect.top + target.bottom * scale,
+      };
       const fixture = await fetch('/fixture.json').then((response) =>
         response.json(),
       );
@@ -205,8 +224,15 @@ try {
       return {
         lang: idoc.documentElement.lang,
         localeValue: idoc.getElementById('locale').value,
-        clickInsideTarget:
+        recordedClickInsideTarget:
           click.data.y >= target.top && click.data.y <= target.bottom,
+        cursorInsideTarget:
+          cursor != null &&
+          cursor.x >= targetHost.left &&
+          cursor.x <= targetHost.right &&
+          cursor.y >= targetHost.top &&
+          cursor.y <= targetHost.bottom,
+        scrollTop: idoc.getElementById('scrollbox').scrollTop,
       };
     });
     check(
@@ -215,8 +241,14 @@ try {
       JSON.stringify(localizedState),
     );
     check(
-      'translated scrolling keeps the recorded click inside its target',
-      localizedState.clickInsideTarget,
+      'translated replay keeps the captured scroll destination unchanged',
+      localizedState.scrollTop === 285,
+      JSON.stringify(localizedState),
+    );
+    check(
+      'synthetic cursor corrects a translated click without moving the viewport',
+      !localizedState.recordedClickInsideTarget &&
+        localizedState.cursorInsideTarget,
       JSON.stringify(localizedState),
     );
 

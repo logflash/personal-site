@@ -2,10 +2,12 @@ import { Link, getRouteApi } from '@tanstack/react-router'
 import {
   Children,
   Fragment,
+  cloneElement,
   createContext,
   isValidElement,
   useContext,
   type ComponentPropsWithoutRef,
+  type ReactElement,
   type ReactNode,
 } from 'react'
 import { externalProps } from '../../lib/links'
@@ -34,6 +36,48 @@ function text(children: ReactNode, component: string): string {
 
 function elements(children: ReactNode) {
   return Children.toArray(children).filter(isValidElement)
+}
+
+const TRANSLATABLE_INLINE_ELEMENTS = new Set([
+  'a',
+  'abbr',
+  'b',
+  'code',
+  'em',
+  'i',
+  'small',
+  'span',
+  'strong',
+])
+
+function translatedInline(children: ReactNode, gt: (source: string) => string): ReactNode {
+  return Children.map(children, (child) => {
+    if (typeof child === 'string') {
+      const parts = child.match(/^(\s*)([\s\S]*?\S)(\s*)$/)
+      if (!parts) return child
+      const [, leading, source, trailing] = parts
+      return (
+        <Fragment>
+          {leading}
+          <span data-_gt-hash={translationHash(source)} style={{ display: 'contents' }}>
+            {gt(source)}
+          </span>
+          {trailing}
+        </Fragment>
+      )
+    }
+
+    if (
+      isValidElement(child) &&
+      typeof child.type === 'string' &&
+      TRANSLATABLE_INLINE_ELEMENTS.has(child.type)
+    ) {
+      const element = child as ReactElement<{ children?: ReactNode }>
+      return cloneElement(element, undefined, translatedInline(element.props.children, gt))
+    }
+
+    return child
+  })
 }
 
 export function MdxSection({
@@ -115,21 +159,34 @@ export function ResumeHeading({ children }: ComponentPropsWithoutRef<'h1'>) {
   )
 }
 
-export function ResumeDocumentLink({ href }: { href: string }) {
+export function ResumeCopy({ children }: { children: ReactNode }) {
+  return <div className="resume-copy">{children}</div>
+}
+
+export function ResumeSectionHeading({ children }: ComponentPropsWithoutRef<'h2'>) {
+  const section = useContext(SectionContext)
+  const gt = useMdxGT()
+  if (!section) throw new Error('Resume headings must be inside MdxSection')
+  const source = text(children, 'Resume headings')
+
   return (
-    <a
-      className="resume-document-link"
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      aria-label="Open resume PDF in a new tab"
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M14 5h5v5m0-5-8 8" />
-        <path d="M19 13v6H5V5h6" />
-      </svg>
-    </a>
+    <SectionHeading
+      id={section.id}
+      title={gt(source)}
+      tight={section.tight}
+      translationHash={translationHash(source)}
+    />
   )
+}
+
+export function ResumeParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
+  const gt = useMdxGT()
+  return <p className="resume-copy-paragraph">{translatedInline(children, gt)}</p>
+}
+
+export function ResumeListItem({ children }: ComponentPropsWithoutRef<'li'>) {
+  const gt = useMdxGT()
+  return <li>{translatedInline(children, gt)}</li>
 }
 
 export function QuickLinks({ children }: { children: ReactNode }) {
@@ -283,10 +340,103 @@ export function Paper({
 
 const LANGUAGE_COLORS: Record<string, string> = {
   Python: '#3572A5',
-  Go: '#00ADD8',
-  Svelte: '#ff3e00',
   C: '#555555',
+  'C++': '#f34b7d',
+  Bash: '#89e051',
+  Assembly: '#6E4C13',
+  Verilog: '#b2b7f8',
+  Rust: '#dea584',
+  SQL: '#e38c00',
+  CUDA: '#3A4E3A',
+  Go: '#00ADD8',
+  Java: '#b07219',
+  TypeScript: '#3178c6',
+  JavaScript: '#f1e05a',
+  Dart: '#00B4AB',
+  CSS: '#563d7c',
+  HTML: '#e34c26',
+  Svelte: '#ff3e00',
   Jupyter: '#DA5B0B',
+}
+
+export function ResumeEntry({
+  logo,
+  title,
+  date,
+  fact,
+  gpa,
+  languages,
+  children,
+}: {
+  logo: string
+  title: string
+  date: string
+  fact: string
+  gpa?: string
+  languages?: string
+  children: ReactNode
+}) {
+  const gt = useMdxGT()
+  const languageChips = languages?.split(' · ').map((language) => ({
+    language,
+    color: LANGUAGE_COLORS[language] ?? 'var(--mut)',
+  }))
+
+  return (
+    <details className="resume-entry">
+      <summary className="resume-entry-toggle">
+        <span className="resume-entry-logo" aria-hidden="true">
+          <img src={logo} alt="" width="48" height="48" loading="lazy" decoding="async" />
+        </span>
+        <span className="resume-entry-overview">
+          <span className={`resume-entry-facts${gpa ? ' resume-entry-facts-with-gpa' : ''}`}>
+            <strong className="resume-entry-title" data-_gt-hash={translationHash(title)}>
+              {gt(title)}
+            </strong>
+            <em className="resume-entry-date" data-_gt-hash={translationHash(date)}>
+              {gt(date)}
+            </em>
+            <span className="resume-entry-fact" data-_gt-hash={translationHash(fact)}>
+              {gt(fact)}
+            </span>
+            {gpa ? (
+              <em className="resume-entry-gpa" data-_gt-hash={translationHash(gpa)}>
+                {gt(gpa)}
+              </em>
+            ) : null}
+          </span>
+          {languageChips ? (
+            <span className="chips resume-entry-languages">
+              {languageChips.map(({ language, color }) => (
+                <span key={language} className="chip">
+                  <span className="lang-dot" style={{ background: color }} aria-hidden="true" />
+                  {language}
+                </span>
+              ))}
+            </span>
+          ) : null}
+        </span>
+      </summary>
+      <div className="resume-entry-details">{children}</div>
+    </details>
+  )
+}
+
+export function ResumeSkillList({ children }: { children: ReactNode }) {
+  return <ul className="resume-skill-list">{elements(children)}</ul>
+}
+
+export function ResumeSkill({ label, language = false }: { label: string; language?: boolean }) {
+  const gt = useMdxGT()
+  const color = language ? (LANGUAGE_COLORS[label] ?? 'var(--acc)') : 'var(--mut)'
+  return (
+    <li className="resume-skill-item">
+      <span className="lang-dot" style={{ background: color }} aria-hidden="true" />
+      <span {...(language ? {} : { 'data-_gt-hash': translationHash(label) })}>
+        {language ? label : gt(label)}
+      </span>
+    </li>
+  )
 }
 
 export function Project({
@@ -388,5 +538,11 @@ export const sharedMdxComponents = {
 export const resumeMdxComponents = {
   ...sharedMdxComponents,
   h1: ResumeHeading,
-  ResumeDocumentLink,
+  h2: ResumeSectionHeading,
+  li: ResumeListItem,
+  p: ResumeParagraph,
+  ResumeEntry,
+  ResumeSkill,
+  ResumeSkillList,
+  ResumeCopy,
 }

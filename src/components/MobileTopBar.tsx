@@ -1,5 +1,5 @@
 import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
-import { mobileNavItems } from '../data/site'
+import { mobileNavItems, mobileResumeNavItems } from '../data/site'
 import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { resumeHeaderTransition } from '../lib/headerTransitions'
 import { Identity } from './Identity'
@@ -47,7 +47,7 @@ export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: Mobil
         <ThemeToggle onToggle={onToggleTheme} />
       </header>
       <nav className="pill-nav" aria-label="Primary">
-        <NavLinks items={mobileNavItems} />
+        <NavLinks items={onResumeRoute ? mobileResumeNavItems : mobileNavItems} />
       </nav>
     </div>
   )

@@ -276,11 +276,31 @@ main {
   color: var(--mut);
 }
 
+.side-nav .resume-home-nav-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.side-nav .resume-home-nav-link svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 :root[data-active-section='home'] .side-nav a[data-section='home'],
 :root[data-active-section='about'] .side-nav a[data-section='about'],
 :root[data-active-section='research'] .side-nav a[data-section='research'],
 :root[data-active-section='projects'] .side-nav a[data-section='projects'],
-:root[data-active-section='contact'] .side-nav a[data-section='contact'] {
+:root[data-active-section='contact'] .side-nav a[data-section='contact'],
+:root[data-active-section='education'] .side-nav a[data-section='education'],
+:root[data-active-section='experience'] .side-nav a[data-section='experience'],
+:root[data-active-section='skills'] .side-nav a[data-section='skills'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -405,7 +425,10 @@ main {
 :root[data-active-section='about'] .pill-nav a[data-section='about'],
 :root[data-active-section='research'] .pill-nav a[data-section='research'],
 :root[data-active-section='projects'] .pill-nav a[data-section='projects'],
-:root[data-active-section='contact'] .pill-nav a[data-section='contact'] {
+:root[data-active-section='contact'] .pill-nav a[data-section='contact'],
+:root[data-active-section='education'] .pill-nav a[data-section='education'],
+:root[data-active-section='experience'] .pill-nav a[data-section='experience'],
+:root[data-active-section='skills'] .pill-nav a[data-section='skills'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -590,24 +613,228 @@ main {
   color: var(--fg);
 }
 
-.resume-document-link {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
-  margin-top: 18px;
-  color: var(--acc);
+.resume-copy {
+  max-width: 660px;
+  margin-top: 38px;
+  color: var(--mut);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.resume-document-link svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.resume-copy > .section {
+  max-width: none;
+  margin-top: 38px;
+}
+
+.resume-copy-paragraph {
+  margin: 10px 0 0;
+}
+
+.resume-entry {
+  --resume-entry-border: var(--line);
+  --resume-entry-gap: 14px;
+  --resume-entry-inline-padding: 14px;
+  --resume-entry-logo-size: 48px;
+
+  overflow: hidden;
+  border: 1px solid var(--resume-entry-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--mut);
+}
+
+.resume-entry[open] {
+  --resume-entry-border: color-mix(in srgb, var(--acc) 40%, var(--line));
+}
+
+.resume-entry + .resume-entry {
+  margin-top: 12px;
+}
+
+.resume-entry-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--resume-entry-gap);
+  padding: 16px var(--resume-entry-inline-padding);
+  cursor: pointer;
+  list-style: none;
+}
+
+.resume-entry-toggle::-webkit-details-marker {
+  display: none;
+}
+
+.resume-entry-toggle::marker {
+  content: '';
+}
+
+.resume-entry-toggle:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: -3px;
+}
+
+@media (hover: hover) {
+  html:not(.touch) .resume-entry-toggle:hover {
+    background: var(--hov);
+  }
+}
+
+.resume-entry-logo {
+  display: flex;
+  width: var(--resume-entry-logo-size);
+  height: var(--resume-entry-logo-size);
+  flex: 0 0 var(--resume-entry-logo-size);
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, #111 14%, transparent);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.resume-entry-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+  object-fit: contain;
+}
+
+.resume-entry-overview {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.resume-entry-facts {
+  display: grid;
+  grid-template-areas:
+    'title date'
+    'fact gpa';
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: baseline;
+  gap: 4px 20px;
+}
+
+.resume-entry-title {
+  grid-area: title;
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.resume-entry-date,
+.resume-entry-gpa {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-style: normal;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.resume-entry-date {
+  grid-area: date;
+  color: var(--fg);
+}
+
+.resume-entry-fact {
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.resume-entry-fact {
+  grid-area: fact;
+  color: var(--fg);
+}
+
+.resume-entry-gpa {
+  grid-area: gpa;
+  color: var(--fg);
+}
+
+.resume-entry-languages {
+  margin-top: 4px;
+}
+
+.resume-entry-details {
+  padding: 14px var(--resume-entry-inline-padding) 16px
+    calc(
+      var(--resume-entry-inline-padding) + var(--resume-entry-logo-size) + var(--resume-entry-gap)
+    );
+  border-top: 1px solid var(--resume-entry-border);
+}
+
+.resume-entry-details > .resume-copy-paragraph:first-child {
+  margin-top: 0;
+}
+
+.resume-entry-details > ul:last-child {
+  margin-bottom: 0;
+}
+
+.resume-copy strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+.resume-copy em {
+  font-style: italic;
+}
+
+.resume-copy a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--acc) 55%, transparent);
+  text-underline-offset: 2px;
+}
+
+.resume-copy .h-link {
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.resume-copy .hash {
+  color: var(--acc);
+  text-decoration: none;
+}
+
+.resume-copy ul {
+  margin: 6px 0 16px;
+  padding-left: 22px;
+}
+
+.resume-copy li + li {
+  margin-top: 3px;
+}
+
+.resume-copy li > ul {
+  margin: 3px 0 5px;
+}
+
+.resume-skill-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px 22px;
+  margin-top: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.resume-skill-item {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  color: var(--mut);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.resume-skill-item .lang-dot {
+  width: 8px;
+  height: 8px;
 }
 
 /* ---- Contribution graph ---- */
@@ -1046,6 +1273,75 @@ html[data-initial-scroll] .cg-scroller {
     order: 1;
   }
 
+  .resume-copy {
+    margin-top: 32px;
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .resume-copy > .section {
+    margin-top: 32px;
+  }
+
+  .resume-entry-toggle {
+    padding-block: 14px;
+  }
+
+  .resume-entry {
+    --resume-entry-gap: 12px;
+    --resume-entry-inline-padding: 12px;
+    --resume-entry-logo-size: 42px;
+  }
+
+  .resume-entry-facts {
+    grid-template-areas:
+      'title date'
+      'fact fact';
+    gap: 6px 12px;
+  }
+
+  .resume-entry-facts-with-gpa {
+    grid-template-areas:
+      'title date'
+      'fact fact'
+      '. gpa';
+  }
+
+  .resume-entry-gpa {
+    justify-self: end;
+  }
+
+  .resume-entry-title {
+    font-size: 14.5px;
+  }
+
+  .resume-entry-date,
+  .resume-entry-gpa {
+    font-size: 11px;
+  }
+
+  .resume-entry-fact {
+    font-size: 13px;
+  }
+
+  .resume-entry-languages {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .resume-entry-details {
+    padding-block: 12px 14px;
+  }
+
+  .resume-skill-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px 16px;
+  }
+
+  .resume-skill-item {
+    font-size: 11px;
+  }
+
   .back-to-top {
     display: flex;
   }
@@ -1165,6 +1461,29 @@ html[data-initial-scroll] .cg-scroller {
 
   .copyright-mobile {
     display: block;
+  }
+}
+
+@media (max-width: 560px) {
+  .resume-entry-facts {
+    grid-template-areas:
+      'title'
+      'fact'
+      'date';
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .resume-entry-facts-with-gpa {
+    grid-template-areas:
+      'title'
+      'fact'
+      'date'
+      'gpa';
+  }
+
+  .resume-entry-date,
+  .resume-entry-gpa {
+    justify-self: end;
   }
 }
 

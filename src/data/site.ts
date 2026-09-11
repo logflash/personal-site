@@ -23,6 +23,14 @@ export const navItems: NavItem[] = [
   { id: 'contact', label: 'Contact' },
 ]
 
+export const resumeNavItems: NavItem[] = [
+  { id: 'home', label: 'Home' },
+  { id: 'education', label: 'Education' },
+  { id: 'experience', label: 'Experience' },
+  { id: 'skills', label: 'Skills' },
+]
+
 // The mobile pill nav omits Home: the top bar isn't sticky, so a back-to-top
 // pill would only be tappable when already at the top.
 export const mobileNavItems: NavItem[] = navItems.filter((item) => item.id !== 'home')
+export const mobileResumeNavItems: NavItem[] = resumeNavItems.filter((item) => item.id !== 'home')

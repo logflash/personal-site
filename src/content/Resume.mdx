@@ -1,3 +1,312 @@
 # Resume
 
-<ResumeDocumentLink href="/IanResume_14.3.pdf" />
+<ResumeCopy>
+
+- Ph.D. candidate at MIT, with a focus on training and applying foundation AI models for medical applications
+- Versatile engineer with a Princeton graduate degree, industry experience at NVIDIA, and research in AI and robotics
+- Deep expertise in machine learning, robotic systems, computer architecture, signal processing, and embedded programming
+- Proven ability to rapidly prototype and deliver high-quality, robust software and firmware solutions
+- Recognized for adaptability, technical breadth, and cross-domain problem-solving across academic and industry settings
+
+<MdxSection id="education">
+
+## Education
+
+<ResumeEntry
+  logo="/logos/resume/mit.svg"
+  title="Massachusetts Institute of Technology"
+  date="Sep 2026–Present"
+  fact="Ph.D. in Electrical Engineering & Computer Science (Medical AI)"
+  gpa="GPA: Unknown"
+>
+
+_Honors & Awards:_
+
+- **HDTV Grand Alliance Fellowship** [2026] — selected for funding award, given exemplary academic and research achievements
+
+_Research:_
+
+- **Medical AI @ Katabi Lab** [2026–]
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/princeton.png"
+  title="Princeton University"
+  date="Sep 2025–May 2026"
+  fact="Masters in Electrical & Computer Engineering (Robotics + Machine Learning)"
+  gpa="GPA: 4.000 (4 A+'s, 4 A's)"
+>
+
+_Research:_
+
+- **Machine Learning @ Jha Lab** [2025–2026] — first author, lead ML contributor, and primary writer of papers on diabetes detection
+  - Publication: _[SweetDeep: A Wearable AI Solution for Real-Time Non-Invasive Diabetes Screening](https://www.arxiv.org/abs/2512.03471)_
+  - Publication: _Machine Learning for Type 2 Diabetes Prediction using Continuous Glucose Monitors_
+- **Robotics @ Silver Lab** [2025–2026] — improving real-to-sim-to-real transfer through perception and simulation research
+  - Internal Research: _Optimizing Robust Object-Centric Prompts for VLM-Based Robot Perception_
+  - Internal Research: _Building a Kinematic Simulator for the Princeton Robot Planning and Learning Lab_
+
+_Outreach:_
+
+- **Robotics @ Silver Lab** [2026] — built [a Scratch-like website](https://kinder-blockly.fly.dev/), then utilized it to teach robotic abstractions to middle-school students
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/princeton.png"
+  title="Princeton University"
+  date="Sep 2021–May 2025"
+  fact="B.S.E. Electrical & Computer Engineering + Minor in Neuroscience — Class Rank 1 of 1305"
+  gpa="GPA: 4.000 (18 A+'s, 18 A's)"
+>
+
+_Honors & Awards:_
+
+- **Class of 1939 Award** [2024] — honored for the single highest academic standing among 1300+ members of Princeton's Class of '25
+- **James Hayes-Edgar Palmer Prize** [2025] — recognized for excellent scholarship, leadership, and creativity in engineering work
+- **G David Forney Jr Prize** [2025] — awarded for an outstanding record in communication science, systems, and signals coursework
+- **2x Shapiro Award for Outstanding Academic Achievement** [2022, 2023]; **Manfred Pyka Memorial Physics Prize** [2022]
+- **1st Place in Harvard's Pacbot Robotics Competition** [2023]; **2nd Place in the Princeton Computer Science Contest** [2023]
+
+_Leadership:_
+
+- **President, Mentor, Software + Firmware Lead on Princeton Robotics Team** [2023–2025] — led Pacbot and Golf Cart teams
+- **Campus Service Leader of Loaves & Fishes** [2023–2025] — volunteering to feed homeless and low-income residents
+
+_Research:_
+
+- **Robotics @ Fisac Lab** [2024–2025] — developed an ILQR-based self-driving approach to refine obstacle avoidance on model trucks
+- **Machine Learning @ Jha Lab** [2025] — trained accurate, compact, and well-calibrated smartwatch disease detection models
+  - Undergraduate Thesis: _[Real-Time Disease Detection with Energy-Based Models](https://theses-dissertations.princeton.edu/entities/publication/e2897496-76dc-4186-87f2-3faea2cbd44d)_
+  - Internal Research: _PreCEPT: Pretraining Classifiers using Energy-based Priors and Teachers_
+- **Hardware @ Martonosi Lab** [2024] — designed and verified a pipelined accelerator for chaining frequent priority queue operations
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/ucf.png"
+  title="University of Central Florida"
+  date="Aug 2019–Dec 2020"
+  fact="Dual Enrollment (During High School)"
+  gpa="GPA: 4.000 (5 A's)"
+>
+
+- **Burnett Honors Scholar**
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/seminole-high.png"
+  title="Seminole High School"
+  date="Aug 2017–May 2021"
+  fact="International Baccalaureate Diploma"
+  gpa="GPA: 4.000"
+>
+
+- **Class Rank 1 of 1030**
+- **Valedictorian**
+- **Physics Olympiad Qualifier**
+
+</ResumeEntry>
+
+</MdxSection>
+
+<MdxSection id="experience">
+
+## Experience
+
+<ResumeEntry
+  logo="/logos/resume/general-translation.png"
+  title="Full-Stack AI Software Engineer, General Translation"
+  date="Jun 2026–Aug 2026"
+  fact="LLM-Based Agent Development"
+  languages="TypeScript · JavaScript · SQL · Python"
+>
+
+- Completed and deployed an end-to-end service for translating and formatting Google Slides decks using Vision-Language Models, with built-in version control, carefully designed billing, and lazy formatting updates upon changing content
+- Integrated GitHub and Slack webhooks for a code localization agent, accelerating the developer feedback loop
+- Hypothesized and validated edge-case vulnerabilities within the agent's billing pipeline, correcting them to prevent under-billing
+- Architected an automatic validation pipeline to benchmark and patch regressions in natural language translation quality
+- Expanded the suite of supported file formats for translation—including Lottie and SVG—using vision-language agents
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/neutigers.png"
+  title="Data and AI Engineering Consultant, NeuTigers"
+  date="Jun 2025–Dec 2025"
+  fact="Disease Detection Modeling"
+  languages="Python · Bash"
+>
+
+- Collaborated with clinical team to process and synchronize wearable sensor data streams for disease classification dataset creation
+- Engineered and validated a new approach to train transformer and multilayer perceptron models on physiological timeseries data, while also refining calibration and improving consistency of model performance across training runs
+- Constructed and selected clinically relevant features, then trained 100x smaller classifiers with 10+% higher accuracy and F1 scores
+- Tripled model iteration speeds by automating parallel multi-fold training and evaluation within existing CI/CD infrastructure
+- Coordinated the integration of machine learning screening models into smartwatches, using C++, Java, and Android Studio
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/princeton.png"
+  title="Machine Learning Researcher, Princeton University"
+  date="Jun–Aug 2025"
+  fact="Medical Energy-Based Models"
+  languages="Python"
+>
+
+- Built a Python library for training energy-based model classifiers across diverse (tabular & physiological) disease detection tasks
+- Achieved state-of-the-art accuracy on multiple proprietary clinical datasets using a novel energy-based model distillation approach
+- Enabled out-of-distribution detection and semi-supervised learning in existing tabular datasets via energy-based modeling
+- Conceived and mentored an undergraduate research project using calibrated models for differential diagnosis applications
+- Supported data processing and model training for a post-doctoral project that predicts emotions using physiological signals
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/princeton.png"
+  title="Teaching Assistant, Princeton University"
+  date="Sep 2022–May 2025"
+  fact="Robotics, ECE, CS, Math, Physics"
+  languages="Python · Verilog · C · C++ · Assembly · Java"
+>
+
+- Led tutoring, assignment help, lab design, and teaching for nine courses: Physics, Advanced Vector Calculus, Advanced Mechanics, Programming Systems, Algorithms, Logic Design, Circuits, Autonomous Systems Lab, Intelligent Robotic Systems
+- Assisted over 200 students with problem set questions, labs, debugging code, and exam preparation
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/nvidia.svg"
+  title="System Software Intern, NVIDIA (III)"
+  date="May–Aug 2024"
+  fact="Datacenter Software Benchmarking"
+  languages="Python · C++ · Assembly · Bash"
+>
+
+- Introduced a framework for automatic profiling, performance analysis, power analysis, and visualizations of runs across multiple data center cluster workloads, and fully integrated it into the team's standard set of tools
+- Devised and deployed an Ansible tool which automatically tracks and visualizes usage of shared testing boards
+- Planned and launched a new CI/CD pipeline to catch bugs introduced into a widely used internal benchmark testing suite
+- Tested and enhanced a kernel driver that uses Linux tracing to sample profiling events for fast workload characterization
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/nvidia.svg"
+  title="System Software Intern, NVIDIA (II)"
+  date="May–Aug 2023"
+  fact="Embedded OS Performance Analysis"
+  languages="JavaScript · Python · HTML · CSS"
+>
+
+- Augmented an interactive and comprehensive cloud-based kernel event analysis tool, used by automotive engineers and customers to identify ways to improve startup and runtime efficiency of OS and virtualization layers on the Drive Orin
+- Automated the process of diagnosing common performance issues by constructing a pipeline to analyze OS trace logs
+- Debugged and improved a real-time lightweight utility for estimating CPU and memory utilization in self-driving cars
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/nvidia.svg"
+  title="System Software Intern, NVIDIA (I)"
+  date="May–Aug 2022"
+  fact="Datacenter Power Monitoring"
+  languages="C · C++ · Bash"
+>
+
+- Conducted exploratory research of power measurement approaches for the Grace CPU superchip
+- Studied, modified, and wrote kernel device drivers, Device Tree bindings, ACPI table entries, and bash scripts to configure and process power sensor inputs to the chip to enable power telemetry and monitoring
+- Added enhancements to a power analysis tool, allowing for interactive visualizations of large traces of power and thermal data
+
+</ResumeEntry>
+
+<ResumeEntry
+  logo="/logos/resume/eizo.svg"
+  title="Software Intern, EIZO Rugged Solutions"
+  date="May–Aug 2021"
+  fact="Embedded Hardware Testing"
+  languages="Python · C · C++"
+>
+
+- Implemented testing libraries in C and C++ to evaluate and summarize the real-time performance, thermal, and power metrics of embedded NVIDIA Quadro GPUs, PCIe connections, and the company's graphics cards
+- Demonstrated graphics and multiprocessing capabilities of hardware through TensorFlow and OpenCV applications
+
+</ResumeEntry>
+
+</MdxSection>
+
+<MdxSection id="skills">
+
+## Skills
+
+**Programming Experience:**
+
+<ResumeSkillList>
+  <ResumeSkill label="Python" language />
+  <ResumeSkill label="C" language />
+  <ResumeSkill label="C++" language />
+  <ResumeSkill label="Bash" language />
+  <ResumeSkill label="Assembly" language />
+  <ResumeSkill label="Verilog" language />
+  <ResumeSkill label="Rust" language />
+  <ResumeSkill label="SQL" language />
+  <ResumeSkill label="CUDA" language />
+  <ResumeSkill label="Go" language />
+  <ResumeSkill label="Java" language />
+  <ResumeSkill label="TypeScript" language />
+  <ResumeSkill label="JavaScript" language />
+  <ResumeSkill label="Dart" language />
+  <ResumeSkill label="CSS" language />
+  <ResumeSkill label="HTML" language />
+</ResumeSkillList>
+
+**Tools/Technology:**
+
+<ResumeSkillList>
+  <ResumeSkill label="ROS" />
+  <ResumeSkill label="Jupyter" />
+  <ResumeSkill label="Altium" />
+  <ResumeSkill label="SolidEdge CAD" />
+  <ResumeSkill label="SPICE Simulation" />
+  <ResumeSkill label="Xilinx Vivado" />
+  <ResumeSkill label="Grafana" />
+  <ResumeSkill label="Ansible" />
+  <ResumeSkill label="GitLab CI" />
+</ResumeSkillList>
+
+**Hardware Experience:**
+
+<ResumeSkillList>
+  <ResumeSkill label="Arduino (Mega, STM32, Teensy)" />
+  <ResumeSkill label="Raspberry Pi (Zero, 4)" />
+  <ResumeSkill label="NVIDIA Jetson (TX2, NX, Orin)" />
+  <ResumeSkill label="FPGA (Xilinx Artix 7)" />
+</ResumeSkillList>
+
+**Machine Learning:**
+
+<ResumeSkillList>
+  <ResumeSkill label="Supervised ML" />
+  <ResumeSkill label="Energy-Based Models" />
+  <ResumeSkill label="Transformers" />
+  <ResumeSkill label="CNNs" />
+  <ResumeSkill label="VAEs" />
+  <ResumeSkill label="Normalizing Flows" />
+</ResumeSkillList>
+
+**Robotics:**
+
+<ResumeSkillList>
+  <ResumeSkill label="Q Learning" />
+  <ResumeSkill label="Policy Gradient RL" />
+  <ResumeSkill label="Maximum-Entropy RL" />
+  <ResumeSkill label="Sim-to-Real Transfer" />
+  <ResumeSkill label="Imitation Learning" />
+  <ResumeSkill label="A* Planning" />
+  <ResumeSkill label="ILQR for Trajectory Optimization" />
+  <ResumeSkill label="Diffusion Trajectory Optimization" />
+</ResumeSkillList>
+
+</MdxSection>
+
+</ResumeCopy>
