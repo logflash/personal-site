@@ -6,14 +6,20 @@ import {
   createContext,
   isValidElement,
   useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
   type ComponentPropsWithoutRef,
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { flushSync } from 'react-dom'
 import { externalProps } from '../../lib/links'
 import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
 import { resumeHeaderTransition } from '../../lib/headerTransitions'
 import { useMdxGT } from '../../lib/mdxTranslation'
+import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
 import { translationHash } from '../../lib/translationHash'
 import { SectionHeading } from '../SectionHeading'
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
@@ -25,6 +31,7 @@ interface SectionContextValue {
 
 const SectionContext = createContext<SectionContextValue | null>(null)
 const rootRoute = getRouteApi('__root__')
+const RESUME_SKILL_MIGRATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
 
 function text(children: ReactNode, component: string): string {
   if (typeof children === 'string') return children.trim()
@@ -359,6 +366,10 @@ const LANGUAGE_COLORS: Record<string, string> = {
   Jupyter: '#DA5B0B',
 }
 
+function resumeSkillColor(label: string, language: boolean) {
+  return language ? (LANGUAGE_COLORS[label] ?? 'var(--acc)') : 'var(--mut)'
+}
+
 export function ResumeEntry({
   logo,
   title,
@@ -422,13 +433,14 @@ export function ResumeEntry({
   )
 }
 
-export function ResumeSkillList({ children }: { children: ReactNode }) {
-  return <ul className="resume-skill-list">{elements(children)}</ul>
+interface ResumeSkillProps {
+  label: string
+  language?: boolean
 }
 
-export function ResumeSkill({ label, language = false }: { label: string; language?: boolean }) {
+export function ResumeSkill({ label, language = false }: ResumeSkillProps) {
   const gt = useMdxGT()
-  const color = language ? (LANGUAGE_COLORS[label] ?? 'var(--acc)') : 'var(--mut)'
+  const color = resumeSkillColor(label, language)
   return (
     <li className="resume-skill-item">
       <span className="lang-dot" style={{ background: color }} aria-hidden="true" />
@@ -436,6 +448,181 @@ export function ResumeSkill({ label, language = false }: { label: string; langua
         {language ? label : gt(label)}
       </span>
     </li>
+  )
+}
+
+interface SkillDotMigration {
+  animations: Animation[]
+  layer: HTMLDivElement
+}
+
+function createSkillDotMigration(
+  sourceDots: HTMLElement[],
+  destinationDots: HTMLElement[],
+): SkillDotMigration {
+  const layer = document.createElement('div')
+  // The animation is purely presentational. Keeping its transient fixed-position
+  // clones out of rrweb snapshots avoids recording locale-specific coordinates.
+  layer.className = 'rr-block resume-skill-migration-layer'
+  layer.setAttribute('aria-hidden', 'true')
+  document.body.append(layer)
+
+  const animations: Animation[] = []
+  sourceDots.forEach((sourceDot, index) => {
+    const destinationDot = destinationDots[index]
+    if (!destinationDot) return
+
+    const source = sourceDot.getBoundingClientRect()
+    const destination = destinationDot.getBoundingClientRect()
+    const clone = document.createElement('span')
+    clone.className = 'resume-skill-migrating-dot'
+    const color = getComputedStyle(sourceDot).backgroundColor
+    clone.style.setProperty('--resume-skill-dot-color', color)
+    Object.assign(clone.style, {
+      left: `${source.left}px`,
+      top: `${source.top}px`,
+      width: `${source.width}px`,
+      height: `${source.height}px`,
+    })
+    layer.append(clone)
+
+    animations.push(
+      clone.animate(
+        [
+          { transform: 'translate3d(0, 0, 0) scale(1)' },
+          {
+            transform: `translate3d(${destination.left - source.left}px, ${destination.top - source.top}px, 0) scale(${destination.width / source.width}, ${destination.height / source.height})`,
+          },
+        ],
+        {
+          duration: SKILL_CARD_ANIMATION_MS,
+          easing: RESUME_SKILL_MIGRATION_EASING,
+          fill: 'forwards',
+        },
+      ),
+    )
+  })
+
+  // Hide only the two real sets of dots while their fixed-position copies move.
+  // Web Animations are not DOM mutations, so rrweb receives the semantic open
+  // state without an incomplete animation scaffold.
+  new Set([...sourceDots, ...destinationDots]).forEach((dot) => {
+    animations.push(
+      dot.animate([{ opacity: 0 }, { opacity: 0 }], {
+        duration: SKILL_CARD_ANIMATION_MS,
+        fill: 'both',
+      }),
+    )
+  })
+
+  return { animations, layer }
+}
+
+export function ResumeSkillCard({ title, children }: { title: string; children: ReactNode }) {
+  const gt = useMdxGT()
+  const contentId = useId()
+  const summaryDotsRef = useRef<HTMLSpanElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const cleanupRef = useRef<(() => void) | null>(null)
+  const transitioningRef = useRef(false)
+  const [open, setOpen] = useState(false)
+  const skills = elements(children) as ReactElement<ResumeSkillProps>[]
+  const titleHash = translationHash(title)
+
+  useEffect(
+    () => () => {
+      cleanupRef.current?.()
+    },
+    [],
+  )
+
+  const toggle = () => {
+    const content = contentRef.current
+    const summaryDots = summaryDotsRef.current
+    if (!content || !summaryDots || transitioningRef.current) return
+
+    const nextOpen = !open
+    const sourceHeight = content.getBoundingClientRect().height
+    // The hidden content retains its final width, so scrollHeight includes
+    // every locale-specific line wrap. Read it exactly once before migration.
+    const destinationHeight = nextOpen ? content.scrollHeight : 0
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const canMigrate = !reducedMotion && typeof content.animate === 'function'
+
+    if (!canMigrate) {
+      flushSync(() => setOpen(nextOpen))
+      return
+    }
+
+    const compactDots = Array.from(summaryDots.querySelectorAll<HTMLElement>('.lang-dot'))
+    const expandedDots = Array.from(content.querySelectorAll<HTMLElement>('.lang-dot'))
+    const sourceDots = nextOpen ? compactDots : expandedDots
+    const destinationDots = nextOpen ? expandedDots : compactDots
+    emitSkillCardAnimation(titleHash, nextOpen)
+    const migration = createSkillDotMigration(sourceDots, destinationDots)
+
+    transitioningRef.current = true
+    flushSync(() => setOpen(nextOpen))
+    const heightAnimation = content.animate(
+      [
+        { height: `${sourceHeight}px`, visibility: 'visible' },
+        { height: `${destinationHeight}px`, visibility: 'visible' },
+      ],
+      {
+        duration: SKILL_CARD_ANIMATION_MS,
+        easing: RESUME_SKILL_MIGRATION_EASING,
+      },
+    )
+    const animations = [...migration.animations, heightAnimation]
+    const cleanup = () => {
+      animations.forEach((animation) => animation.cancel())
+      migration.layer.remove()
+      if (cleanupRef.current === cleanup) cleanupRef.current = null
+      transitioningRef.current = false
+    }
+    cleanupRef.current = cleanup
+
+    void Promise.allSettled(animations.map((animation) => animation.finished)).then(cleanup)
+  }
+
+  return (
+    <section
+      className="resume-skill-card"
+      data-gt-skill-card={titleHash}
+      data-open={open || undefined}
+    >
+      <button
+        type="button"
+        className="resume-skill-card-toggle"
+        aria-expanded={open}
+        aria-controls={contentId}
+        onClick={toggle}
+      >
+        <strong className="resume-skill-card-title" data-_gt-hash={titleHash}>
+          {gt(title)}
+        </strong>
+        <span ref={summaryDotsRef} className="resume-skill-card-dots" aria-hidden="true">
+          {skills.map(({ props }, index) => (
+            <span
+              key={`${props.label}-${index}`}
+              className="lang-dot"
+              style={{ background: resumeSkillColor(props.label, Boolean(props.language)) }}
+            />
+          ))}
+        </span>
+      </button>
+      <div
+        ref={contentRef}
+        id={contentId}
+        className="resume-skill-card-content"
+        aria-hidden={!open}
+        inert={open ? undefined : true}
+      >
+        <div className="resume-skill-card-details">
+          <ul className="resume-skill-list">{skills}</ul>
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -543,6 +730,6 @@ export const resumeMdxComponents = {
   p: ResumeParagraph,
   ResumeEntry,
   ResumeSkill,
-  ResumeSkillList,
+  ResumeSkillCard,
   ResumeCopy,
 }

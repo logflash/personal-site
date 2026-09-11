@@ -77,12 +77,15 @@ export type HarvestOptions = {
 /**
  * Custom rrweb event tags the recorder emits — the bundle's wire format.
  * `nav` marks SPA navigations, `locales` records the traced locale set, `i18n`
- * carries the harvested overlay (spliced in after the FullSnapshot).
+ * carries the harvested overlay (spliced in after the FullSnapshot), and
+ * `animation` reserves time for compact host-authored semantic effects.
  */
 export const GT_EVENT = {
   nav: 'gt-nav',
   locales: 'gt-locales',
   i18n: 'gt-i18n',
+  /** Compact host-authored animation description interpreted during replay. */
+  animation: 'gt-animation',
 } as const;
 
 /** Default content-region selector: the <main> landmark, or an explicit marker. */

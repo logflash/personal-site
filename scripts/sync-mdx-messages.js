@@ -22,6 +22,7 @@ const TRANSLATED_ATTRIBUTES = new Set([
 ])
 const COMPONENT_TRANSLATED_ATTRIBUTES = {
   ResumeEntry: new Set(['date', 'fact', 'gpa', 'title']),
+  ResumeSkillCard: new Set(['title']),
   ResumeSkill: new Set(['label']),
 }
 

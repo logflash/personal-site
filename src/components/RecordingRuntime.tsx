@@ -1,11 +1,12 @@
 import { record } from '@rrweb/record'
 import { hashMessage } from 'gt-i18n/internal'
-import { GTRecorder, useRecorder } from 'gt-rrweb'
+import { GT_EVENT, GTRecorder, useRecorder } from 'gt-rrweb'
 import type { HarvestOptions, RecorderBundle } from 'gt-rrweb'
 import { useEffect, useRef, useState } from 'react'
 import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecordingRuntime'
 import loadTranslations from '../loadTranslations'
 import { FONT_MORPH_EVENT_TAG, FONT_MORPH_RECORD_EVENT } from '../lib/fontMorph'
+import { SKILL_CARD_RECORD_EVENT } from '../lib/skillCardAnimation'
 
 // gt-rrweb harvest: maps the recorded hashes onto each locale's published
 // translations via the app's own loader; hashMessage extends coverage to
@@ -116,8 +117,19 @@ function SemanticEventBridge() {
         // The animation also runs outside an active recording.
       }
     }
+    const captureSkillCardAnimation = (event: Event) => {
+      try {
+        record.addCustomEvent(GT_EVENT.animation, (event as CustomEvent).detail)
+      } catch {
+        // The animation also runs outside an active recording.
+      }
+    }
     window.addEventListener(FONT_MORPH_RECORD_EVENT, captureFontMorph)
-    return () => window.removeEventListener(FONT_MORPH_RECORD_EVENT, captureFontMorph)
+    window.addEventListener(SKILL_CARD_RECORD_EVENT, captureSkillCardAnimation)
+    return () => {
+      window.removeEventListener(FONT_MORPH_RECORD_EVENT, captureFontMorph)
+      window.removeEventListener(SKILL_CARD_RECORD_EVENT, captureSkillCardAnimation)
+    }
   }, [])
 
   return null
