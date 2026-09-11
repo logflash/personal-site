@@ -759,10 +759,7 @@ main {
 }
 
 .resume-entry-details {
-  padding: 14px var(--resume-entry-inline-padding) 16px
-    calc(
-      var(--resume-entry-inline-padding) + var(--resume-entry-logo-size) + var(--resume-entry-gap)
-    );
+  padding: 14px var(--resume-entry-inline-padding) 16px;
   border-top: 1px solid var(--resume-entry-border);
 }
 
