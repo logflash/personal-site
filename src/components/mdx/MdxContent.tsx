@@ -461,8 +461,8 @@ function createSkillDotMigration(
   destinationDots: HTMLElement[],
 ): SkillDotMigration {
   const layer = document.createElement('div')
-  // The animation is purely presentational. Keeping its transient fixed-position
-  // clones out of rrweb snapshots avoids recording locale-specific coordinates.
+  // The animation is purely presentational. Keeping its transient clones out of
+  // rrweb snapshots avoids recording locale-specific coordinates.
   layer.className = 'rr-block resume-skill-migration-layer'
   layer.setAttribute('aria-hidden', 'true')
   document.body.append(layer)
@@ -472,8 +472,23 @@ function createSkillDotMigration(
     const destinationDot = destinationDots[index]
     if (!destinationDot) return
 
-    const source = sourceDot.getBoundingClientRect()
-    const destination = destinationDot.getBoundingClientRect()
+    const sourceRect = sourceDot.getBoundingClientRect()
+    const destinationRect = destinationDot.getBoundingClientRect()
+    // Document-space endpoints make scrolling free: the browser moves the
+    // animation layer with the page, including scroll anchoring caused by the
+    // card's height change. No per-frame layout reads are necessary.
+    const source = {
+      left: sourceRect.left + window.scrollX,
+      top: sourceRect.top + window.scrollY,
+      width: sourceRect.width,
+      height: sourceRect.height,
+    }
+    const destination = {
+      left: destinationRect.left + window.scrollX,
+      top: destinationRect.top + window.scrollY,
+      width: destinationRect.width,
+      height: destinationRect.height,
+    }
     const clone = document.createElement('span')
     clone.className = 'resume-skill-migrating-dot'
     const color = getComputedStyle(sourceDot).backgroundColor
@@ -503,7 +518,7 @@ function createSkillDotMigration(
     )
   })
 
-  // Hide only the two real sets of dots while their fixed-position copies move.
+  // Hide only the two real sets of dots while their document-positioned copies move.
   // Web Animations are not DOM mutations, so rrweb receives the semantic open
   // state without an incomplete animation scaffold.
   new Set([...sourceDots, ...destinationDots]).forEach((dot) => {
@@ -574,7 +589,10 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
       },
     )
     const animations = [...migration.animations, heightAnimation]
+    let cleaned = false
     const cleanup = () => {
+      if (cleaned) return
+      cleaned = true
       animations.forEach((animation) => animation.cancel())
       migration.layer.remove()
       if (cleanupRef.current === cleanup) cleanupRef.current = null

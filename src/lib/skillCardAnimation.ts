@@ -346,6 +346,8 @@ export function createSkillCardReplayDirector() {
     )
 
     for (let index = 0; index < state.clones.length; index += 1) {
+      // Resolve both endpoints every frame. Their viewport coordinates can move
+      // while the card changes height or the replay director scrolls the page.
       const source = state.sourceDots[index].getBoundingClientRect()
       const destination = state.destinationDots[index].getBoundingClientRect()
       const clone = state.clones[index]
