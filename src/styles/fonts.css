@@ -142,8 +142,8 @@
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-/* Compact Japanese subsets shared by live text and the SVG outline director.
-   They contain the Japanese message catalog plus the native locale label. */
+/* Compact Japanese faces covering the message catalog and native locale label.
+   The regular sans TTF is also consumed by the font-morph outline director. */
 @font-face {
   font-family: 'Noto Sans JP';
   font-style: normal;
@@ -165,5 +165,5 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/noto-serif-jp-600-outline.ttf') format('truetype');
+  src: url('/fonts/noto-serif-jp-600-subset.woff2') format('woff2');
 }
