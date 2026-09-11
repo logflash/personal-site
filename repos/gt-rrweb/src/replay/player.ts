@@ -42,6 +42,13 @@ export type GTReplayerFrame = {
   locale?: string;
   /** Directed event timeline used by the visible and seek engines. */
   events: eventWithTime[];
+  /**
+   * Safe, unsandboxed layer root aligned to the visible recording viewport.
+   * Semantic directors should render canvas/WebGL effects here rather than in
+   * rrweb's script-disabled replay iframe, where dynamically drawn canvas
+   * backing stores do not reliably composite.
+   */
+  overlayRoot: HTMLElement | null;
 };
 
 export type GTReplayerOptions = {
@@ -913,6 +920,7 @@ function createPlayerInstance(
 
   const stageEl = must('#stage');
   const scaler = scalerEl;
+  const director = must('#director');
   const fx = must('#fx');
   const cursor = must('#cursor');
   const recframe = must('#recframe');
@@ -1010,6 +1018,13 @@ function createPlayerInstance(
     scaler.style.left = offsetX + 'px';
     scaler.style.top = offsetY + 'px';
     scaler.style.transform = 'scale(' + scale + ')';
+    // Directors use normalized capture-frame coordinates. Keeping their root
+    // inside the scaler makes it share the replay's crop, scale, and clipping
+    // without granting scripts to rrweb's protected iframe.
+    director.style.left = cropX + 'px';
+    director.style.top = cropY + 'px';
+    director.style.width = cropW + 'px';
+    director.style.height = cropH + 'px';
     // Shield + controls hug the visible crop box.
     shield.style.left = centerX + 'px';
     shield.style.top = centerY + 'px';
@@ -1405,6 +1420,7 @@ function createPlayerInstance(
         document: replayer.iframe?.contentDocument ?? null,
         locale: ACTIVE_LOCALE ?? undefined,
         events,
+        overlayRoot: director,
       });
     } catch {
       // A host-provided frame director cannot break the base replay.
@@ -1638,6 +1654,7 @@ function createPlayerInstance(
         document: null,
         locale: ACTIVE_LOCALE ?? undefined,
         events,
+        overlayRoot: null,
       });
     } catch {}
     try {

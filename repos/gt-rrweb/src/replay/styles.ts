@@ -282,6 +282,12 @@ export const REPLAYER_CSS = `
   position: absolute;
   transform-origin: top left;
 }
+.gt-replayer #director {
+  position: absolute;
+  z-index: 1;
+  overflow: visible;
+  pointer-events: none;
+}
 /* Passive playback: the recorded page inside must not be scrollable or clickable
    by the viewer — it just plays. rrweb still drives the replay's own
    scroll/mutations programmatically. */
@@ -401,7 +407,10 @@ export const REPLAYER_CSS = `
  */
 export const REPLAYER_HTML = `
 <div id="stage">
-  <div id="scaler"><div id="player"></div></div>
+  <div id="scaler">
+    <div id="player"></div>
+    <div id="director"></div>
+  </div>
   <div id="shield"></div>
   <div id="playpause">
     <span class="pp-btn">
