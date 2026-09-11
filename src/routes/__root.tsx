@@ -62,11 +62,15 @@ export const Route = createRootRoute({
         fetchPriority,
       })),
       ...(loaderData?.locale === 'ja'
-        ? ['noto-sans-jp-400-outline', 'noto-serif-jp-600-outline'].map((font) => ({
+        ? [
+            ['noto-sans-jp-400-outline.ttf', 'font/ttf'],
+            ['noto-sans-jp-600-subset.woff2', 'font/woff2'],
+            ['noto-serif-jp-600-outline.ttf', 'font/ttf'],
+          ].map(([font, type]) => ({
             rel: 'preload',
             as: 'font',
-            type: 'font/ttf',
-            href: `/fonts/${font}.ttf`,
+            type,
+            href: `/fonts/${font}`,
             crossOrigin: 'anonymous' as const,
           }))
         : []),
