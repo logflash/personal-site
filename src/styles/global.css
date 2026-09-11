@@ -853,6 +853,7 @@ html[data-initial-scroll] .cg-scroller {
 
 .cg-inner {
   width: max-content;
+  padding-inline-end: 12px;
 }
 
 .cg-months {
@@ -866,6 +867,7 @@ html[data-initial-scroll] .cg-scroller {
 .cg-months span {
   position: absolute;
   top: 0;
+  white-space: nowrap;
 }
 
 .cg-grid {
