@@ -312,6 +312,20 @@ try {
     1,
     'the exact browser-rendered source should remain mounted for the opening handoff',
   )
+  const liveHandoffStates = await page.evaluate(() => {
+    const source = document.querySelector('.font-morph-source-layer')
+    const renderer = document.querySelector('.font-morph-layer[data-font-morph-renderer="sdf"]')
+    const destination = document.querySelector('.endpoint.serif')
+    return {
+      source: source?.getAnimations().map((animation) => animation.playState),
+      renderer: renderer?.getAnimations().map((animation) => animation.playState),
+      destination: destination?.getAnimations().map((animation) => animation.playState),
+    }
+  })
+  assert(
+    Object.values(liveHandoffStates).every((states) => states?.includes('running')),
+    `live endpoint handoffs must run on the compositor: ${JSON.stringify(liveHandoffStates)}`,
+  )
   const samples = []
   for (let index = 0; index < 8; index += 1) {
     if (index === 3) {
@@ -433,6 +447,13 @@ try {
     await page.evaluate(() => document.querySelector('[data-font-morph="sample"]')?.classList.contains('sans')),
     true,
     'the same routine should morph in both font directions',
+  )
+  const reverseTargetBaselineRatio = await page.evaluate(
+    () => window.fontMorphFixture.events[1]?.target.style.baselineToHeight,
+  )
+  assert(
+    Math.abs(reverseTargetBaselineRatio - sourceBaselineRatio) < 0.001,
+    'the reverse destination must retain the browser-defined fallback-font baseline',
   )
   assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'reverse morph should use prepared data')
 

@@ -344,6 +344,8 @@ interface ActiveMorph {
   handoffElement: HTMLElement | null
   handoffAnimation: Animation | null
   sourceHandoffLayer: SVGSVGElement | HTMLElement | null
+  sourceHandoffAnimation: Animation | null
+  rendererHandoffAnimation: Animation | null
 }
 
 const recordedMorphCache = new WeakMap<FontMorphEvent[], ReturnType<typeof indexMorphs>>()
@@ -503,15 +505,6 @@ function browserTextBaseline(
   element?: HTMLElement,
   elementBounds?: DOMRect,
 ) {
-  const context = ownerDocument.createElement('canvas').getContext('2d')
-  if (!context) return undefined
-  context.font = `${style.fontStyle} ${style.fontWeight} ${size}px ${style.fontFamily}`
-  context.direction = style.direction
-  const metrics = context.measureText(text)
-  const ascent = metrics.fontBoundingBoxAscent
-  const descent = metrics.fontBoundingBoxDescent
-  if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) return undefined
-
   const bounds = elementBounds ?? element?.getBoundingClientRect()
   if (element && bounds && bounds.height > 0) {
     const signature = [
@@ -528,30 +521,31 @@ function browserTextBaseline(
     const cached = browserBaselineCache.get(element)
     if (cached?.signature === signature) return cached.baselineToHeight * lineHeight
 
-    const walker = ownerDocument.createTreeWalker(element, 4)
-    let textNode: Text | null = null
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if ((node.textContent?.length ?? 0) > 0) textNode = node as Text
-    }
-    if (textNode) {
-      const range = ownerDocument.createRange()
-      range.setStart(textNode, textNode.data.length)
-      range.collapse(true)
-      const caret = range.getBoundingClientRect()
-      if (caret.height > 0 && Number.isFinite(caret.bottom)) {
-        // A collapsed DOM range exposes the browser's actual inline font box.
-        // This matters for fallback scripts: Japanese glyphs can expand the
-        // line box while retaining the primary face's baseline metrics. Canvas
-        // metrics alone cannot see that CSS inline-layout offset.
-        const caretBottom = ((caret.bottom - bounds.top) * lineHeight) / bounds.height
-        const measured = caretBottom - descent
-        if (Number.isFinite(measured)) {
-          browserBaselineCache.set(element, {
-            signature,
-            baselineToHeight: measured / lineHeight,
-          })
-          return measured
-        }
+    const marker = ownerDocument.createElement('i')
+    marker.className = 'rr-block'
+    marker.setAttribute('aria-hidden', 'true')
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline;'
+    element.append(marker)
+    const markerBounds = marker.getBoundingClientRect()
+    const measuredBounds = element.getBoundingClientRect()
+    marker.remove()
+    // The zero-sized inline marker sits on the exact alphabetic baseline used
+    // by this element. Unlike a collapsed Range combined with canvas descent,
+    // this stays within one CSS layout engine and therefore remains correct
+    // when Android supplies a script-specific fallback face.
+    if (
+      measuredBounds.height > 0 &&
+      Math.abs(measuredBounds.width - bounds.width) < 0.01 &&
+      Math.abs(measuredBounds.height - bounds.height) < 0.01
+    ) {
+      const measured = ((markerBounds.top - bounds.top) * lineHeight) / bounds.height
+      if (Number.isFinite(measured)) {
+        browserBaselineCache.set(element, {
+          signature,
+          baselineToHeight: measured / lineHeight,
+        })
+        return measured
       }
     }
   }
@@ -602,6 +596,15 @@ function browserTextBaseline(
       }
     }
   }
+
+  const context = ownerDocument.createElement('canvas').getContext('2d')
+  if (!context) return undefined
+  context.font = `${style.fontStyle} ${style.fontWeight} ${size}px ${style.fontFamily}`
+  context.direction = style.direction
+  const metrics = context.measureText(text)
+  const ascent = metrics.fontBoundingBoxAscent
+  const descent = metrics.fontBoundingBoxDescent
+  if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) return undefined
 
   // CSS can place a line box on a fractional device-independent pixel. Keep
   // that precision: flooring here creates a visible vertical click when the
@@ -814,11 +817,42 @@ function startEndpointHandoff(
       fill: 'both',
     })
     morph.handoffAnimation.pause()
+    morph.handoffAnimation.currentTime = progress * duration
+    morph.handoffAnimation.play()
   }
-  // Drive the animation from the same logical progress as the SVG instead of
-  // a second wall clock. Besides keeping their opacities complementary, this
-  // stays correct across a long frame or a destination element replacement.
-  if (morph.handoffAnimation) morph.handoffAnimation.currentTime = progress * duration
+}
+
+function endpointHandoffFrames(
+  duration: number,
+  channel: keyof ReturnType<typeof endpointHandoffOpacities>,
+) {
+  const portion = Math.min(1, ENDPOINT_HANDOFF_MS / Math.max(1, duration))
+  const offsets = new Set([0, 1])
+  for (let index = 0; index <= 8; index += 1) {
+    const progress = index / 8
+    offsets.add(progress * portion)
+    offsets.add(1 - portion + progress * portion)
+  }
+  return [...offsets]
+    .sort((left, right) => left - right)
+    .map((offset) => ({
+      opacity: endpointHandoffOpacities(offset, duration)[channel],
+      offset,
+    }))
+}
+
+function startLayerHandoffs(morph: ActiveMorph, duration: number) {
+  if (!morph.sourceHandoffLayer || morph.sourceHandoffAnimation || morph.rendererHandoffAnimation) {
+    return
+  }
+  morph.sourceHandoffAnimation = morph.sourceHandoffLayer.animate(
+    endpointHandoffFrames(duration, 'source'),
+    { duration, easing: 'linear', fill: 'both' },
+  )
+  morph.rendererHandoffAnimation = morph.layer.animate(
+    endpointHandoffFrames(duration, 'renderer'),
+    { duration, easing: 'linear', fill: 'both' },
+  )
 }
 
 function restoreReplayOpacity(override: ReplayOpacityOverride | null) {
@@ -2778,6 +2812,8 @@ function cleanup(morph: ActiveMorph) {
   // zero-opacity frame, even if style and compositor commits straddle frames.
   document.documentElement.removeAttribute('data-font-morph-active')
   morph.handoffAnimation?.cancel()
+  morph.sourceHandoffAnimation?.cancel()
+  morph.rendererHandoffAnimation?.cancel()
   morph.sourceHandoffLayer?.remove()
   morph.layer.remove()
   activeMorph = null
@@ -2878,6 +2914,8 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
   }
 
   const duration = Math.max(1, readDuration())
+  const startedAt = performance.now()
+  startLayerHandoffs(morph, duration)
   startEndpointHandoff(morph, target.element, duration, 0)
   emitRecordedMorph(
     morph.key,
@@ -2886,8 +2924,6 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     morph.source,
     target,
   )
-  const startedAt = performance.now()
-
   const paint = (time: number) => {
     if (activeMorph !== morph) return
     const linearProgress = Math.min(1, (time - startedAt) / duration)
@@ -2920,14 +2956,7 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     // Position/size retain the shared-element ease, but shape and color
     // interpolation stay linear so the serifs develop throughout the full
     // transition instead of being compressed into one part of it.
-    const handoff = endpointHandoffOpacities(
-      linearProgress,
-      duration,
-      Boolean(morph.sourceHandoffLayer),
-      Boolean(currentTarget),
-    )
     if (morph.sourceHandoffLayer) {
-      morph.sourceHandoffLayer.style.opacity = String(handoff.source)
       setSourceHandoffLayerBox(
         morph.sourceHandoffLayer,
         morph.source.rect,
@@ -2936,13 +2965,13 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
       )
     }
     if (prepared.renderer === 'sdf') {
-      paintPreparedSdf(prepared, geometryProgress, linearProgress, handoff.renderer)
+      paintPreparedSdf(prepared, geometryProgress, linearProgress)
     } else {
       paintPreparedMorph(
         prepared,
         geometryProgress,
         linearProgress,
-        handoff.renderer,
+        1,
         coordinateInterpolator,
       )
     }
@@ -3540,6 +3569,8 @@ export function beginFontMorph(key: string) {
     handoffElement: null,
     handoffAnimation: null,
     sourceHandoffLayer: null,
+    sourceHandoffAnimation: null,
+    rendererHandoffAnimation: null,
   }
   activeMorph = morph
   document.documentElement.dataset.fontMorphActive = key
