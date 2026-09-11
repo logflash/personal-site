@@ -11,12 +11,14 @@ import {
   collectDirectedClicks,
   compressTimeline,
   detectDoubleClicks,
+  firstScrollTimeBetween,
   incrementalData,
   markScrollBurstStarts,
+  projectPointIntoRect,
+  rectAtScrollPosition,
   replaceNativeScrollEvents,
   scrollPositionAt,
   type DirectedClick,
-  type ScrollTrack,
 } from './director';
 import { GT_REPLAYER_CLASS, REPLAYER_CSS, REPLAYER_HTML } from './styles';
 
@@ -640,65 +642,6 @@ function createPlayerInstance(
     return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : null;
   }
 
-  function clickElement(click: DirectedClick): Element | null {
-    const node = mirror && click.id != null ? mirror.getNode(click.id) : null;
-    if (!node) return null;
-    if (node.nodeType === Node.TEXT_NODE) return node.parentElement;
-    return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : null;
-  }
-
-  function localeAnchorFor(
-    track: ScrollTrack,
-    click: DirectedClick,
-  ): number | null {
-    const scroller = visibleScrollNode(track.id);
-    const target = clickElement(click);
-    if (!scroller || !target || !scroller.contains(target)) return null;
-    const base = scrollPositionAt(track, click.t, clicks, easeLogistic);
-    if (!base) return null;
-    const targetRect = target.getBoundingClientRect();
-    if (!(targetRect.width > 0 && targetRect.height > 0)) return null;
-    const doc = scroller.ownerDocument;
-    const documentScroller = doc?.scrollingElement === scroller;
-    const viewportTop = documentScroller
-      ? 0
-      : scroller.getBoundingClientRect().top + scroller.clientTop;
-    const contentTop = targetRect.top - viewportTop + scroller.scrollTop;
-    const topAtRecordedScroll = viewportTop + contentTop - base.y;
-    const bottomAtRecordedScroll = topAtRecordedScroll + targetRect.height;
-    const padding = Math.min(4, targetRect.height / 4);
-    const minimumOffset = topAtRecordedScroll + padding - click.y;
-    const maximumOffset = bottomAtRecordedScroll - padding - click.y;
-    return minimumOffset > 0
-      ? minimumOffset
-      : maximumOffset < 0
-        ? maximumOffset
-        : 0;
-  }
-
-  function localeScrollOffsetAt(track: ScrollTrack, time: number): number {
-    if (!overlay) return 0;
-    const anchors: Array<{ t: number; offset: number }> = [];
-    for (const click of clicks) {
-      const offset = localeAnchorFor(track, click);
-      if (offset != null) anchors.push({ t: click.t, offset });
-    }
-    if (!anchors.length) return 0;
-    let nextIndex = anchors.findIndex((anchor) => anchor.t >= time);
-    if (nextIndex < 0) return anchors[anchors.length - 1].offset;
-    const next = anchors[nextIndex];
-    const previous = nextIndex > 0 ? anchors[nextIndex - 1] : null;
-    const from = previous ? previous.offset : 0;
-    const start = Math.max(previous ? previous.t : 0, next.t - 450);
-    if (time <= start) return from;
-    const span = next.t - start;
-    const progress = span > 0 ? (time - start) / span : 1;
-    return (
-      from +
-      (next.offset - from) * easeLogistic(Math.max(0, Math.min(1, progress)))
-    );
-  }
-
   function applyDirectedScroll(time: number, force = false): void {
     for (const track of scrollTracks.values()) {
       const position = scrollPositionAt(track, time, clicks, easeLogistic);
@@ -706,7 +649,7 @@ function createPlayerInstance(
       const scroller = visibleScrollNode(track.id);
       if (!scroller) continue;
       const x = position.x;
-      const y = position.y + localeScrollOffsetAt(track, time);
+      const y = position.y;
       const previous = appliedScroll.get(track.id);
       if (
         !force &&
@@ -1094,9 +1037,9 @@ function createPlayerInstance(
     };
   }
 
-  // Resolve a click's position from the current replay layout. Re-resolving on
-  // every frame is intentional: seek, resize, locale, and scroll changes must not
-  // leave hysteresis from a previously cached arrival point.
+  // Resolve the target at its click timestamp, rather than wherever the target
+  // happens to be during the current frame. This keeps cursor waypoints stable
+  // while their elements scroll, while still adapting to locale and layout changes.
   function liveXY(click: DirectedClick): { x: number; y: number } {
     try {
       const node = mirror && click.id != null ? mirror.getNode(click.id) : null;
@@ -1110,18 +1053,47 @@ function createPlayerInstance(
       if (element?.getBoundingClientRect) {
         const rect = element.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
-          if (
-            click.x >= rect.left &&
-            click.x <= rect.right &&
-            click.y >= rect.top &&
-            click.y <= rect.bottom
-          ) {
-            return constrainCursorPosition({ x: click.x, y: click.y });
+          let clickRect = {
+            left: rect.left,
+            top: rect.top,
+            right: rect.right,
+            bottom: rect.bottom,
+          };
+          for (const track of scrollTracks.values()) {
+            const scroller = visibleScrollNode(track.id);
+            if (!scroller || !scroller.contains(element)) continue;
+            let position = scrollPositionAt(
+              track,
+              click.t,
+              clicks,
+              easeLogistic,
+            );
+            if (!position && track.points[0] && click.t < track.points[0].t) {
+              position = { x: 0, y: 0 };
+            }
+            if (!position) continue;
+            clickRect = rectAtScrollPosition(
+              clickRect,
+              { x: scroller.scrollLeft, y: scroller.scrollTop },
+              position,
+            );
           }
-          return constrainCursorPosition({
-            x: rect.left + rect.width / 2,
-            y: rect.top + rect.height / 2,
-          });
+          const bounds = cursorBounds();
+          const visibleRect = {
+            left: Math.max(clickRect.left, bounds.left),
+            top: Math.max(clickRect.top, bounds.top),
+            right: Math.min(clickRect.right, bounds.right),
+            bottom: Math.min(clickRect.bottom, bounds.bottom),
+          };
+          if (
+            visibleRect.right >= visibleRect.left &&
+            visibleRect.bottom >= visibleRect.top
+          ) {
+            return projectPointIntoRect(click, visibleRect);
+          }
+          return constrainCursorPosition(
+            projectPointIntoRect(click, clickRect),
+          );
         }
       }
     } catch {
@@ -1183,10 +1155,15 @@ function createPlayerInstance(
     }
   }
 
-  function glideStartAt(points: DirectedClick[], index: number): number {
+  function glideAt(
+    points: DirectedClick[],
+    index: number,
+  ): number {
     const click = points[index];
     if (index === 0) return click.t;
     const from = points[index - 1].t;
+    const firstScroll = firstScrollTimeBetween(scrollTracks, from, click.t);
+    if (firstScroll != null) return firstScroll;
     let end = from;
     for (const mutationTime of mutationTimes) {
       if (
@@ -1206,14 +1183,11 @@ function createPlayerInstance(
     const index = visibleClicks.findIndex((click) => click.t >= time);
     if (index === -1) return liveXY(visibleClicks[visibleClicks.length - 1]);
     if (index === 0) {
-      return constrainCursorPosition({
-        x: visibleClicks[0].x,
-        y: visibleClicks[0].y,
-      });
+      return liveXY(visibleClicks[0]);
     }
     const next = visibleClicks[index];
     const from = liveXY(visibleClicks[index - 1]);
-    const start = glideStartAt(visibleClicks, index);
+    const start = glideAt(visibleClicks, index);
     if (time <= start) return from;
     const to = liveXY(next);
     const span = next.t - start;

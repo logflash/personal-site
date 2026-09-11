@@ -28,6 +28,46 @@ export type ReplayIncrementalData = {
 
 export type DirectedClick = { t: number; x: number; y: number; id: number };
 
+export type Point = { x: number; y: number };
+
+export type RectBounds = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+export function projectPointIntoRect(
+  point: Point,
+  rect: RectBounds,
+): Point {
+  const left = Math.min(rect.left, rect.right);
+  const right = Math.max(rect.left, rect.right);
+  const top = Math.min(rect.top, rect.bottom);
+  const bottom = Math.max(rect.top, rect.bottom);
+  const insetX = Math.min(0.5, (right - left) / 2);
+  const insetY = Math.min(0.5, (bottom - top) / 2);
+  return {
+    x: Math.max(left + insetX, Math.min(right - insetX, point.x)),
+    y: Math.max(top + insetY, Math.min(bottom - insetY, point.y)),
+  };
+}
+
+export function rectAtScrollPosition(
+  rect: RectBounds,
+  current: Point,
+  target: Point,
+): RectBounds {
+  const x = current.x - target.x;
+  const y = current.y - target.y;
+  return {
+    left: rect.left + x,
+    top: rect.top + y,
+    right: rect.right + x,
+    bottom: rect.bottom + y,
+  };
+}
+
 export type ScrollPoint = {
   t: number;
   x: number;
@@ -38,6 +78,21 @@ export type ScrollPoint = {
 };
 
 export type ScrollTrack = { id: number; burst: number; points: ScrollPoint[] };
+
+export function firstScrollTimeBetween(
+  tracks: ReadonlyMap<number, ScrollTrack>,
+  after: number,
+  through: number,
+): number | null {
+  let first = Infinity;
+  for (const track of tracks.values()) {
+    for (const point of track.points) {
+      if (point.t > after && point.t <= through && point.t < first)
+        first = point.t;
+    }
+  }
+  return Number.isFinite(first) ? first : null;
+}
 
 export function incrementalData(
   event: eventWithTime,

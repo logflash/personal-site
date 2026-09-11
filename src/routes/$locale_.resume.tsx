@@ -4,6 +4,7 @@ import { SiteShell } from '../components/SiteShell'
 import { resumeMdxComponents } from '../components/mdx/MdxContent'
 import ResumeContent from '../content/Resume.mdx'
 import { profile } from '../data/site'
+import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
 
 export const Route = createFileRoute('/$locale_/resume')({
@@ -22,14 +23,17 @@ export const Route = createFileRoute('/$locale_/resume')({
 })
 
 function ResumePage() {
+  useClearHashAtTop()
+  useDeepLinkScroll()
+
   // The pre-paint script handles direct loads. A layout effect keeps the SPA
   // route's sidebar state in the same commit that the morph target is sampled.
   useLayoutEffect(() => {
     const root = document.documentElement
-    root.dataset.activeSection = 'resume'
+    root.dataset.activeSection = window.location.hash.slice(1) || 'resume'
 
     return () => {
-      if (root.dataset.activeSection === 'resume') root.dataset.activeSection = 'home'
+      root.dataset.activeSection = 'home'
     }
   }, [])
 
