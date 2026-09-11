@@ -68,6 +68,31 @@ function fixtureFont(familyName, serif) {
   return Buffer.from(font.toArrayBuffer())
 }
 
+function primaryMetricsFont() {
+  const notdef = new opentype.Glyph({
+    name: '.notdef',
+    unicode: 0,
+    advanceWidth: 650,
+    path: glyphPath({ serif: false }),
+  })
+  const x = new opentype.Glyph({
+    name: 'x',
+    unicode: 120,
+    advanceWidth: 650,
+    path: glyphPath({ serif: false }),
+  })
+  return Buffer.from(
+    new opentype.Font({
+      familyName: 'Fixture Primary',
+      styleName: 'Regular',
+      unitsPerEm: 1_000,
+      ascender: 900,
+      descender: -300,
+      glyphs: [notdef, x],
+    }).toArrayBuffer(),
+  )
+}
+
 const html = `<!doctype html>
 <html>
   <head>
@@ -77,6 +102,7 @@ const html = `<!doctype html>
     <style>
       @font-face { font-family: "Fixture Sans"; src: url("/sans.otf"); }
       @font-face { font-family: "Fixture Serif"; src: url("/serif.otf"); }
+      @font-face { font-family: "Fixture Primary"; src: url("/primary.otf"); }
       :root {
         /* Keep the live test open long enough for resize sampling on slow CI. */
         --font-morph-duration: 1600ms;
@@ -87,8 +113,9 @@ const html = `<!doctype html>
       body { margin: 0; min-height: 100vh; background: #fff; }
       #fixture { position: relative; height: 600px; }
       .endpoint { position: absolute; display: inline-block; white-space: pre; line-height: 1; }
-      .sans { left: 32px; top: 48px; color: rgb(72 35 128); font: 400 52px/1 "Fixture Sans"; }
-      .serif { left: 310px; top: 230px; color: rgb(15 70 105); font: 400 104px/1 "Fixture Serif"; }
+      .sans { left: 32px; top: 48px; color: rgb(72 35 128); font: 400 52px/normal "Fixture Primary", "Fixture Sans"; }
+      .serif { left: 310px; top: 230px; color: rgb(15 70 105); font: 400 104px/normal "Fixture Primary", "Fixture Serif"; }
+      :root.simulated-mobile-text-scaling .sans { transform: scale(.83); transform-origin: top left; }
       :root.simulated-mobile-text-scaling .serif { font-size: 109px; }
       .serif.moved { left: 55vw; top: 28vh; font-size: 84px; }
       #replay-overlay { position: fixed; inset: 0; pointer-events: none; }
@@ -114,6 +141,7 @@ const workerBundle = await readFile(new URL('../dist/outline-worker.js', import.
 
 const sansFont = fixtureFont('Fixture Sans', false)
 const serifFont = fixtureFont('Fixture Serif', true)
+const primaryFont = primaryMetricsFont()
 const sourceInstance = { role: 'sans', weight: 400, opticalSize: 0 }
 const targetInstance = { role: 'serif', weight: 400, opticalSize: 104 }
 const sourceInput = {
@@ -188,6 +216,7 @@ const assets = new Map([
   ],
   ['/sans.otf', ['font/otf', sansFont]],
   ['/serif.otf', ['font/otf', serifFont]],
+  ['/primary.otf', ['font/otf', primaryFont]],
   ['/sans-outline.otf', ['font/otf', sansFont]],
   ['/serif-outline.otf', ['font/otf', serifFont]],
 ])
@@ -231,21 +260,33 @@ try {
   assert.equal(requests.get('/sans-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
   assert.equal(requests.get('/serif-outline.otf') ?? 0, 0, 'prepared text should not fetch outlines')
   await page.evaluate(() => window.fontMorphFixture.simulateBrowserTextScaling())
+  const sourceBaselineRatio = await page.evaluate(() => {
+    const source = document.querySelector('[data-font-morph="sample"]')
+    const marker = document.createElement('i')
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline;'
+    source.append(marker)
+    const sourceRect = source.getBoundingClientRect()
+    const baseline = (marker.getBoundingClientRect().top - sourceRect.top) / sourceRect.height
+    marker.remove()
+    return baseline
+  })
   assert.equal(await page.evaluate(() => window.fontMorphFixture.begin()), true)
   await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="dom"]')
   const initialText = await page.evaluate(() => {
     const source = document.querySelector('[data-font-morph="sample"]')
     const layer = document.querySelector('[data-font-morph-renderer="dom"]')
-    const textWidth = (element) => {
+    const textRect = (element) => {
       const range = document.createRange()
       range.selectNodeContents(element)
-      return range.getBoundingClientRect().width
+      return range.getBoundingClientRect().toJSON()
     }
     const sourceStyle = getComputedStyle(source)
     const layerStyle = getComputedStyle(layer)
+    const layerText = layer.querySelector('font-morph-text')
     return {
-      sourceWidth: textWidth(source),
-      layerWidth: textWidth(layer),
+      sourceRect: textRect(source),
+      layerRect: textRect(layerText),
       sourceFont: sourceStyle.font,
       layerFont: layerStyle.font,
       sourceSpacing: sourceStyle.letterSpacing,
@@ -255,14 +296,22 @@ try {
   assert.equal(initialText.layerFont, initialText.sourceFont)
   assert.equal(initialText.layerSpacing, initialText.sourceSpacing)
   assert(
-    Math.abs(initialText.layerWidth - initialText.sourceWidth) < 0.1,
-    `the pre-navigation source must retain its exact horizontal metrics: ${JSON.stringify(initialText)}`,
+    ['left', 'top', 'width', 'height'].every(
+      (property) =>
+        Math.abs(initialText.layerRect[property] - initialText.sourceRect[property]) < 0.1,
+    ),
+    `the pre-navigation source must retain its exact text box: ${JSON.stringify(initialText)}`,
   )
   await page.evaluate(() => window.fontMorphFixture.show('serif'))
 
   await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {
     state: 'attached',
   })
+  assert.equal(
+    await page.locator('.font-morph-source-layer[data-font-morph-renderer="dom"]').count(),
+    1,
+    'the exact browser-rendered source should remain mounted for the opening handoff',
+  )
   const samples = []
   for (let index = 0; index < 8; index += 1) {
     if (index === 3) {
@@ -353,6 +402,13 @@ try {
   assert.equal(settled.active, false)
   assert.equal(settled.fallback, false)
   assert.equal(settled.events, 1, 'a completed morph should emit one semantic event')
+  assert(
+    Math.abs(
+      (await page.evaluate(() => window.fontMorphFixture.events[0].source.style.baselineToHeight)) -
+        sourceBaselineRatio,
+    ) < 0.001,
+    'recorded geometry should use the DOM baseline of a fallback-font run',
+  )
   assert.doesNotMatch(
     JSON.stringify(await page.evaluate(() => window.fontMorphFixture.events[0])),
     /distanceBase64|glyphs|sdfMorphs/,
@@ -405,8 +461,36 @@ try {
         hash = Math.imul(hash ^ alpha, 16_777_619) >>> 0
         if (alpha) alphaPixels += 1
       }
-      return { renderer: layer.dataset.fontMorphRenderer, hash, alphaPixels }
+      const endpointOpacity = (selector) => {
+        const endpoint = document.querySelector(selector)
+        return endpoint
+          ? {
+              value: endpoint.style.getPropertyValue('opacity'),
+              priority: endpoint.style.getPropertyPriority('opacity'),
+            }
+          : null
+      }
+      return {
+        renderer: layer.dataset.fontMorphRenderer,
+        hash,
+        alphaPixels,
+        sansOpacity: endpointOpacity('.endpoint.sans'),
+        serifOpacity: endpointOpacity('.endpoint.serif'),
+      }
     }, time)
+  const replayRoles = await page.evaluate(() => {
+    const payload = window.fontMorphFixture.events.at(-1)
+    return { source: payload.source.style.fontRole, target: payload.target.style.fontRole }
+  })
+  await page.evaluate((role) => window.fontMorphFixture.show(role), replayRoles.source)
+  const openingHandoff = await replayFrameAt(2)
+  const openingOpacity = openingHandoff?.[`${replayRoles.source}Opacity`]
+  assert.equal(openingOpacity?.priority, 'important')
+  assert(
+    Number(openingOpacity?.value) > 0 && Number(openingOpacity?.value) < 1,
+    `replay should continuously blend from the browser-rendered source endpoint: ${JSON.stringify(openingHandoff)}`,
+  )
+  await page.evaluate((role) => window.fontMorphFixture.show(role), replayRoles.target)
   const early = await replayFrameAt(120)
   const middle = await replayFrameAt(320)
   const late = await replayFrameAt(520)
@@ -424,6 +508,23 @@ try {
     await replayFrameAt(120),
     early,
     'rewinding should reconstruct distance fields solely from replay time',
+  )
+  const closingHandoff = await replayFrameAt(1_550)
+  const closingOpacity = closingHandoff?.[`${replayRoles.target}Opacity`]
+  assert.equal(closingOpacity?.priority, 'important')
+  assert(
+    Number(closingOpacity?.value) > 0 && Number(closingOpacity?.value) < 1,
+    `replay should continuously blend into the browser-rendered destination endpoint: ${JSON.stringify(closingHandoff)}`,
+  )
+  await replayFrameAt(1_602)
+  assert.equal(
+    await page.evaluate(() =>
+      document
+        .querySelector(`[data-font-morph="sample"].${window.fontMorphFixture.events.at(-1).target.style.fontRole}`)
+        ?.style.getPropertyValue('opacity'),
+    ),
+    '',
+    'settlement should restore the destination endpoint without retaining replay state',
   )
   await page.evaluate(() => window.fontMorphFixture.stopReplay())
   assert.equal(await page.locator('.font-morph-director-layer').count(), 0)
