@@ -17,6 +17,7 @@ import {
   projectPointIntoRect,
   rectAtScrollPosition,
   replaceNativeScrollEvents,
+  scrollDeltaToRevealRect,
   scrollPositionAt,
   type DirectedClick,
 } from './director';
@@ -226,6 +227,17 @@ function createPlayerInstance(
 
   const scrollTracks = buildScrollTracks(events, t0, scrollBurstStarts);
   const clicks = collectDirectedClicks(events, t0, isDirectedClick);
+  type SyntheticScrollCorrection = {
+    click: DirectedClick;
+    trackId: number;
+    x: number;
+    y: number;
+    start: number;
+    releaseStart: number | null;
+    releaseEnd: number | null;
+  };
+  const syntheticScrolls: SyntheticScrollCorrection[] = [];
+  const preparedVisibilityClicks = new Set<DirectedClick>();
   const visibleEvents = replaceNativeScrollEvents(events);
 
   const replayer = new RR(visibleEvents, {
@@ -632,6 +644,54 @@ function createPlayerInstance(
   const mirror = replayer.getMirror();
   const appliedScroll = new Map<number, { x: number; y: number }>();
 
+  function syntheticScrollFactor(
+    correction: SyntheticScrollCorrection,
+    time: number,
+  ): number {
+    const smooth = (progress: number) => {
+      const clamped = Math.max(0, Math.min(1, progress));
+      return clamped * clamped * (3 - 2 * clamped);
+    };
+    if (time < correction.start) return 0;
+    if (time < correction.click.t) {
+      return smooth(
+        (time - correction.start) /
+          Math.max(1, correction.click.t - correction.start),
+      );
+    }
+    if (
+      correction.releaseStart == null ||
+      correction.releaseEnd == null ||
+      time <= correction.releaseStart
+    )
+      return 1;
+    if (time >= correction.releaseEnd) return 0;
+    return (
+      1 -
+      smooth(
+        (time - correction.releaseStart) /
+          Math.max(1, correction.releaseEnd - correction.releaseStart),
+      )
+    );
+  }
+
+  function syntheticScrollOffset(trackId: number, time: number) {
+    let x = 0;
+    let y = 0;
+    for (const correction of syntheticScrolls) {
+      if (correction.trackId !== trackId) continue;
+      const factor = syntheticScrollFactor(correction, time);
+      x += correction.x * factor;
+      y += correction.y * factor;
+    }
+    return { x, y };
+  }
+
+  function resetSyntheticScrolls(): void {
+    syntheticScrolls.length = 0;
+    preparedVisibilityClicks.clear();
+  }
+
   function visibleScrollNode(id: number): Element | null {
     const node = mirror?.getNode(id);
     if (!node) return null;
@@ -648,8 +708,15 @@ function createPlayerInstance(
       if (!position) continue;
       const scroller = visibleScrollNode(track.id);
       if (!scroller) continue;
-      const x = position.x;
-      const y = position.y;
+      const correction = syntheticScrollOffset(track.id, time);
+      const x = Math.max(
+        0,
+        Math.min(scroller.scrollWidth - scroller.clientWidth, position.x + correction.x),
+      );
+      const y = Math.max(
+        0,
+        Math.min(scroller.scrollHeight - scroller.clientHeight, position.y + correction.y),
+      );
       const previous = appliedScroll.get(track.id);
       if (
         !force &&
@@ -1037,19 +1104,145 @@ function createPlayerInstance(
     };
   }
 
+  function clickTargetElement(click: DirectedClick): Element | null {
+    const node = mirror && click.id != null ? mirror.getNode(click.id) : null;
+    const element: Element | null = node
+      ? node.nodeType === Node.TEXT_NODE
+        ? node.parentElement
+        : node.nodeType === Node.ELEMENT_NODE
+          ? (node as Element)
+          : null
+      : null;
+    return (
+      element?.closest(
+        'button, summary, a[href], input, select, textarea, [role="button"], [role="link"]',
+      ) ??
+      element ??
+      null
+    );
+  }
+
+  function prepareClickVisibility(time: number): boolean {
+    let added = false;
+    for (let index = 0; index < clicks.length; index += 1) {
+      const click = clicks[index];
+      const previous = clicks[index - 1];
+      const start = Math.max(previous?.t ?? 0, click.t - 600);
+      if (time < start || time > click.t + 220) continue;
+      if (preparedVisibilityClicks.has(click)) continue;
+      preparedVisibilityClicks.add(click);
+
+      const element = clickTargetElement(click);
+      const initialRect = element?.getBoundingClientRect();
+      if (!element || !initialRect?.width || !initialRect.height) continue;
+
+      const containingTracks = [...scrollTracks.values()].filter((track) =>
+        visibleScrollNode(track.id)?.contains(element),
+      );
+      if (!containingTracks.length) continue;
+
+      let clickRect = {
+        left: initialRect.left,
+        top: initialRect.top,
+        right: initialRect.right,
+        bottom: initialRect.bottom,
+      };
+      for (const track of containingTracks) {
+        const scroller = visibleScrollNode(track.id);
+        const recorded = scrollPositionAt(track, click.t, clicks, easeLogistic);
+        if (!scroller || !recorded) continue;
+        const existing = syntheticScrollOffset(track.id, click.t);
+        clickRect = rectAtScrollPosition(
+          clickRect,
+          { x: scroller.scrollLeft, y: scroller.scrollTop },
+          { x: recorded.x + existing.x, y: recorded.y + existing.y },
+        );
+      }
+
+      const delta = scrollDeltaToRevealRect(clickRect, cursorBounds(), 12);
+      if (Math.abs(delta.x) < 0.05 && Math.abs(delta.y) < 0.05) continue;
+
+      // Prefer the closest recorded scroll container that can absorb the required
+      // axis. This preserves the captured page scroll unless the translated target
+      // is genuinely unreachable at the recorded position.
+      let chosen: { track: (typeof containingTracks)[number]; scroller: Element } | null = null;
+      for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) {
+        const track = containingTracks.find(
+          (candidate) => visibleScrollNode(candidate.id) === ancestor,
+        );
+        if (!track) continue;
+        const scroller = visibleScrollNode(track.id);
+        if (!scroller) continue;
+        if (
+          (Math.abs(delta.y) >= 0.05 && scroller.scrollHeight > scroller.clientHeight) ||
+          (Math.abs(delta.x) >= 0.05 && scroller.scrollWidth > scroller.clientWidth)
+        ) {
+          chosen = { track, scroller };
+          break;
+        }
+      }
+      if (!chosen) {
+        const track = containingTracks[0];
+        const scroller = visibleScrollNode(track.id);
+        if (scroller) chosen = { track, scroller };
+      }
+      if (!chosen) continue;
+
+      const recorded = scrollPositionAt(chosen.track, click.t, clicks, easeLogistic);
+      if (!recorded) continue;
+      const existing = syntheticScrollOffset(chosen.track.id, click.t);
+      const currentTarget = {
+        x: recorded.x + existing.x,
+        y: recorded.y + existing.y,
+      };
+      const desired = {
+        x: Math.max(
+          0,
+          Math.min(
+            chosen.scroller.scrollWidth - chosen.scroller.clientWidth,
+            currentTarget.x + delta.x,
+          ),
+        ),
+        y: Math.max(
+          0,
+          Math.min(
+            chosen.scroller.scrollHeight - chosen.scroller.clientHeight,
+            currentTarget.y + delta.y,
+          ),
+        ),
+      };
+      const x = desired.x - currentTarget.x;
+      const y = desired.y - currentTarget.y;
+      if (Math.abs(x) < 0.05 && Math.abs(y) < 0.05) continue;
+
+      const nextPoint = chosen.track.points.find((point) => point.t > click.t);
+      const nextPointAfter = nextPoint
+        ? chosen.track.points.find(
+            (point) => point.t > nextPoint.t && point.burst === nextPoint.burst,
+          )
+        : undefined;
+      syntheticScrolls.push({
+        click,
+        trackId: chosen.track.id,
+        x,
+        y,
+        start,
+        releaseStart: nextPoint?.t ?? null,
+        releaseEnd: nextPoint
+          ? Math.max(nextPoint.t + 1, nextPointAfter?.t ?? nextPoint.t + 450)
+          : null,
+      });
+      added = true;
+    }
+    return added;
+  }
+
   // Resolve the target at its click timestamp, rather than wherever the target
   // happens to be during the current frame. This keeps cursor waypoints stable
   // while their elements scroll, while still adapting to locale and layout changes.
   function liveXY(click: DirectedClick): { x: number; y: number } {
     try {
-      const node = mirror && click.id != null ? mirror.getNode(click.id) : null;
-      const element: Element | null = node
-        ? node.nodeType === Node.TEXT_NODE
-          ? node.parentElement
-          : node.nodeType === Node.ELEMENT_NODE
-            ? (node as Element)
-            : null
-        : null;
+      const element = clickTargetElement(click);
       if (element?.getBoundingClientRect) {
         const rect = element.getBoundingClientRect();
         if (rect.width > 0 && rect.height > 0) {
@@ -1072,10 +1265,11 @@ function createPlayerInstance(
               position = { x: 0, y: 0 };
             }
             if (!position) continue;
+            const correction = syntheticScrollOffset(track.id, click.t);
             clickRect = rectAtScrollPosition(
               clickRect,
               { x: scroller.scrollLeft, y: scroller.scrollTop },
-              position,
+              { x: position.x + correction.x, y: position.y + correction.y },
             );
           }
           const bounds = cursorBounds();
@@ -1283,6 +1477,7 @@ function createPlayerInstance(
     prevT = time;
     lastCurX = null;
     lastCurY = null;
+    appliedScroll.clear();
   }
   function timeFromClientX(x: number): number {
     const r = track.getBoundingClientRect();
@@ -1384,8 +1579,11 @@ function createPlayerInstance(
     }
     const T = curTime();
     if (!dragging) updateScrub(T); // keep the bar in sync during playback
-    if (T < prevT || T - prevT > 250) appliedScroll.clear();
+    if (T < prevT || T - prevT > 250) {
+      appliedScroll.clear();
+    }
     applyDirectedScroll(T);
+    if (prepareClickVisibility(T)) applyDirectedScroll(T, true);
 
     let directive: void | { advanceTo: number } = undefined;
     try {
@@ -1501,6 +1699,7 @@ function createPlayerInstance(
           ),
         );
       appliedScroll.clear();
+      resetSyntheticScrolls();
       applyDirectedScroll(curTime(), true);
       startLoop();
     } finally {

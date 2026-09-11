@@ -1,5 +1,5 @@
 import { GTReplayer } from 'gt-rrweb/replay'
-import type { GTReplayerBundle } from 'gt-rrweb/replay'
+import type { GTReplayerBundle, GTReplayerFrame } from 'gt-rrweb/replay'
 import { harvestLocales } from 'gt-rrweb/harvest'
 import { hashMessage } from 'gt-i18n/internal'
 import type { DragEvent } from 'react'
@@ -12,6 +12,10 @@ import {
   reserveFontMorphSettledTextHolds,
 } from '../lib/fontMorph'
 import { parseRecording } from '../lib/recordingDrop'
+import {
+  createSkillCardReplayDirector,
+  upgradeLegacySkillCardAnimations,
+} from '../lib/skillCardAnimation'
 import loadTranslations from '../loadTranslations'
 
 type MorphTranslationTable = Awaited<ReturnType<typeof loadTranslations>>
@@ -66,6 +70,15 @@ export function ReplayOverlay({
       ),
     [morphTranslations],
   )
+  const renderSkillCards = useMemo(() => createSkillCardReplayDirector(), [])
+  const renderReplayFrame = useMemo(
+    () => (frame: GTReplayerFrame) => {
+      const directive = renderFontMorph(frame)
+      renderSkillCards(frame)
+      return directive
+    },
+    [renderFontMorph, renderSkillCards],
+  )
 
   // GTReplayer starts its clock as soon as it mounts. Load build-generated
   // morph data and locale text first so neither preparation nor translation
@@ -94,7 +107,8 @@ export function ReplayOverlay({
       ])
       const translations = Object.fromEntries(tables)
       const locales = [...(bundle.locales ?? [])]
-      const events = reserveFontMorphSettledTextHolds(bundle.events)
+      const upgradedEvents = upgradeLegacySkillCardAnimations(bundle.events)
+      const events = reserveFontMorphSettledTextHolds(upgradedEvents)
       let preparedBundle = events === bundle.events ? bundle : { ...bundle, events }
       if (locales.length > 1) {
         // Older recordings can have an incomplete embedded overlay because
@@ -182,7 +196,7 @@ export function ReplayOverlay({
           <GTReplayer
             bundle={replayBundle.prepared}
             initialLocale={initialLocale}
-            onFrame={renderFontMorph}
+            onFrame={renderReplayFrame}
             debug
           />
         ) : null}

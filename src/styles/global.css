@@ -810,11 +810,89 @@ main {
   margin: 3px 0 5px;
 }
 
-.resume-skill-list {
+.resume-skill-card {
+  --resume-skill-border: var(--line);
+
+  overflow: hidden;
+  border: 1px solid var(--resume-skill-border);
+  border-radius: 8px;
+  background: transparent;
+}
+
+.resume-skill-card[data-open] {
+  --resume-skill-border: color-mix(in srgb, var(--acc) 40%, var(--line));
+}
+
+.resume-skill-card + .resume-skill-card {
+  margin-top: 10px;
+}
+
+.resume-skill-card-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resume-skill-card-toggle:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: -3px;
+}
+
+@media (hover: hover) {
+  html:not(.touch) .resume-skill-card-toggle:hover {
+    background: var(--hov);
+  }
+}
+
+.resume-skill-card-title {
+  flex: none;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.resume-skill-card-dots {
+  display: flex;
+  min-width: 72px;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.resume-skill-card[data-open] .resume-skill-card-dots {
+  visibility: hidden;
+}
+
+.resume-skill-card-content {
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.resume-skill-card[data-open] .resume-skill-card-content {
+  height: auto;
+  visibility: visible;
+}
+
+.resume-skill-card-details {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--resume-skill-border);
+}
+
+.resume-copy .resume-skill-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 7px 22px;
-  margin-top: 12px;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
@@ -832,6 +910,26 @@ main {
 .resume-skill-item .lang-dot {
   width: 8px;
   height: 8px;
+}
+
+.resume-skill-migration-layer {
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.resume-skill-migration-layer .resume-skill-migrating-dot {
+  position: fixed;
+  display: block;
+  background: var(--resume-skill-dot-color) !important;
+  border-radius: 50%;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 /* ---- Contribution graph ---- */
@@ -1345,7 +1443,7 @@ html[data-initial-scroll] .cg-scroller {
     padding-block: 12px 14px;
   }
 
-  .resume-skill-list {
+  .resume-copy .resume-skill-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px 16px;
   }

@@ -15,6 +15,7 @@ import {
   projectPointIntoRect,
   rectAtScrollPosition,
   replaceNativeScrollEvents,
+  scrollDeltaToRevealRect,
   scrollPositionAt,
 } from '../director';
 
@@ -135,6 +136,23 @@ describe('directed pointer target projection', () => {
       ),
     ).toEqual({ left: 20, top: 420, right: 120, bottom: 460 });
   });
+
+  it('only requests scrolling for fully off-screen click targets', () => {
+    const bounds = { left: 0, top: 0, right: 800, bottom: 600 };
+    expect(
+      scrollDeltaToRevealRect(
+        { left: 20, top: 590, right: 200, bottom: 640 },
+        bounds,
+      ),
+    ).toEqual({ x: 0, y: 0 });
+    expect(
+      scrollDeltaToRevealRect(
+        { left: 20, top: 650, right: 200, bottom: 700 },
+        bounds,
+        10,
+      ),
+    ).toEqual({ x: 0, y: 110 });
+  });
 });
 
 describe('directed timeline', () => {
@@ -197,6 +215,28 @@ describe('directed timeline', () => {
       input.isDirectedClick,
     );
     expect(compressed[2].timestamp).toBe(1200);
+  });
+
+  it('holds mutations until a compact host animation completes', () => {
+    const events = [
+      event(0, {}, REPLAY_EVENT.Meta),
+      event(
+        100,
+        {
+          tag: 'gt-animation',
+          payload: {
+            version: 1,
+            kind: 'skill-card',
+            duration: 420,
+          },
+        },
+        REPLAY_EVENT.Custom,
+      ),
+      mutation(105),
+    ];
+    const input = analyzePointerInput(events);
+    const compressed = compressTimeline(events, new Set(), input.isDirectedClick);
+    expect(compressed[2].timestamp).toBe(520);
   });
 
   it('only suppresses a repeated press when nothing changed between presses', () => {

@@ -37,6 +37,36 @@ export type RectBounds = {
   bottom: number;
 };
 
+/**
+ * Return the scroll offset needed to reveal a fully off-screen rectangle. A
+ * partially visible target needs no correction: its click can be projected into
+ * the visible intersection without changing the recorded viewport.
+ */
+export function scrollDeltaToRevealRect(
+  rect: RectBounds,
+  bounds: RectBounds,
+  margin = 8,
+): Point {
+  const visible =
+    rect.right > bounds.left &&
+    rect.left < bounds.right &&
+    rect.bottom > bounds.top &&
+    rect.top < bounds.bottom;
+  if (visible) return { x: 0, y: 0 };
+
+  const left = bounds.left + margin;
+  const right = bounds.right - margin;
+  const top = bounds.top + margin;
+  const bottom = bounds.bottom - margin;
+  let x = 0;
+  let y = 0;
+  if (rect.right <= bounds.left) x = rect.left - left;
+  else if (rect.left >= bounds.right) x = rect.right - right;
+  if (rect.bottom <= bounds.top) y = rect.top - top;
+  else if (rect.top >= bounds.bottom) y = rect.bottom - bottom;
+  return { x, y };
+}
+
 export function projectPointIntoRect(
   point: Point,
   rect: RectBounds,
@@ -109,6 +139,11 @@ export function eventSource(event: eventWithTime): number {
 
 type FontMorphPayload = { duration: number; settledTextHold?: number };
 
+type SemanticAnimationPayload = {
+  duration?: number;
+  settledTextHold?: number;
+};
+
 export function fontMorphPayload(
   event: eventWithTime,
 ): FontMorphPayload | null {
@@ -119,6 +154,24 @@ export function fontMorphPayload(
   const payload = custom.data?.payload;
   return custom.type === REPLAY_EVENT.Custom &&
     (custom.data?.tag === 'font-morph' || custom.data?.tag === 'gt-font-morph') &&
+    Number.isFinite(payload?.duration) &&
+    (payload?.duration ?? 0) > 0
+    ? (payload as FontMorphPayload)
+    : null;
+}
+
+export function semanticAnimationPayload(
+  event: eventWithTime,
+): FontMorphPayload | null {
+  const morph = fontMorphPayload(event);
+  if (morph) return morph;
+  const custom = event as unknown as {
+    type?: number;
+    data?: { tag?: string; payload?: SemanticAnimationPayload };
+  };
+  const payload = custom.data?.payload;
+  return custom.type === REPLAY_EVENT.Custom &&
+    custom.data?.tag === 'gt-animation' &&
     Number.isFinite(payload?.duration) &&
     (payload?.duration ?? 0) > 0
     ? (payload as FontMorphPayload)
@@ -223,14 +276,14 @@ export function compressTimeline(
       directedTime += originalGap > WAIT ? COLLAPSED : originalGap;
     }
 
-    const morph = fontMorphPayload(event);
-    if (morph) {
+    const animation = semanticAnimationPayload(event);
+    if (animation) {
       const settledTextHold =
-        Number.isFinite(morph.settledTextHold) &&
-        (morph.settledTextHold ?? 0) > 0
-          ? (morph.settledTextHold ?? 0)
+        Number.isFinite(animation.settledTextHold) &&
+        (animation.settledTextHold ?? 0) > 0
+          ? (animation.settledTextHold ?? 0)
           : 0;
-      const duration = morph.duration + settledTextHold;
+      const duration = animation.duration + settledTextHold;
       animationEnd = Math.max(animationEnd, directedTime + duration);
       animationOriginalEnd = Math.max(
         animationOriginalEnd,
