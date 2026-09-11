@@ -13,9 +13,9 @@ const DEFAULT_DURATION_MS = 760
 const DESTINATION_TIMEOUT_MS = 10_000
 const MORPH_VIEWBOX_SIZE = 1_000
 const MORPH_PRECISION = 8
-// SVG paths do not receive the font hinting used by live browser text. Blend
-// to the real destination briefly at the end so the rasterizer, not a generic
-// vector path, owns the settled pixels.
+// Generated geometry does not receive the same hinting as browser text. Blend
+// through the real endpoints briefly so the transition starts and settles
+// continuously even when their rasterized pixels differ by a fraction.
 const ENDPOINT_HANDOFF_MS = 96
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 export type FontMorphFontRole = 'sans' | 'serif'
@@ -322,11 +322,14 @@ interface ReplayMorphState {
   generation: number
   sawTarget: boolean
   lastTime: number
-  handoffTarget: {
-    element: HTMLElement
-    opacity: string
-    priority: string
-  } | null
+  handoffSource: ReplayOpacityOverride | null
+  handoffTarget: ReplayOpacityOverride | null
+}
+
+interface ReplayOpacityOverride {
+  element: HTMLElement
+  opacity: string
+  priority: string
 }
 
 interface ActiveMorph {
@@ -340,12 +343,18 @@ interface ActiveMorph {
   finishing: boolean
   handoffElement: HTMLElement | null
   handoffAnimation: Animation | null
+  sourceHandoffLayer: SVGSVGElement | HTMLElement | null
 }
 
 const recordedMorphCache = new WeakMap<FontMorphEvent[], ReturnType<typeof indexMorphs>>()
 let replayOutlineCache = new WeakMap<RecordedFontMorph, Map<string, PreparedOutline>>()
 const normalizedOutlineCache = new Map<string, NormalizedOutline>()
 const preparedSdfCache = new Map<string, PreparedSdfData>()
+const browserBaselineCache = new WeakMap<
+  HTMLElement,
+  { signature: string; baselineToHeight: number }
+>()
+const syntheticBaselineCache = new WeakMap<Document, Map<string, number>>()
 
 export const FONT_MORPH_RECORD_EVENT = 'font-morph:record'
 export const FONT_MORPH_EVENT_TAG = 'font-morph'
@@ -491,6 +500,8 @@ function browserTextBaseline(
   style: Pick<GlyphStyle, 'fontFamily' | 'fontStyle' | 'fontWeight' | 'direction'>,
   size: number,
   lineHeight: number,
+  element?: HTMLElement,
+  elementBounds?: DOMRect,
 ) {
   const context = ownerDocument.createElement('canvas').getContext('2d')
   if (!context) return undefined
@@ -501,10 +512,101 @@ function browserTextBaseline(
   const descent = metrics.fontBoundingBoxDescent
   if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent <= 0) return undefined
 
-  // CSS centers the font box inside the line box and snaps its top edge to a
-  // CSS pixel. Matching that baseline prevents the SVG outline from shifting
-  // vertically when a browser-rendered endpoint takes over.
-  return Math.floor((lineHeight - ascent - descent) / 2) + ascent
+  const bounds = elementBounds ?? element?.getBoundingClientRect()
+  if (element && bounds && bounds.height > 0) {
+    const signature = [
+      text,
+      style.fontFamily,
+      style.fontStyle,
+      style.fontWeight,
+      style.direction,
+      size,
+      lineHeight,
+      bounds.height,
+      ownerDocument.fonts?.status,
+    ].join('|')
+    const cached = browserBaselineCache.get(element)
+    if (cached?.signature === signature) return cached.baselineToHeight * lineHeight
+
+    const walker = ownerDocument.createTreeWalker(element, 4)
+    let textNode: Text | null = null
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if ((node.textContent?.length ?? 0) > 0) textNode = node as Text
+    }
+    if (textNode) {
+      const range = ownerDocument.createRange()
+      range.setStart(textNode, textNode.data.length)
+      range.collapse(true)
+      const caret = range.getBoundingClientRect()
+      if (caret.height > 0 && Number.isFinite(caret.bottom)) {
+        // A collapsed DOM range exposes the browser's actual inline font box.
+        // This matters for fallback scripts: Japanese glyphs can expand the
+        // line box while retaining the primary face's baseline metrics. Canvas
+        // metrics alone cannot see that CSS inline-layout offset.
+        const caretBottom = ((caret.bottom - bounds.top) * lineHeight) / bounds.height
+        const measured = caretBottom - descent
+        if (Number.isFinite(measured)) {
+          browserBaselineCache.set(element, {
+            signature,
+            baselineToHeight: measured / lineHeight,
+          })
+          return measured
+        }
+      }
+    }
+  }
+
+  if (!element && ownerDocument.body) {
+    const signature = [
+      text,
+      style.fontFamily,
+      style.fontStyle,
+      style.fontWeight,
+      style.direction,
+      size,
+      lineHeight,
+      ownerDocument.fonts?.status,
+    ].join('|')
+    let documentCache = syntheticBaselineCache.get(ownerDocument)
+    if (!documentCache) {
+      documentCache = new Map()
+      syntheticBaselineCache.set(ownerDocument, documentCache)
+    }
+    const cached = documentCache.get(signature)
+    if (cached !== undefined) return cached
+
+    const line = ownerDocument.createElement('span')
+    const marker = ownerDocument.createElement('i')
+    line.className = 'rr-block'
+    line.setAttribute('aria-hidden', 'true')
+    line.style.cssText =
+      'position:fixed;left:-10000px;top:0;display:inline-block;visibility:hidden;margin:0;padding:0;border:0;white-space:pre;font-synthesis:none;'
+    line.style.fontFamily = style.fontFamily
+    line.style.fontStyle = style.fontStyle
+    line.style.fontWeight = style.fontWeight
+    line.style.fontSize = `${size}px`
+    line.style.lineHeight = `${lineHeight}px`
+    line.style.direction = style.direction
+    marker.style.cssText =
+      'display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline;'
+    line.append(ownerDocument.createTextNode(text), marker)
+    ownerDocument.body.append(line)
+    const lineBounds = line.getBoundingClientRect()
+    const markerBounds = marker.getBoundingClientRect()
+    line.remove()
+    if (lineBounds.height > 0) {
+      const measured = ((markerBounds.top - lineBounds.top) * lineHeight) / lineBounds.height
+      if (Number.isFinite(measured)) {
+        documentCache.set(signature, measured)
+        return measured
+      }
+    }
+  }
+
+  // CSS can place a line box on a fractional device-independent pixel. Keep
+  // that precision: flooring here creates a visible vertical click when the
+  // generated geometry hands the final frame to browser-rendered text.
+  return (lineHeight - ascent - descent) / 2 + ascent
 }
 
 function captureEndpoint(element: HTMLElement): GlyphEndpoint | null {
@@ -536,6 +638,8 @@ function captureEndpoint(element: HTMLElement): GlyphEndpoint | null {
     glyphStyle,
     fontSize,
     logical.height,
+    element,
+    bounds,
   )
   if (measuredBaseline !== undefined) {
     glyphStyle.baselineToHeight = measuredBaseline / logical.height
@@ -663,14 +767,26 @@ function transitionEase(progress: number) {
   )
 }
 
-function endpointHandoffOpacities(progress: number, duration: number) {
+function endpointHandoffOpacities(
+  progress: number,
+  duration: number,
+  hasSource = true,
+  hasDestination = true,
+) {
   const handoffPortion = Math.min(1, ENDPOINT_HANDOFF_MS / Math.max(1, duration))
-  const handoffStart = 1 - handoffPortion
-  const handoffProgress = Math.min(1, Math.max(0, (progress - handoffStart) / handoffPortion))
-  const phase = handoffProgress * (Math.PI / 2)
+  const sourceProgress = Math.min(1, Math.max(0, progress / handoffPortion))
+  const destinationProgress = Math.min(
+    1,
+    Math.max(0, (progress - (1 - handoffPortion)) / handoffPortion),
+  )
+  const sourcePhase = sourceProgress * (Math.PI / 2)
+  const destinationPhase = destinationProgress * (Math.PI / 2)
   return {
-    source: Math.cos(phase),
-    destination: Math.sin(phase),
+    source: hasSource ? Math.cos(sourcePhase) : 0,
+    renderer:
+      (hasSource ? Math.sin(sourcePhase) : 1) *
+      (hasDestination ? Math.cos(destinationPhase) : 1),
+    destination: hasDestination ? Math.sin(destinationPhase) : 0,
   }
 }
 
@@ -705,19 +821,33 @@ function startEndpointHandoff(
   if (morph.handoffAnimation) morph.handoffAnimation.currentTime = progress * duration
 }
 
-function restoreReplayHandoff(state: ReplayMorphState | null) {
-  if (!state?.handoffTarget) return
-  const { element, opacity, priority } = state.handoffTarget
+function restoreReplayOpacity(override: ReplayOpacityOverride | null) {
+  if (!override) return
+  const { element, opacity, priority } = override
   if (opacity) element.style.setProperty('opacity', opacity, priority)
   else element.style.removeProperty('opacity')
+}
+
+function restoreReplayHandoffs(state: ReplayMorphState | null) {
+  if (!state) return
+  restoreReplayOpacity(state.handoffSource)
+  restoreReplayOpacity(state.handoffTarget)
+  state.handoffSource = null
   state.handoffTarget = null
 }
 
-function setReplayHandoff(state: ReplayMorphState, element: HTMLElement | null, opacity: number) {
-  if (state.handoffTarget?.element !== element) {
-    restoreReplayHandoff(state)
+function setReplayHandoff(
+  state: ReplayMorphState,
+  endpoint: 'source' | 'target',
+  element: HTMLElement | null,
+  opacity: number,
+) {
+  const property = endpoint === 'source' ? 'handoffSource' : 'handoffTarget'
+  if (state[property]?.element !== element) {
+    restoreReplayOpacity(state[property])
+    state[property] = null
     if (element) {
-      state.handoffTarget = {
+      state[property] = {
         element,
         opacity: element.style.getPropertyValue('opacity'),
         priority: element.style.getPropertyPriority('opacity'),
@@ -853,6 +983,28 @@ function setLayerBox(
   layer.style.transform = `translate3d(${screen.left}px, ${screen.top}px, 0)`
 }
 
+function setSourceHandoffLayerBox(
+  layer: SVGSVGElement | HTMLElement,
+  source: Rect,
+  current: Rect,
+  ownerDocument: Document,
+) {
+  const frame = renderingFrame(ownerDocument)
+  const sourceWidth = Math.max(Number.EPSILON, source.width * frame.screen.width)
+  const sourceHeight = Math.max(Number.EPSILON, source.height * frame.screen.height)
+  const screenLeft = frame.screen.left + current.left * frame.screen.width
+  const screenTop = frame.screen.top + current.top * frame.screen.height
+  const scaleX = (current.width * frame.screen.width) / sourceWidth
+  const scaleY = (current.height * frame.screen.height) / sourceHeight
+  // The browser-rendered source remains the exact endpoint glyph, but follows
+  // the same interpolated box while it fades into generated geometry. Keeping
+  // both layers registered prevents a transient doubled baseline when the
+  // destination is far from the source.
+  layer.style.width = `${sourceWidth}px`
+  layer.style.height = `${sourceHeight}px`
+  layer.style.transform = `translate3d(${screenLeft}px, ${screenTop}px, 0) scale(${scaleX}, ${scaleY})`
+}
+
 function setLayerColor(layer: SVGSVGElement, color: PointColor) {
   layer.style.color = `rgb(${Math.round(color.red)} ${Math.round(color.green)} ${Math.round(color.blue)})`
 }
@@ -934,20 +1086,48 @@ function createInitialDomLayer(endpoint: GlyphEndpoint) {
   const ownerDocument = endpoint.element.ownerDocument
   const ownerWindow = ownerDocument.defaultView
   const computed = ownerWindow?.getComputedStyle(endpoint.element)
-  const layer = ownerDocument.createElement('span')
+  const layer = ownerDocument.createElement('div')
+  const textLayer = ownerDocument.createElement('font-morph-text')
   layer.classList.add('font-morph-layer', 'rr-block')
   layer.dataset.fontMorphRenderer = 'dom'
   layer.setAttribute('aria-hidden', 'true')
-  layer.textContent = endpoint.text
+  textLayer.textContent = endpoint.text
   layer.style.cssText +=
     'position:fixed;inset:0 auto auto 0;z-index:2147483646;display:block;overflow:visible;pointer-events:none;transform-origin:top left;white-space:pre;'
+  textLayer.style.cssText +=
+    'position:absolute;inset:0 auto auto 0;display:block;transform-origin:top left;white-space:pre;'
   if (computed) {
     for (const property of INITIAL_TEXT_STYLE_PROPERTIES) {
-      layer.style.setProperty(property, computed.getPropertyValue(property))
+      const value = computed.getPropertyValue(property)
+      layer.style.setProperty(property, value)
+      textLayer.style.setProperty(property, value)
     }
   }
+  layer.append(textLayer)
   setLayerBox(layer, endpoint.rect, ownerDocument)
   ownerDocument.body.append(layer)
+
+  const sourceRange = ownerDocument.createRange()
+  const layerRange = ownerDocument.createRange()
+  sourceRange.selectNodeContents(endpoint.element)
+  layerRange.selectNodeContents(textLayer)
+  const sourceTextRect = sourceRange.getBoundingClientRect()
+  const layerTextRect = layerRange.getBoundingClientRect()
+  const layerRect = layer.getBoundingClientRect()
+  if (
+    sourceTextRect.width > 0 &&
+    sourceTextRect.height > 0 &&
+    layerTextRect.width > 0 &&
+    layerTextRect.height > 0
+  ) {
+    const scaleX = sourceTextRect.width / layerTextRect.width
+    const scaleY = sourceTextRect.height / layerTextRect.height
+    const localLeft = layerTextRect.left - layerRect.left
+    const localTop = layerTextRect.top - layerRect.top
+    const targetLeft = sourceTextRect.left - layerRect.left
+    const targetTop = sourceTextRect.top - layerRect.top
+    textLayer.style.transform = `translate3d(${targetLeft - localLeft * scaleX}px, ${targetTop - localTop * scaleY}px, 0) scale(${scaleX}, ${scaleY})`
+  }
   return layer
 }
 
@@ -2598,6 +2778,7 @@ function cleanup(morph: ActiveMorph) {
   // zero-opacity frame, even if style and compositor commits straddle frames.
   document.documentElement.removeAttribute('data-font-morph-active')
   morph.handoffAnimation?.cancel()
+  morph.sourceHandoffLayer?.remove()
   morph.layer.remove()
   activeMorph = null
 }
@@ -2663,7 +2844,10 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     if (activeMorph !== morph) return
     if (sdf) {
       prepared = mountPreparedSdf(morph.source, target, sdf, false)
-      morph.layer.remove()
+      const sourceHandoffLayer = morph.layer
+      sourceHandoffLayer.classList.remove('font-morph-layer')
+      sourceHandoffLayer.classList.add('font-morph-source-layer')
+      morph.sourceHandoffLayer = sourceHandoffLayer
       morph.layer = prepared.layer
     } else {
       const normalized = await resolveNormalizedOutline(
@@ -2674,7 +2858,10 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
       if (activeMorph !== morph) return
       const outlineLayer = createInitialLayer(morph.source)
       prepared = prepareOutlineMorph(outlineLayer, morph.source, target, normalized)
-      morph.layer.remove()
+      const sourceHandoffLayer = morph.layer
+      sourceHandoffLayer.classList.remove('font-morph-layer')
+      sourceHandoffLayer.classList.add('font-morph-source-layer')
+      morph.sourceHandoffLayer = sourceHandoffLayer
       morph.layer = outlineLayer
     }
   } catch (error) {
@@ -2691,7 +2878,7 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
   }
 
   const duration = Math.max(1, readDuration())
-  if (prepared.renderer === 'outline') startEndpointHandoff(morph, target.element, duration, 0)
+  startEndpointHandoff(morph, target.element, duration, 0)
   emitRecordedMorph(
     morph.key,
     Math.max(0, performance.now() - morph.startedAt),
@@ -2719,9 +2906,7 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     // different locale/message), settle on the real post-navigation DOM.
     if (currentTarget) {
       prepared.target = currentTarget
-      if (prepared.renderer === 'outline') {
-        startEndpointHandoff(morph, currentTarget.element, duration, linearProgress)
-      }
+      startEndpointHandoff(morph, currentTarget.element, duration, linearProgress)
     }
     const currentRect = interpolateRect(morph.source.rect, prepared.target.rect, geometryProgress)
     if (!currentTarget && !isInCaptureFrame(currentRect)) {
@@ -2735,17 +2920,29 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
     // Position/size retain the shared-element ease, but shape and color
     // interpolation stay linear so the serifs develop throughout the full
     // transition instead of being compressed into one part of it.
+    const handoff = endpointHandoffOpacities(
+      linearProgress,
+      duration,
+      Boolean(morph.sourceHandoffLayer),
+      Boolean(currentTarget),
+    )
+    if (morph.sourceHandoffLayer) {
+      morph.sourceHandoffLayer.style.opacity = String(handoff.source)
+      setSourceHandoffLayerBox(
+        morph.sourceHandoffLayer,
+        morph.source.rect,
+        currentRect,
+        morph.layer.ownerDocument,
+      )
+    }
     if (prepared.renderer === 'sdf') {
-      paintPreparedSdf(prepared, geometryProgress, linearProgress)
+      paintPreparedSdf(prepared, geometryProgress, linearProgress, handoff.renderer)
     } else {
-      const handoff = currentTarget
-        ? endpointHandoffOpacities(linearProgress, duration)
-        : { source: 1, destination: 0 }
       paintPreparedMorph(
         prepared,
         geometryProgress,
         linearProgress,
-        handoff.source,
+        handoff.renderer,
         coordinateInterpolator,
       )
     }
@@ -2899,6 +3096,24 @@ function translatedEndpoint(
   )
 }
 
+async function loadRecordedEndpointFont(
+  recorded: RecordedGlyphEndpoint,
+  text: string,
+  ownerDocument: Document,
+  frame: CaptureFrame,
+) {
+  if (!ownerDocument.fonts) return
+  const logical = logicalRect(recorded.rect, frame)
+  const size = recorded.style.fontSizeToHeight * logical.height
+  const font = `${recorded.style.fontStyle} ${recorded.style.fontWeight} ${size}px ${recorded.style.fontFamily}`
+  try {
+    await ownerDocument.fonts.load(font, text)
+  } catch {
+    // A live endpoint can still supply its exact baseline if a platform font
+    // rejects an explicit FontFaceSet request.
+  }
+}
+
 function recordedCaptureFrame(events: FontMorphEvent[]): CaptureFrame {
   type SerializedNode = {
     tagName?: string
@@ -2990,6 +3205,10 @@ export async function prepareFontMorphReplay(
       const cacheKey = locale ?? ''
       if (localeCache.has(cacheKey)) continue
       const translatedText = replayText(payload, locale, resolveText)
+      await Promise.all([
+        loadRecordedEndpointFont(payload.source, translatedText, ownerDocument, frame),
+        loadRecordedEndpointFont(payload.target, translatedText, ownerDocument, frame),
+      ])
       const source = translatedEndpoint(
         payload.source,
         translatedText,
@@ -3050,7 +3269,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
 
   const clear = () => {
     generation += 1
-    restoreReplayHandoff(state)
+    restoreReplayHandoffs(state)
     state?.document.documentElement.removeAttribute('data-font-morph-fallback')
     state?.layer.remove()
     state = null
@@ -3160,6 +3379,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           generation: currentGeneration,
           sawTarget: false,
           lastTime: frame.time,
+          handoffSource: null,
           handoffTarget: null,
         }
       } else {
@@ -3187,6 +3407,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           generation: currentGeneration,
           sawTarget: false,
           lastTime: frame.time,
+          handoffSource: null,
           handoffTarget: null,
         }
 
@@ -3210,6 +3431,12 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
 
     state.lastTime = frame.time
     const translatedText = replayText(active.payload, frame.locale, resolveText)
+    const currentSource = findMatchingEndpoint(
+      frame.document,
+      active.payload.key,
+      active.payload.source,
+      translatedText,
+    )
     const currentTarget = findMatchingEndpoint(
       frame.document,
       active.payload.key,
@@ -3234,7 +3461,7 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       (!currentTarget && state.sawTarget && !isInCaptureFrame(currentRect)) ||
       (currentTarget && !isInCaptureFrame(currentTarget.rect) && !isInCaptureFrame(currentRect))
     ) {
-      restoreReplayHandoff(state)
+      restoreReplayHandoffs(state)
       state.layer.style.display = 'none'
       frame.document.documentElement.dataset.fontMorphFallback = ''
       return { advanceTo: active.holdEnd }
@@ -3253,22 +3480,24 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       )
       return
     }
+    const handoff = endpointHandoffOpacities(
+      linearProgress,
+      active.payload.duration,
+      Boolean(currentSource),
+      Boolean(currentTarget),
+    )
+    setReplayHandoff(state, 'source', currentSource?.element ?? null, handoff.source)
+    setReplayHandoff(state, 'target', currentTarget?.element ?? null, handoff.destination)
     if (state.prepared.renderer === 'sdf') {
-      // Distance-field endpoints are generated from the same variation-correct
-      // outlines as the settled browser face, so no SVG/live-text handoff is
-      // needed. Rendering remains a pure function of absolute replay time.
-      restoreReplayHandoff(state)
-      paintPreparedSdf(state.prepared, geometryProgress, linearProgress)
+      // Endpoint blending is also a pure function of absolute replay time, so
+      // seeking and rewinding cannot retain opacity hysteresis.
+      paintPreparedSdf(state.prepared, geometryProgress, linearProgress, handoff.renderer)
     } else {
-      const handoff = currentTarget
-        ? endpointHandoffOpacities(linearProgress, active.payload.duration)
-        : { source: 1, destination: 0 }
-      setReplayHandoff(state, currentTarget?.element ?? null, handoff.destination)
       paintPreparedMorph(
         state.prepared,
         geometryProgress,
         linearProgress,
-        handoff.source,
+        handoff.renderer,
         coordinateInterpolator,
       )
     }
@@ -3310,6 +3539,7 @@ export function beginFontMorph(key: string) {
     finishing: false,
     handoffElement: null,
     handoffAnimation: null,
+    sourceHandoffLayer: null,
   }
   activeMorph = morph
   document.documentElement.dataset.fontMorphActive = key
