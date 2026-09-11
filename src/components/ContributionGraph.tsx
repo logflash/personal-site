@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { T, Var } from 'gt-react'
 import { profile } from '../data/site'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
@@ -8,6 +8,11 @@ const DAYS_PER_WEEK = 7
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
 const MIN_LABEL_GAP_WEEKS = 3
 const CONTRIBUTION_SUMMARY_HASH = '4a68cb0d1371a99a'
+
+function contributionDateFor(target: EventTarget | null): string | undefined {
+  const cell = (target as Element | null)?.closest<HTMLElement>('.cg-cell:not(.cg-pad)')
+  return cell?.dataset.contributionDate
+}
 
 // Scan-only source for `gt translate`. This export is never imported, so the
 // function and gt-react bindings are tree-shaken from the browser bundle.
@@ -72,6 +77,7 @@ interface ContributionGraphProps {
  */
 export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
   const gt = useTranslate()
+  const [tappedDate, setTappedDate] = useState<string | null>(null)
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -89,6 +95,16 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   ]
   const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
 
+  useEffect(() => {
+    if (!tappedDate) return
+
+    const releaseTappedCell = (event: PointerEvent) => {
+      if (contributionDateFor(event.target) !== tappedDate) setTappedDate(null)
+    }
+    document.addEventListener('pointerdown', releaseTappedCell, true)
+    return () => document.removeEventListener('pointerdown', releaseTappedCell, true)
+  }, [tappedDate])
+
   if (!data) return null
 
   return (
@@ -102,14 +118,22 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
               </span>
             ))}
           </div>
-          <div className="cg-grid">
+          <div
+            className="cg-grid"
+            onPointerDown={(event) => {
+              if (event.pointerType === 'mouse') return
+              const date = contributionDateFor(event.target)
+              if (date) setTappedDate((current) => (current === date ? null : date))
+            }}
+          >
             {weeks.map((week, w) => (
               <div key={w} className="cg-week">
                 {week.map((day, d) =>
                   day ? (
                     <span
                       key={day.date}
-                      className={`cg-cell cg-l${Math.min(day.level, 4)}`}
+                      className={`cg-cell cg-l${Math.min(day.level, 4)}${tappedDate === day.date ? ' cg-touch-active' : ''}`}
+                      data-contribution-date={day.date}
                       title={`${day.count} ${day.count === 1 ? gt('contribution') : gt('contributions')} · ${day.date}`}
                     />
                   ) : (

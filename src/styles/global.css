@@ -912,7 +912,7 @@ html[data-initial-scroll] .cg-scroller {
 
 /* Hovered day pops above its neighbors: a slight lift with a page-background
    ring so the cell reads as raised rather than just enlarged. The pop is
-   instant (transition on :hover) but the release decays over ~2s (transition
+   near-instant (transition on :hover) but the release decays over ~2.5s (transition
    here), so sweeping the pointer leaves a trail of settling cells. z-index
    decays discretely, holding the shrinking cell above its neighbors for the
    first half of the release. Transform and shadow only — cheap enough for
@@ -921,9 +921,9 @@ html[data-initial-scroll] .cg-scroller {
   position: relative;
   z-index: 0;
   transition:
-    transform 1.8s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 1.8s cubic-bezier(0.22, 1, 0.36, 1),
-    z-index 1.8s;
+    transform 2.5s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 2.5s cubic-bezier(0.22, 1, 0.36, 1),
+    z-index 2.5s;
 }
 
 @media (hover: hover) {
@@ -934,9 +934,22 @@ html[data-initial-scroll] .cg-scroller {
       0 0 0 1px var(--bg),
       0 1px 5px rgba(0, 0, 0, 0.25);
     transition:
-      transform 0.12s ease,
-      box-shadow 0.12s ease;
+      transform 0.04s ease-out,
+      box-shadow 0.04s ease-out;
   }
+}
+
+/* Touch selection is delegated by the grid, so every phone gets the same sticky
+   tap interaction without relying on inconsistent mobile :hover behavior. */
+.cg-grid .cg-cell.cg-touch-active {
+  z-index: 1;
+  transform: scale(1.8);
+  box-shadow:
+    0 0 0 1px var(--bg),
+    0 1px 5px rgba(0, 0, 0, 0.25);
+  transition:
+    transform 0.04s ease-out,
+    box-shadow 0.04s ease-out;
 }
 
 .cg-meta {
