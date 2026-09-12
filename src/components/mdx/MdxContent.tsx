@@ -317,22 +317,31 @@ export function Stack({ children }: { children: ReactNode }) {
 
 export function Paper({
   name,
+  translatedName,
   venue,
   description,
   url,
 }: {
-  name: string
+  name?: string
+  translatedName?: string
   venue: string
   description: string
   url: string
 }) {
   const gt = useMdxGT()
+  const displayName = translatedName ?? name
+  if (!displayName) throw new Error('Paper requires name or translatedName')
   return (
     <a className="row-link pub" href={url} target="_blank" rel="noreferrer">
       <PaperIcon />
       <span className="pub-body">
         <span className="title-row">
-          <span className="item-name">{name}</span>
+          <span
+            className="item-name"
+            {...(translatedName ? { 'data-_gt-hash': translationHash(translatedName) } : {})}
+          >
+            {translatedName ? gt(translatedName) : displayName}
+          </span>
           <span className="pdf-chip">PDF</span>
           <span className="venue">{venue}</span>
         </span>
