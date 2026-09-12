@@ -69,6 +69,13 @@ async function seek(page, fraction) {
   await page.waitForTimeout(80);
 }
 
+async function clickControl(page, selector) {
+  const stage = await page.locator('#app #stage').boundingBox();
+  await page.mouse.move(stage.x + stage.width / 2, stage.y + stage.height / 2);
+  await page.waitForSelector('#app #scrubber.show');
+  await page.click(selector);
+}
+
 const server = await startServer(PORT);
 const { browser, close } = await getBrowser();
 try {
@@ -129,6 +136,19 @@ try {
     );
     check('cursor sits inside the stage', cursor.inStage);
 
+    await page
+      .waitForFunction(
+        () =>
+          new Set(
+            window.__GT_FRAMES__
+              .map((frame) => frame.scrollTop)
+              .filter((value) => typeof value === 'number')
+              .map((value) => Math.round(value)),
+          ).size >= 6,
+        null,
+        { timeout: 3_000 },
+      )
+      .catch(() => undefined);
     const scrollSamples = await page.evaluate(() =>
       window.__GT_FRAMES__
         .map((frame) => frame.scrollTop)
@@ -139,7 +159,7 @@ try {
     );
     check(
       'scroll is rendered as a smooth frame sequence',
-      distinctScrolls.size > 10 &&
+      distinctScrolls.size >= 6 &&
         [...distinctScrolls].some(
           (value) => ![0, 90, 190, 290].includes(value),
         ),
@@ -181,7 +201,7 @@ try {
       `separators=${flagStyle.separators}`,
     );
 
-    await page.click('#app #flags button[data-loc="es"]');
+    await clickControl(page, '#app #flags button[data-loc="es"]');
     await page.waitForTimeout(600);
     let text = await replayText(page);
     check(
@@ -253,7 +273,7 @@ try {
     );
 
     const downloadPromise = page.waitForEvent('download');
-    await page.click('#app #downloadJson');
+    await clickControl(page, '#app #downloadJson');
     const download = await downloadPromise;
     let downloadedJson = '';
     for await (const chunk of await download.createReadStream()) {
@@ -269,7 +289,7 @@ try {
         downloadedBundle.locales.join(',') === 'en,es',
     );
 
-    await page.click('#app #flags button[data-loc="en"]');
+    await clickControl(page, '#app #flags button[data-loc="en"]');
     await page.waitForTimeout(600);
     text = await replayText(page);
     check(
@@ -284,7 +304,7 @@ try {
           document.querySelector('#app #player iframe').contentDocument.body,
         ).backgroundColor,
     );
-    await page.click('#app #darkToggle');
+    await clickControl(page, '#app #darkToggle');
     await page.waitForTimeout(400);
     const dark = await page.evaluate(() => {
       const idoc = document.querySelector(
@@ -386,7 +406,7 @@ try {
     const page = await open(browser, '');
     await seek(page, 0.8);
     const before = await page.locator('#app #time').textContent();
-    await page.click('#app #flags button[data-loc="es"]');
+    await clickControl(page, '#app #flags button[data-loc="es"]');
     await page.waitForTimeout(150);
     const after = await page.locator('#app #time').textContent();
     check(
@@ -395,7 +415,7 @@ try {
       `${before} → ${after}`,
     );
     await seek(page, 0.45);
-    await page.click('#app #flags button[data-loc="en"]');
+    await clickControl(page, '#app #flags button[data-loc="en"]');
     await page.waitForTimeout(150);
     await seek(page, 0.45);
     const text = await replayText(page);

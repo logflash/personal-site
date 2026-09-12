@@ -3,23 +3,24 @@
 A lightweight JavaScript library for morphing the same text between different fonts.
 
 The library turns matching text elements into continuous font-shape animations.
-Its preferred renderer interpolates build-generated signed-distance fields; the
-earlier prepared SVG/KUTE renderer remains as a compatibility fallback for text
-that has not been compiled. Both paths support responsive destination tracking,
-deterministic time-based replay, Unicode fallback fonts, and exact settled DOM text.
+Its preferred renderer interpolates build-generated signed-distance fields (SDFs);
+the prepared SVG/KUTE renderer remains as a compatibility fallback. Both paths
+support responsive destination tracking, deterministic absolute-progress rendering,
+Unicode fallback fonts, and exact settled DOM text.
 
-This package currently lives as a local workspace repository while its public API and
-tests mature. It has no upstream remote or vendored third-party source.
+```sh
+npm install font-morph
+```
 
 ## Usage
 
 Generate a serializable manifest for known text during the host application's build.
 The compiler receives font buffers and viewport-independent font instances; its output
-contains no viewport dimensions or DOM nodes. Host applications can combine prepared
-SDF glyph pairs and shaped runs in a version-2 manifest while retaining version-1
-outlines as a fallback. The personal-site integration discovers its strings, locales,
-font stacks, responsive weights, and optical sizes automatically from MDX, translation
-catalogs, and CSS.
+contains no viewport dimensions or DOM nodes. `compileFontMorphManifest()` produces a
+version-1 prepared-outline manifest for the SVG/KUTE compatibility renderer. Applications
+using the preferred SDF renderer compile glyph pairs and shaped runs with the
+`font-morph/compiler` entry and combine them with those outlines in a version-2 manifest.
+The SDF compiler is a Node/build-time API; it is not included in the browser runtime.
 
 Structural registration is also automatic. During compilation, the library samples
 each glyph pair, detects intermediate components or counters that do not occur at
@@ -28,7 +29,17 @@ remove those artifacts. Stable glyphs keep a zero-control fast path. No characte
 font, or site-specific correction files are loaded at build time or runtime.
 
 ```ts
+import { readFile, writeFile } from 'node:fs/promises'
 import { compileFontMorphManifest } from 'font-morph'
+
+const [sansFile, serifFile] = await Promise.all([
+  readFile('public/fonts/sans.ttf'),
+  readFile('public/fonts/serif.ttf'),
+])
+const asArrayBuffer = (bytes: Buffer) =>
+  bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+const sansBuffer = asArrayBuffer(sansFile)
+const serifBuffer = asArrayBuffer(serifFile)
 
 const manifest = await compileFontMorphManifest({ sans: [sansBuffer], serif: [serifBuffer] }, [
   {
@@ -37,9 +48,11 @@ const manifest = await compileFontMorphManifest({ sans: [sansBuffer], serif: [se
     target: { role: 'serif', weight: 600, opticalSize: 23 },
   },
 ])
+await writeFile('public/font-morph.json', JSON.stringify(manifest))
 ```
 
-Configure font URLs and a manifest loader once, mark both text endpoints with
+Write the manifest to a public JSON file. Then configure font URLs and its loader,
+mark both text endpoints with
 the same `data-font-morph` value, call `prepareFontMorph()` before interaction when
 possible, then call `beginFontMorph()` immediately before the DOM changes.
 
@@ -47,13 +60,23 @@ possible, then call `beginFontMorph()` immediately before the DOM changes.
 import { beginFontMorph, configureFontMorph, prepareFontMorph } from 'font-morph'
 import 'font-morph/styles.css'
 
+let manifestRequest: Promise<unknown> | undefined
 configureFontMorph({
   fontFiles: {
     sans: ['/fonts/sans.ttf'],
     serif: ['/fonts/serif.ttf'],
   },
-  loadPreparedOutlines: (text) => fetch(`/morphs/${localeFor(text)}.json`).then((r) => r.json()),
-  createWorker: () => new Worker(fontMorphWorkerUrl, { type: 'module' }),
+  // Optional: use the exclusion class understood by your recorder.
+  transientClass: 'recording-ignore',
+  loadPreparedOutlines: () =>
+    (manifestRequest ??= fetch('/font-morph.json').then((response) => {
+      if (!response.ok) throw new Error(`Unable to load font morph data: ${response.status}`)
+      return response.json()
+    })),
+  createWorker: () =>
+    new Worker(new URL('/font-morph/outline-worker.js', location.origin), {
+      type: 'module',
+    }),
 })
 
 await prepareFontMorph('title')
@@ -61,23 +84,32 @@ beginFontMorph('title')
 ```
 
 The distributed module worker is exported as `font-morph/outline-worker.js`.
-Applications can expose that URL directly or let their bundler construct the worker
-from it. The worker loads the primary font pair first and only fetches fallback faces
-when the requested text contains unsupported glyphs.
+Copy it to the public URL used above as part of the host build, or let a bundler import
+that export as a worker URL. The worker loads the primary font pair first and only
+fetches fallback faces when the requested text contains unsupported glyphs.
 
 The destination must contain the same text and the same `data-font-morph` key.
 Prepared correspondence is cached in font space, independently of viewport
 dimensions. A missing manifest entry is compiled inside the configured worker.
 If neither prepared data nor a worker is available, the library immediately reveals
 the settled browser-rendered text instead of parsing fonts on the main thread.
+When recording, configure `transientClass` with the recorder's ignore/block class so
+generated layers and measurement probes do not enter the captured DOM.
 
 The core package has no dependency on a router, UI framework, recording library,
-or application-specific translations. Its optional replay helpers accept semantic
-event and frame types, so a host can connect them to any deterministic replay clock.
-The replay reader also accepts the legacy `gt-font-morph` event tag, keeping recordings
-from before this package extraction compatible. Recordings store only the semantic
-transition identity, timing, normalized endpoint boxes, and text styles; SDF textures,
-SVG paths, and per-frame output never enter the recording.
+or application-specific translations. `createFontMorphFrameRenderer()` accepts
+absolute normalized progress, while `createFontMorphProgressController()` supports
+interactive inputs such as sliders and scroll-linked effects. Recording and replay
+packages should translate their own timelines into those absolute-progress frames.
+The semantic recording event contains only transition identity, timing, normalized
+endpoint boxes, and text styles; it never contains SDF textures, SVG paths, pixel
+buffers, or per-frame output.
+
+## Browser support
+
+The runtime targets ES2022 browsers with Canvas 2D, SVG, `FontFaceSet`,
+`MutationObserver`, `ResizeObserver`, and Web Workers. When prepared geometry or a
+worker is unavailable, the destination DOM text is revealed immediately.
 
 ## React + TypeScript demo
 

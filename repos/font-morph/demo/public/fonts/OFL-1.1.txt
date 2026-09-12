@@ -1,4 +1,16 @@
-Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'
+Font files distributed with the demo:
+
+- ibm-plex-sans-400-outline.ttf
+  Copyright 2019 IBM Corp. All rights reserved.
+- noto-sans-jp-400-outline.ttf
+  Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+- noto-serif-jp-600-outline.ttf
+  Copyright 2017-2024 Adobe (http://www.adobe.com/).
+- source-serif-4-600-outline.ttf
+  Copyright 2014-2021 Adobe Systems Incorporated (http://www.adobe.com/),
+  with Reserved Font Name 'Source'.
+
+These font files are licensed under the SIL Open Font License, Version 1.1.
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

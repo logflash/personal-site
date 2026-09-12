@@ -1,16 +1,16 @@
 import { GTReplayer } from 'gt-rrweb/replay'
 import type { GTReplayerBundle, GTReplayerFrame } from 'gt-rrweb/replay'
 import { harvestLocales } from 'gt-rrweb/harvest'
+import {
+  createFontMorphReplayDirector,
+  prepareFontMorphReplay,
+  reserveFontMorphSettledTextHolds,
+} from 'gt-rrweb/font-morph'
 import { hashMessage } from 'gt-i18n/internal'
 import type { DragEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
-import {
-  createFontMorphReplayDirector,
-  prepareFontMorph,
-  prepareFontMorphReplay,
-  reserveFontMorphSettledTextHolds,
-} from '../lib/fontMorph'
+import { prepareFontMorph } from '../lib/fontMorph'
 import { parseRecording } from '../lib/recordingDrop'
 import {
   createSkillCardReplayDirector,

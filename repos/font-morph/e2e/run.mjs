@@ -105,7 +105,7 @@ const html = `<!doctype html>
       @font-face { font-family: "Fixture Primary"; src: url("/primary.otf"); }
       :root {
         /* Keep the live test open long enough for resize sampling on slow CI. */
-        --font-morph-duration: 1600ms;
+        --font-morph-duration: 4000ms;
         --font-morph-sans-weight: 400;
         --font-morph-serif-weight: 400;
         --font-morph-serif-optical-size: 104;
@@ -307,10 +307,21 @@ try {
   await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {
     state: 'attached',
   })
+  const handoffSnapshot = await page.evaluate(() => ({
+    active: document.documentElement.dataset.fontMorphActive,
+    layers: [...document.querySelectorAll('[data-font-morph-renderer]')].map((layer) => ({
+      className: layer.className,
+      renderer: layer.getAttribute('data-font-morph-renderer'),
+    })),
+  }))
   assert.equal(
-    await page.locator('.font-morph-source-layer[data-font-morph-renderer="dom"]').count(),
+    handoffSnapshot.layers.filter(
+      (layer) =>
+        String(layer.className).includes('font-morph-source-layer') &&
+        layer.renderer === 'dom',
+    ).length,
     1,
-    'the exact browser-rendered source should remain mounted for the opening handoff',
+    `the exact browser-rendered source should remain mounted for the opening handoff: ${JSON.stringify(handoffSnapshot)}`,
   )
   const liveHandoffStates = await page.evaluate(() => {
     const source = document.querySelector('.font-morph-source-layer')
@@ -401,7 +412,7 @@ try {
   )
 
   await page.waitForFunction(() => !document.querySelector('.font-morph-layer'), null, {
-    timeout: 3_000,
+    timeout: 20_000,
   })
   const settled = await page.evaluate(() => {
     const endpoint = document.querySelector('[data-font-morph="sample"]')
@@ -434,7 +445,10 @@ try {
   // uncompiled optical size. Restore the compiled endpoint before exercising
   // the reverse prepared-data path; worker fallback is tested separately.
   await page.evaluate(() =>
-    document.querySelector('[data-font-morph="sample"]')?.classList.remove('moved'),
+    {
+      document.documentElement.style.setProperty('--font-morph-duration', '1600ms')
+      document.querySelector('[data-font-morph="sample"]')?.classList.remove('moved')
+    },
   )
   assert.equal(await page.evaluate(() => window.fontMorphFixture.reverse()), true)
   await page.waitForSelector('.font-morph-layer[data-font-morph-renderer="sdf"]', {

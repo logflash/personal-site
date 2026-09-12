@@ -4,7 +4,9 @@
   "description": "A lightweight JavaScript library for morphing the same text between different fonts.",
   "license": "MIT",
   "type": "module",
-  "sideEffects": false,
+  "sideEffects": [
+    "./styles.css"
+  ],
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.cts",
@@ -48,7 +50,9 @@
     "./styles.css": "./styles.css"
   },
   "scripts": {
-    "build": "tsdown && esbuild src/outline.worker.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=dist/outline-worker.js",
+    "build": "tsdown && esbuild src/outline.worker.ts --bundle --minify --format=esm --platform=browser --target=es2022 --outfile=dist/outline-worker.js",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm run test && npm run e2e && npm run demo:test",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "oxlint --quiet src e2e demo",
@@ -60,6 +64,19 @@
     "demo:preview": "vite preview --config demo/vite.config.ts",
     "demo:test": "corepack pnpm run demo:sdf && corepack pnpm run demo:build && node demo/e2e.mjs",
     "diagnostics": "corepack pnpm run build && node scripts/render-sdf-diagnostics.mjs"
+  },
+  "author": "Ian Henriques",
+  "keywords": [
+    "font",
+    "morph",
+    "typography",
+    "animation",
+    "svg",
+    "sdf",
+    "unicode"
+  ],
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "fontkit": "2.0.4",
