@@ -30,6 +30,13 @@ export type DirectedClick = { t: number; x: number; y: number; id: number };
 
 export type Point = { x: number; y: number };
 
+export function clampScrollPosition(position: Point, maximum: Point): Point {
+  return {
+    x: Math.max(0, Math.min(Math.max(0, maximum.x), position.x)),
+    y: Math.max(0, Math.min(Math.max(0, maximum.y), position.y)),
+  };
+}
+
 export type RectBounds = {
   left: number;
   top: number;

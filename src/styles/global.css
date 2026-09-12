@@ -813,6 +813,7 @@ main {
 .resume-skill-card {
   --resume-skill-border: var(--line);
 
+  position: relative;
   overflow: hidden;
   border: 1px solid var(--resume-skill-border);
   border-radius: 8px;

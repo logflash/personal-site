@@ -8,6 +8,7 @@ import {
   REPLAY_SOURCE as SRC,
   analyzePointerInput,
   buildScrollTracks,
+  clampScrollPosition,
   collectDirectedClicks,
   compressTimeline,
   detectDoubleClicks,
@@ -702,6 +703,13 @@ function createPlayerInstance(
     return node.nodeType === Node.ELEMENT_NODE ? (node as Element) : null;
   }
 
+  function achievableScrollPosition(scroller: Element, position: { x: number; y: number }) {
+    return clampScrollPosition(position, {
+      x: scroller.scrollWidth - scroller.clientWidth,
+      y: scroller.scrollHeight - scroller.clientHeight,
+    });
+  }
+
   function applyDirectedScroll(time: number, force = false): void {
     for (const track of scrollTracks.values()) {
       const position = scrollPositionAt(track, time, clicks, easeLogistic);
@@ -709,14 +717,10 @@ function createPlayerInstance(
       const scroller = visibleScrollNode(track.id);
       if (!scroller) continue;
       const correction = syntheticScrollOffset(track.id, time);
-      const x = Math.max(
-        0,
-        Math.min(scroller.scrollWidth - scroller.clientWidth, position.x + correction.x),
-      );
-      const y = Math.max(
-        0,
-        Math.min(scroller.scrollHeight - scroller.clientHeight, position.y + correction.y),
-      );
+      const { x, y } = achievableScrollPosition(scroller, {
+        x: position.x + correction.x,
+        y: position.y + correction.y,
+      });
       const previous = appliedScroll.get(track.id);
       if (
         !force &&
@@ -1152,10 +1156,14 @@ function createPlayerInstance(
         const recorded = scrollPositionAt(track, click.t, clicks, easeLogistic);
         if (!scroller || !recorded) continue;
         const existing = syntheticScrollOffset(track.id, click.t);
+        const target = achievableScrollPosition(scroller, {
+          x: recorded.x + existing.x,
+          y: recorded.y + existing.y,
+        });
         clickRect = rectAtScrollPosition(
           clickRect,
           { x: scroller.scrollLeft, y: scroller.scrollTop },
-          { x: recorded.x + existing.x, y: recorded.y + existing.y },
+          target,
         );
       }
 
@@ -1191,28 +1199,19 @@ function createPlayerInstance(
       const recorded = scrollPositionAt(chosen.track, click.t, clicks, easeLogistic);
       if (!recorded) continue;
       const existing = syntheticScrollOffset(chosen.track.id, click.t);
-      const currentTarget = {
+      const requestedTarget = {
         x: recorded.x + existing.x,
         y: recorded.y + existing.y,
       };
-      const desired = {
-        x: Math.max(
-          0,
-          Math.min(
-            chosen.scroller.scrollWidth - chosen.scroller.clientWidth,
-            currentTarget.x + delta.x,
-          ),
-        ),
-        y: Math.max(
-          0,
-          Math.min(
-            chosen.scroller.scrollHeight - chosen.scroller.clientHeight,
-            currentTarget.y + delta.y,
-          ),
-        ),
-      };
-      const x = desired.x - currentTarget.x;
-      const y = desired.y - currentTarget.y;
+      const currentTarget = achievableScrollPosition(chosen.scroller, requestedTarget);
+      const desired = achievableScrollPosition(chosen.scroller, {
+        x: currentTarget.x + delta.x,
+        y: currentTarget.y + delta.y,
+      });
+      // Corrections are added to the original requested position before the
+      // shared clamp, so include any overshoot already removed by that clamp.
+      const x = desired.x - requestedTarget.x;
+      const y = desired.y - requestedTarget.y;
       if (Math.abs(x) < 0.05 && Math.abs(y) < 0.05) continue;
 
       const nextPoint = chosen.track.points.find((point) => point.t > click.t);
@@ -1266,10 +1265,14 @@ function createPlayerInstance(
             }
             if (!position) continue;
             const correction = syntheticScrollOffset(track.id, click.t);
+            const target = achievableScrollPosition(scroller, {
+              x: position.x + correction.x,
+              y: position.y + correction.y,
+            });
             clickRect = rectAtScrollPosition(
               clickRect,
               { x: scroller.scrollLeft, y: scroller.scrollTop },
-              { x: position.x + correction.x, y: position.y + correction.y },
+              target,
             );
           }
           const bounds = cursorBounds();
