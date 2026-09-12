@@ -20,6 +20,8 @@ The source patch series replaces the former package-manager patch against genera
 - associate separately-added rrweb text mutations with their nearest hash owner,
   including child-before-parent mutation batches;
 - compress inactive time while retaining click, font-morph, and settled-text holds;
+- adapt compact font-morph events to the rrweb timeline through the optional
+  `gt-rrweb/font-morph` entry, keeping renderer geometry out of recordings;
 - interpolate scroll tracks deterministically and keep translated click targets in
   view when localized layouts differ;
 - make cursor and scroll state depend only on replay time, including after seeks;

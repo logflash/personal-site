@@ -1,12 +1,11 @@
 import {
-  FONT_MORPH_EVENT_TAG,
   FONT_MORPH_RECORD_EVENT,
   beginFontMorph,
   configureFontMorph,
-  createFontMorphReplayDirector,
+  createFontMorphFrameRenderer,
   prepareFontMorph,
-  prepareFontMorphReplay,
-  type FontMorphEvent,
+  prepareFontMorphFrames,
+  type FontMorphRecording,
 } from '../dist/index.mjs'
 
 declare global {
@@ -50,25 +49,10 @@ configureFontMorph({
 })
 
 const events: unknown[] = []
-const replayEvents: FontMorphEvent[] = []
-const replayDirector = createFontMorphReplayDirector()
+const renderFrame = createFontMorphFrameRenderer()
 window.addEventListener(FONT_MORPH_RECORD_EVENT, (event) => {
   const payload = (event as CustomEvent).detail
   events.push(payload)
-  replayEvents.splice(
-    0,
-    replayEvents.length,
-    {
-      type: 4,
-      timestamp: 999,
-      data: { width: window.innerWidth, height: window.innerHeight },
-    },
-    {
-      type: 5,
-      timestamp: 1_000,
-      data: { tag: FONT_MORPH_EVENT_TAG, payload },
-    },
-  )
 })
 
 function endpoint(role: 'sans' | 'serif', content = 'ee') {
@@ -106,24 +90,49 @@ window.fontMorphFixture = {
     return started
   },
   prepareReplay: () => {
-    // rrweb stores normalized subpixel boxes; reconstructing their font size
-    // can differ from the authored CSS value by a few thousandths. Prepared
-    // outline identity must tolerate that harmless recording roundoff.
-    const payload = replayEvents.find(
-      (event) => event.type === 5 && event.data.tag === FONT_MORPH_EVENT_TAG,
-    )?.data.payload
+    const payload = events.at(-1) as FontMorphRecording | undefined
     const serifEndpoint = payload?.source.style.fontRole === 'serif' ? payload.source : payload?.target
     if (serifEndpoint) serifEndpoint.style.fontSizeToHeight *= 1.00004
-    return prepareFontMorphReplay(replayEvents, ['en'], () => undefined, document)
-  },
-  replayAt: (time) =>
-    replayDirector({
-      time,
+    if (!payload) return Promise.resolve()
+    return prepareFontMorphFrames(
+      [
+        {
+          payload,
+          text: payload.source.text,
+          captureFrame: {
+            screen: {
+              left: 0,
+              top: 0,
+              width: window.innerWidth,
+              height: window.innerHeight,
+            },
+            logicalWidth: window.innerWidth,
+            logicalHeight: window.innerHeight,
+          },
+        },
+      ],
       document,
-      locale: 'en',
-      events: replayEvents,
+    )
+  },
+  replayAt: (time) => {
+    const payload = events.at(-1) as FontMorphRecording | undefined
+    if (!payload) return undefined
+    return renderFrame({
+      document,
+      payload,
+      text: payload.source.text,
+      progress: time / payload.duration,
+      phase: time < payload.duration ? 'active' : 'settled',
       overlayRoot: document.getElementById('replay-overlay'),
-    }),
+    })
+  },
   show: swap,
-  stopReplay: () => replayDirector({ time: Number.NaN, document: null, events: replayEvents }),
+  stopReplay: () =>
+    renderFrame({
+      document: null,
+      payload: null,
+      text: '',
+      progress: 0,
+      phase: 'idle',
+    }),
 }

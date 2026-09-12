@@ -7,6 +7,7 @@ export default defineConfig({
     'src/sdf-runtime/index.ts',
   ],
   format: ['cjs', 'esm'],
+  target: 'es2022',
   dts: true,
   sourcemap: true,
   clean: true,

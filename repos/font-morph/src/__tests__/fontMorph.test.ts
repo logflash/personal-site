@@ -3,43 +3,13 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
-  FONT_MORPH_EVENT_TAG,
-  SETTLED_TEXT_HOLD_MS,
   configureFontMorph,
   compileFontMorphManifest,
-  createFontMorphReplayDirector,
+  createFontMorphFrameRenderer,
   prepareFontMorph,
-  reserveFontMorphSettledTextHolds,
-  type FontMorphEvent,
 } from '../index'
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-
-function morphEvent(settledTextHold?: number): FontMorphEvent {
-  return {
-    type: 5,
-    timestamp: 1_000,
-    data: {
-      tag: FONT_MORPH_EVENT_TAG,
-      payload: {
-        version: 2,
-        key: 'title',
-        duration: 600,
-        ...(settledTextHold === undefined ? {} : { settledTextHold }),
-        source: {},
-        target: {},
-      },
-    },
-  }
-}
-
-function legacyMorphEvent(): FontMorphEvent {
-  const event = morphEvent()
-  return {
-    ...event,
-    data: { ...(event.data as object), tag: 'gt-font-morph' },
-  }
-}
 
 describe('font-morph public API', () => {
   it('can be configured without browser globals', () => {
@@ -54,41 +24,17 @@ describe('font-morph public API', () => {
     await expect(prepareFontMorph('title')).resolves.toBeUndefined()
   })
 
-  it('adds the default settled-text hold without mutating its input', () => {
-    const event = morphEvent()
-    const events = [event]
-    const prepared = reserveFontMorphSettledTextHolds(events)
-
-    expect(prepared).not.toBe(events)
-    expect(prepared[0]).not.toBe(event)
+  it('accepts an explicit teardown frame without browser globals', () => {
+    const render = createFontMorphFrameRenderer()
     expect(
-      (prepared[0].data as { payload: { settledTextHold: number } }).payload.settledTextHold,
-    ).toBe(SETTLED_TEXT_HOLD_MS)
-    expect((event.data as { payload: { settledTextHold?: number } }).payload.settledTextHold).toBe(
-      undefined,
-    )
-  })
-
-  it('retains replay compatibility with the pre-extraction event tag', () => {
-    const [prepared] = reserveFontMorphSettledTextHolds([legacyMorphEvent()])
-    expect((prepared.data as { payload: { settledTextHold: number } }).payload.settledTextHold).toBe(
-      SETTLED_TEXT_HOLD_MS,
-    )
-  })
-
-  it.each([0, 275])('preserves an explicit %sms settled-text hold', (hold) => {
-    const events = [morphEvent(hold)]
-    expect(reserveFontMorphSettledTextHolds(events)).toBe(events)
-  })
-
-  it('leaves unrelated event streams referentially unchanged', () => {
-    const events: FontMorphEvent[] = [{ type: 4, timestamp: 0, data: { width: 800 } }]
-    expect(reserveFontMorphSettledTextHolds(events)).toBe(events)
-  })
-
-  it('accepts an explicit teardown frame without retaining state', () => {
-    const director = createFontMorphReplayDirector()
-    expect(director({ time: Number.NaN, document: null, events: [] })).toBeUndefined()
+      render({
+        document: null,
+        payload: null,
+        text: '',
+        progress: 0,
+        phase: 'idle',
+      }),
+    ).toBeUndefined()
   })
 
   it('uses variation-correct disconnected contours in prepared KUTE outlines', async () => {

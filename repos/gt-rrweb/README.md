@@ -23,6 +23,24 @@ corepack pnpm --filter gt-rrweb e2e
 
 `e2e:fixture` regenerates the generic browser recording used by the E2E suite.
 
+## Font morph replay
+
+The optional `gt-rrweb/font-morph` entry adapts compact `font-morph` semantic
+events to the directed replay clock:
+
+```ts
+import {
+  createFontMorphReplayDirector,
+  prepareFontMorphReplay,
+  reserveFontMorphSettledTextHolds,
+} from 'gt-rrweb/font-morph'
+```
+
+Install and configure `font-morph` in the host application before using this
+entry. The adapter owns rrweb event parsing, locale resolution, settled-text holds,
+seeking, and invisible-animation advancement. Compiled contours, distance fields,
+pixel buffers, and per-frame output are never stored in the recording.
+
 ## License
 
 MIT © General Translation, Inc. See `LICENSE.md`.

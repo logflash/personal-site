@@ -26,6 +26,7 @@ configureFontMorph({
   },
   recordingClass: 'gt-recording',
   captureSelector: '.layout',
+  transientClass: 'rr-block',
   resolveFontRole: (fontFamily) =>
     fontFamily.toLowerCase().includes('source serif') ||
     fontFamily.toLowerCase().includes('noto serif')
@@ -39,10 +40,6 @@ configureFontMorph({
 export {
   FONT_MORPH_EVENT_TAG,
   FONT_MORPH_RECORD_EVENT,
-  SETTLED_TEXT_HOLD_MS,
   beginFontMorph,
-  createFontMorphReplayDirector,
   prepareFontMorph,
-  prepareFontMorphReplay,
-  reserveFontMorphSettledTextHolds,
 } from 'font-morph'

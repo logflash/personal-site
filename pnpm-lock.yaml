@@ -164,6 +164,9 @@ importers:
       '@types/react-dom':
         specifier: '>=18.0.0 <20.0.0'
         version: 19.2.4(@types/react@19.2.18)
+      font-morph:
+        specifier: workspace:*
+        version: link:../font-morph
       morphdom:
         specifier: ^2.7.5
         version: 2.7.8

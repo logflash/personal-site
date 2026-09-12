@@ -47,27 +47,6 @@ interface FontMorphOutlineFont {
     }[]
   }
 }
-export type MorphTextResolver = (
-  locale: string | undefined,
-  translationHash: string | undefined,
-  recordedText: string,
-) => string | undefined
-
-export interface FontMorphEvent {
-  type: number
-  timestamp: number
-  data?: unknown
-}
-
-export interface FontMorphReplayFrame<Event extends FontMorphEvent = FontMorphEvent> {
-  time: number
-  document: Document | null
-  locale?: string
-  events: Event[]
-  /** Optional host layer aligned to the visible replay capture frame. */
-  overlayRoot?: HTMLElement | null
-}
-
 export interface FontMorphConfiguration {
   /** Outline-font URLs, ordered from the primary face to glyph fallbacks. */
   fontFiles: Record<FontMorphFontRole, readonly string[]>
@@ -75,6 +54,8 @@ export interface FontMorphConfiguration {
   recordingClass?: string
   /** Element representing that nested capture viewport. */
   captureSelector?: string
+  /** Optional class applied to transient layers and probes for recorder exclusion. */
+  transientClass?: string
   /** Maps a computed CSS font-family string to one of the configured faces. */
   resolveFontRole?: (fontFamily: string) => FontMorphFontRole
   /** Optional stable text identity copied into semantic recording events. */
@@ -173,6 +154,11 @@ interface RecordedFontMorph {
   source: RecordedGlyphEndpoint
   target: RecordedGlyphEndpoint
 }
+
+/** Compact, renderer-independent state emitted once for a recorded transition. */
+export type FontMorphRecording = RecordedFontMorph
+export type FontMorphRecordingEndpoint = RecordedGlyphEndpoint
+export type FontMorphCaptureFrame = CaptureFrame
 
 interface KuteMorphRuntime {
   getInterpolationPoints: (source: string, target: string, precision: number) => [Polygon, Polygon]
@@ -313,15 +299,15 @@ interface PreparedSdfMorph {
 
 type RenderedMorph = PreparedMorph | PreparedSdfMorph
 
-interface ReplayMorphState {
-  event: object
+interface FrameMorphState {
+  payload: RecordedFontMorph
   document: Document
-  locale?: string
+  text: string
   layer: SVGSVGElement | HTMLCanvasElement
   prepared: RenderedMorph
   generation: number
   sawTarget: boolean
-  lastTime: number
+  lastProgress: number
   handoffSource: ReplayOpacityOverride | null
   handoffTarget: ReplayOpacityOverride | null
 }
@@ -348,8 +334,7 @@ interface ActiveMorph {
   rendererHandoffAnimation: Animation | null
 }
 
-const recordedMorphCache = new WeakMap<FontMorphEvent[], ReturnType<typeof indexMorphs>>()
-let replayOutlineCache = new WeakMap<RecordedFontMorph, Map<string, PreparedOutline>>()
+let recordingOutlineCache = new WeakMap<RecordedFontMorph, Map<string, PreparedOutline>>()
 const normalizedOutlineCache = new Map<string, NormalizedOutline>()
 const preparedSdfCache = new Map<string, PreparedSdfData>()
 const browserBaselineCache = new WeakMap<
@@ -361,15 +346,6 @@ const syntheticBaselineCache = new WeakMap<Document, Map<string, number>>()
 export const FONT_MORPH_RECORD_EVENT = 'font-morph:record'
 export const FONT_MORPH_EVENT_TAG = 'font-morph'
 export const SETTLED_TEXT_HOLD_MS = 500
-
-// Recordings made before font-morph became a standalone package use this tag.
-// Keep accepting it indefinitely so extracting the library never invalidates
-// previously captured timelines.
-const LEGACY_FONT_MORPH_EVENT_TAG = 'gt-font-morph'
-
-function isFontMorphEventTag(tag: string | undefined) {
-  return tag === FONT_MORPH_EVENT_TAG || tag === LEGACY_FONT_MORPH_EVENT_TAG
-}
 
 let activeMorph: ActiveMorph | null = null
 let compilerWorker: Worker | null = null
@@ -394,6 +370,7 @@ export function configureFontMorph(options: FontMorphConfiguration) {
     },
     recordingClass: options.recordingClass ?? defaultConfiguration.recordingClass,
     captureSelector: options.captureSelector ?? defaultConfiguration.captureSelector,
+    transientClass: options.transientClass,
     resolveFontRole: options.resolveFontRole ?? defaultConfiguration.resolveFontRole,
     resolveTextIdentity: options.resolveTextIdentity,
     loadPreparedOutlines: options.loadPreparedOutlines,
@@ -407,13 +384,17 @@ export function configureFontMorph(options: FontMorphConfiguration) {
   workerRequests.clear()
   preparedManifestLoads.clear()
   outlinePreparationPromises.clear()
-  replayOutlineCache = new WeakMap()
+  recordingOutlineCache = new WeakMap()
   normalizedOutlineCache.clear()
   preparedSdfCache.clear()
 }
 
 function selectorFor(key: string) {
   return `[data-font-morph="${CSS.escape(key)}"]`
+}
+
+function markTransient(element: Element) {
+  if (configuration.transientClass) element.classList.add(configuration.transientClass)
 }
 
 function findEndpointElement(key: string, except?: HTMLElement, ownerDocument = document) {
@@ -522,7 +503,7 @@ function browserTextBaseline(
     if (cached?.signature === signature) return cached.baselineToHeight * lineHeight
 
     const marker = ownerDocument.createElement('i')
-    marker.className = 'rr-block'
+    markTransient(marker)
     marker.setAttribute('aria-hidden', 'true')
     marker.style.cssText =
       'display:inline-block;width:0;height:0;margin:0;padding:0;border:0;vertical-align:baseline;'
@@ -571,7 +552,7 @@ function browserTextBaseline(
 
     const line = ownerDocument.createElement('span')
     const marker = ownerDocument.createElement('i')
-    line.className = 'rr-block'
+    markTransient(line)
     line.setAttribute('aria-hidden', 'true')
     line.style.cssText =
       'position:fixed;left:-10000px;top:0;display:inline-block;visibility:hidden;margin:0;padding:0;border:0;white-space:pre;font-synthesis:none;'
@@ -862,7 +843,7 @@ function restoreReplayOpacity(override: ReplayOpacityOverride | null) {
   else element.style.removeProperty('opacity')
 }
 
-function restoreReplayHandoffs(state: ReplayMorphState | null) {
+function restoreFrameHandoffs(state: FrameMorphState | null) {
   if (!state) return
   restoreReplayOpacity(state.handoffSource)
   restoreReplayOpacity(state.handoffTarget)
@@ -870,8 +851,8 @@ function restoreReplayHandoffs(state: ReplayMorphState | null) {
   state.handoffTarget = null
 }
 
-function setReplayHandoff(
-  state: ReplayMorphState,
+function setFrameHandoff(
+  state: FrameMorphState,
   endpoint: 'source' | 'target',
   element: HTMLElement | null,
   opacity: number,
@@ -1079,7 +1060,7 @@ function createInitialLayer(
   const ownerDocument = overlayRoot?.ownerDocument ?? endpoint.element.ownerDocument
   const layer = createSvgElement(ownerDocument, 'svg')
   layer.classList.add(replay ? 'font-morph-director-layer' : 'font-morph-layer')
-  if (!replay) layer.classList.add('rr-block')
+  if (!replay) markTransient(layer)
   layer.setAttribute('viewBox', `0 0 ${MORPH_VIEWBOX_SIZE} ${MORPH_VIEWBOX_SIZE}`)
   layer.setAttribute('preserveAspectRatio', 'none')
   layer.setAttribute('aria-hidden', 'true')
@@ -1122,7 +1103,8 @@ function createInitialDomLayer(endpoint: GlyphEndpoint) {
   const computed = ownerWindow?.getComputedStyle(endpoint.element)
   const layer = ownerDocument.createElement('div')
   const textLayer = ownerDocument.createElement('font-morph-text')
-  layer.classList.add('font-morph-layer', 'rr-block')
+  layer.classList.add('font-morph-layer')
+  markTransient(layer)
   layer.dataset.fontMorphRenderer = 'dom'
   layer.setAttribute('aria-hidden', 'true')
   textLayer.textContent = endpoint.text
@@ -2454,7 +2436,7 @@ function createSdfLayer(endpoint: GlyphEndpoint, replay: boolean, overlayRoot?: 
   const ownerDocument = overlayRoot?.ownerDocument ?? endpoint.element.ownerDocument
   const layer = ownerDocument.createElement('canvas')
   layer.classList.add(replay ? 'font-morph-director-layer' : 'font-morph-layer')
-  if (!replay) layer.classList.add('rr-block')
+  if (!replay) markTransient(layer)
   layer.dataset.fontMorphRenderer = 'sdf'
   layer.setAttribute('aria-hidden', 'true')
   layer.style.cssText += `${overlayRoot ? 'position:absolute' : 'position:fixed'};inset:0 auto auto 0;z-index:2147483646;display:block;pointer-events:none;transform-origin:top left;`
@@ -2986,114 +2968,6 @@ async function animateTo(morph: ActiveMorph, targetElement: HTMLElement) {
   morph.frame = requestAnimationFrame(paint)
 }
 
-function recordedActivationTimestamp(
-  events: FontMorphEvent[],
-  eventIndex: number,
-  payload: RecordedFontMorph,
-) {
-  for (let index = eventIndex - 1; index >= 0; index -= 1) {
-    const candidate = events[index] as (typeof events)[number] & {
-      data?: {
-        source?: number
-        attributes?: { attributes?: Record<string, string | null> }[]
-      }
-    }
-    if (
-      candidate.type === 3 &&
-      candidate.data?.source === 0 &&
-      candidate.data.attributes?.some(
-        (change) => change.attributes?.['data-font-morph-active'] === payload.key,
-      )
-    ) {
-      return candidate.timestamp
-    }
-  }
-
-  return events[eventIndex].timestamp - Math.max(0, payload.leadIn ?? 0)
-}
-
-function indexMorphs(events: FontMorphEvent[]) {
-  return events.flatMap((event, eventIndex) => {
-    const customEvent = event as typeof event & {
-      data?: { tag?: string; payload?: RecordedFontMorph }
-    }
-    const payload = customEvent.data?.payload
-    return customEvent.type === 5 &&
-      isFontMorphEventTag(customEvent.data?.tag) &&
-      payload?.version === 2 &&
-      payload.duration > 0
-      ? [
-          {
-            event: customEvent,
-            payload,
-            activationTimestamp: recordedActivationTimestamp(events, eventIndex, payload),
-          },
-        ]
-      : []
-  })
-}
-
-function settledTextHold(payload: RecordedFontMorph) {
-  return Number.isFinite(payload.settledTextHold) && (payload.settledTextHold ?? -1) >= 0
-    ? payload.settledTextHold!
-    : SETTLED_TEXT_HOLD_MS
-}
-
-/**
- * Adds the director's replay hold to recordings made before the field was
- * embedded in font-morph events. A replay host reads this value while constructing
- * its deterministic timeline; the frame director later skips the reservation
- * when the translated destination is not visible.
- */
-export function reserveFontMorphSettledTextHolds<Event extends FontMorphEvent>(
-  events: Event[],
-): Event[] {
-  let changed = false
-  const prepared = events.map((event) => {
-    const customEvent = event as typeof event & {
-      data?: { tag?: string; payload?: RecordedFontMorph }
-    }
-    const payload = customEvent.data?.payload
-    if (
-      customEvent.type !== 5 ||
-      !isFontMorphEventTag(customEvent.data?.tag) ||
-      payload?.version !== 2 ||
-      (Number.isFinite(payload.settledTextHold) && (payload.settledTextHold ?? -1) >= 0)
-    ) {
-      return event
-    }
-    changed = true
-    return {
-      ...customEvent,
-      data: {
-        ...customEvent.data,
-        payload: { ...payload, settledTextHold: SETTLED_TEXT_HOLD_MS },
-      },
-    } as Event
-  })
-  return changed ? prepared : events
-}
-
-function recordedMorphAt(frame: FontMorphReplayFrame) {
-  const firstTimestamp = frame.events[0]?.timestamp ?? 0
-  let morphs = recordedMorphCache.get(frame.events)
-  if (!morphs) {
-    morphs = indexMorphs(frame.events)
-    recordedMorphCache.set(frame.events, morphs)
-  }
-  for (let index = morphs.length - 1; index >= 0; index -= 1) {
-    const { event, payload, activationTimestamp } = morphs[index]
-    const activationStart = activationTimestamp - firstTimestamp
-    const start = event.timestamp - firstTimestamp
-    const end = start + payload.duration
-    const holdEnd = end + settledTextHold(payload)
-    if (frame.time >= activationStart && frame.time < holdEnd) {
-      return { event, payload, activationStart, start, end, holdEnd }
-    }
-  }
-  return null
-}
-
 function measureAdvance(recorded: RecordedGlyphEndpoint, text: string, ownerDocument: Document) {
   const canvas = ownerDocument.createElement('canvas')
   const context = canvas.getContext('2d')
@@ -3143,71 +3017,17 @@ async function loadRecordedEndpointFont(
   }
 }
 
-function recordedCaptureFrame(events: FontMorphEvent[]): CaptureFrame {
-  type SerializedNode = {
-    tagName?: string
-    attributes?: Record<string, string>
-    childNodes?: SerializedNode[]
-  }
-  const visit = (node: SerializedNode | undefined): number | undefined => {
-    if (!node) return undefined
-    if (node.tagName === 'html') {
-      const match = node.attributes?.style?.match(/--gt-capture-height-ratio:\s*([\d.]+)/)
-      const ratio = Number.parseFloat(match?.[1] ?? '')
-      if (Number.isFinite(ratio) && ratio > 0) return ratio
-    }
-    for (const child of node.childNodes ?? []) {
-      const ratio = visit(child)
-      if (ratio) return ratio
-    }
-    return undefined
-  }
-
-  for (const event of events) {
-    if (event.type === 2) {
-      const ratio = visit((event.data as { node?: SerializedNode }).node)
-      if (ratio) {
-        const meta = events.find((event) => event.type === 4)?.data as
-          | { width?: number }
-          | undefined
-        const logicalWidth = meta?.width && meta.width > 0 ? meta.width : 1_000
-        return {
-          screen: { left: 0, top: 0, width: 1_000, height: 1_000 * ratio },
-          logicalWidth,
-          logicalHeight: logicalWidth * ratio,
-        }
-      }
-    }
-  }
-  const meta = events.find((event) => event.type === 4)?.data as
-    | { width?: number; height?: number }
-    | undefined
-  const logicalWidth = meta?.width && meta.width > 0 ? meta.width : 1_000
-  const ratio = meta?.width && meta.height ? meta.height / meta.width : 1
-  return {
-    screen: { left: 0, top: 0, width: 1_000, height: 1_000 * ratio },
-    logicalWidth,
-    logicalHeight: logicalWidth * ratio,
-  }
+export interface FontMorphFramePreparation {
+  payload: FontMorphRecording
+  text: string
+  captureFrame: FontMorphCaptureFrame
 }
 
-function replayText(
-  payload: RecordedFontMorph,
-  locale: string | undefined,
-  resolveText?: MorphTextResolver,
-) {
-  const translationHash = payload.source.translationHash ?? payload.target.translationHash
-  return resolveText?.(locale, translationHash, payload.source.text) ?? payload.source.text
-}
-
-/** Prepares locale-specific SDF data or the legacy KUTE fallback before replay. */
-export async function prepareFontMorphReplay(
-  events: FontMorphEvent[],
-  locales: readonly (string | undefined)[],
-  resolveText: MorphTextResolver,
+/** Prepares build-generated SDF data or the KUTE fallback for deterministic frames. */
+export async function prepareFontMorphFrames(
+  preparations: readonly FontMorphFramePreparation[],
   ownerDocument: Document,
 ) {
-  const frame = recordedCaptureFrame(events)
   const endpointElement = ownerDocument.documentElement
   const preparedByDirection = new Map<string, PreparedOutline>()
   const endpointKey = (endpoint: GlyphEndpoint) =>
@@ -3224,163 +3044,155 @@ export async function prepareFontMorphReplay(
       })) ?? null,
   })
 
-  for (const { payload } of indexMorphs(events)) {
-    let localeCache = replayOutlineCache.get(payload)
-    if (!localeCache) {
-      localeCache = new Map()
-      replayOutlineCache.set(payload, localeCache)
+  for (const { payload, text, captureFrame: frame } of preparations) {
+    let textCache = recordingOutlineCache.get(payload)
+    if (!textCache) {
+      textCache = new Map()
+      recordingOutlineCache.set(payload, textCache)
     }
-    for (const locale of locales) {
-      const cacheKey = locale ?? ''
-      if (localeCache.has(cacheKey)) continue
-      const translatedText = replayText(payload, locale, resolveText)
-      await Promise.all([
-        loadRecordedEndpointFont(payload.source, translatedText, ownerDocument, frame),
-        loadRecordedEndpointFont(payload.target, translatedText, ownerDocument, frame),
-      ])
-      const source = translatedEndpoint(
-        payload.source,
-        translatedText,
-        ownerDocument,
-        endpointElement,
-        frame,
-      )
-      const target = translatedEndpoint(
-        payload.target,
-        translatedText,
-        ownerDocument,
-        endpointElement,
-        frame,
-      )
-      const sdf = await resolvePreparedSdf(
-        translatedText,
-        outlineInstance(source),
-        outlineInstance(target),
-      )
-      if (sdf) {
-        localeCache.set(cacheKey, { contours: null, fallback: 'sdf' })
-        continue
-      }
-      const sourceKey = endpointKey(source)
-      const targetKey = endpointKey(target)
-      const directionKey = `${sourceKey}>${targetKey}`
-      const reverseDirectionKey = `${targetKey}>${sourceKey}`
-      let prepared = preparedByDirection.get(directionKey)
-      if (!prepared) {
-        const reverse = preparedByDirection.get(reverseDirectionKey)
-        prepared = reverse
-          ? reverseOutline(reverse)
-          : materializeOutline(
-              source,
-              target,
-              await resolveNormalizedOutline(
-                translatedText,
-                outlineInstance(source),
-                outlineInstance(target),
-              ),
-            )
-        preparedByDirection.set(directionKey, prepared)
-      }
-      localeCache.set(cacheKey, prepared)
+    if (textCache.has(text)) continue
+    const translatedText = text
+    await Promise.all([
+      loadRecordedEndpointFont(payload.source, translatedText, ownerDocument, frame),
+      loadRecordedEndpointFont(payload.target, translatedText, ownerDocument, frame),
+    ])
+    const source = translatedEndpoint(
+      payload.source,
+      translatedText,
+      ownerDocument,
+      endpointElement,
+      frame,
+    )
+    const target = translatedEndpoint(
+      payload.target,
+      translatedText,
+      ownerDocument,
+      endpointElement,
+      frame,
+    )
+    const sdf = await resolvePreparedSdf(
+      translatedText,
+      outlineInstance(source),
+      outlineInstance(target),
+    )
+    if (sdf) {
+      textCache.set(text, { contours: null, fallback: 'sdf' })
+      continue
     }
+    const sourceKey = endpointKey(source)
+    const targetKey = endpointKey(target)
+    const directionKey = `${sourceKey}>${targetKey}`
+    const reverseDirectionKey = `${targetKey}>${sourceKey}`
+    let prepared = preparedByDirection.get(directionKey)
+    if (!prepared) {
+      const reverse = preparedByDirection.get(reverseDirectionKey)
+      prepared = reverse
+        ? reverseOutline(reverse)
+        : materializeOutline(
+            source,
+            target,
+            await resolveNormalizedOutline(
+              translatedText,
+              outlineInstance(source),
+              outlineInstance(target),
+            ),
+          )
+      preparedByDirection.set(directionKey, prepared)
+    }
+    textCache.set(text, prepared)
   }
 }
 
+export interface FontMorphFrame {
+  document: Document | null
+  payload: FontMorphRecording | null
+  text: string
+  /** Absolute normalized progress. The renderer owns no clock or tween state. */
+  progress: number
+  phase: 'active' | 'settled' | 'idle'
+  /** Optional host layer aligned to the visible capture frame. */
+  overlayRoot?: HTMLElement | null
+}
+
+export interface FontMorphFrameResult {
+  /** The interpolated and destination boxes are both outside the capture frame. */
+  completedEarly?: boolean
+  /** Whether the settled destination is at least partially visible. */
+  destinationVisible?: boolean
+}
+
 /**
- * Deterministic replay director. Build-generated SDF data is preferred and
- * prepared SVG contours remain the compatibility fallback. Every rendered
- * frame derives from absolute replay time, making seeking and rewinding
- * video-like instead of carrying tween state.
+ * Replay-neutral deterministic frame renderer. Build-generated SDF data is
+ * preferred and prepared SVG contours remain the compatibility fallback.
+ * Callers own event parsing, clocks, locale changes, seeking, and holds.
  */
-export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
-  let state: ReplayMorphState | null = null
+export function createFontMorphFrameRenderer() {
+  let state: FrameMorphState | null = null
   let generation = 0
 
   const clear = () => {
     generation += 1
-    restoreReplayHandoffs(state)
+    restoreFrameHandoffs(state)
     state?.document.documentElement.removeAttribute('data-font-morph-fallback')
     state?.layer.remove()
     state = null
   }
 
-  return (frame: FontMorphReplayFrame) => {
+  return (frame: FontMorphFrame): FontMorphFrameResult | undefined => {
     if (!frame.document) {
       clear()
       return
     }
 
-    // A seek/rewind must rebuild transient state from replay time. In
-    // particular, whether a destination has appeared may never leak backward.
-    if (state && frame.time < state.lastTime) clear()
-
-    const active = recordedMorphAt(frame)
-    if (!active) {
+    const payload = frame.payload
+    if (!payload || frame.phase === 'idle') {
       clear()
-      // rrweb can retain the recorded hiding attribute for a few milliseconds
-      // between adjacent morphs. Never expose that bookkeeping as a blank gap.
+      // A recorder can retain the hiding attribute for a few milliseconds
+      // between adjacent semantic events. Never expose it as a blank gap.
       if (frame.document.documentElement.hasAttribute('data-font-morph-active')) {
         frame.document.documentElement.dataset.fontMorphFallback = ''
       }
       return
     }
 
-    // The deterministic replay timeline reserves a reading hold after the
-    // morph reaches its destination. Reveal the real translated DOM during
-    // that interval. Visibility belongs to the director because locale text,
-    // layout, scrolling, and viewport changes can all alter the answer.
-    if (frame.time >= active.end) {
+    // A backward seek must rebuild transient state. Whether a destination has
+    // appeared may never leak backward into an earlier frame.
+    if (state && frame.progress < state.lastProgress) clear()
+
+    if (frame.phase === 'settled') {
       clear()
-      const translatedText = replayText(active.payload, frame.locale, resolveText)
       const currentTarget = findMatchingEndpoint(
         frame.document,
-        active.payload.key,
-        active.payload.target,
-        translatedText,
+        payload.key,
+        payload.target,
+        frame.text,
       )
       frame.document.documentElement.dataset.fontMorphFallback = ''
-      if (!currentTarget || !isInCaptureFrame(currentTarget.rect)) {
-        return { advanceTo: active.holdEnd }
-      }
-      return
-    }
-
-    // A locale swap changes both glyph outlines and layout. Treat it as a
-    // semantic cut to the already-mounted destination in the requested
-    // locale instead of leaving a frame where the old and new layers cross.
-    if (
-      state &&
-      state.event === active.event &&
-      state.document === frame.document &&
-      state.locale !== frame.locale
-    ) {
-      clear()
-      frame.document.documentElement.dataset.fontMorphFallback = ''
-      return { advanceTo: active.end }
+      return { destinationVisible: Boolean(currentTarget && isInCaptureFrame(currentTarget.rect)) }
     }
 
     if (
       !state ||
-      state.event !== active.event ||
+      state.payload !== payload ||
       state.document !== frame.document ||
-      state.locale !== frame.locale ||
+      state.text !== frame.text ||
       state.prepared.overlayRoot !== (frame.overlayRoot ?? undefined) ||
       !state.layer.isConnected
     ) {
       clear()
-      const translatedText = replayText(active.payload, frame.locale, resolveText)
+      const translatedText = frame.text
       const endpointElement = frame.document.documentElement
       // Endpoint geometry comes from the semantic event, not whichever route
       // happens to be mounted on this frame. This lets the director render the
       // stationary source immediately, before the destination DOM is committed.
       const source = translatedEndpoint(
-        active.payload.source,
+        payload.source,
         translatedText,
         frame.document,
         endpointElement,
       )
       const target = translatedEndpoint(
-        active.payload.target,
+        payload.target,
         translatedText,
         frame.document,
         endpointElement,
@@ -3400,14 +3212,14 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           frame.overlayRoot ?? undefined,
         )
         state = {
-          event: active.event,
+          payload,
           document: frame.document,
-          locale: frame.locale,
+          text: translatedText,
           layer: prepared.layer,
           prepared,
           generation: currentGeneration,
           sawTarget: false,
-          lastTime: frame.time,
+          lastProgress: frame.progress,
           handoffSource: null,
           handoffTarget: null,
         }
@@ -3422,9 +3234,9 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           ? materializeOutline(source, target, normalized)
           : { contours: null, fallback: 'not-prepared' }
         state = {
-          event: active.event,
+          payload,
           document: frame.document,
-          locale: frame.locale,
+          text: translatedText,
           layer,
           prepared: mountPreparedOutline(
             layer,
@@ -3435,12 +3247,12 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
           ),
           generation: currentGeneration,
           sawTarget: false,
-          lastTime: frame.time,
+          lastProgress: frame.progress,
           handoffSource: null,
           handoffTarget: null,
         }
 
-        const cachedOutline = replayOutlineCache.get(active.payload)?.get(frame.locale ?? '')
+        const cachedOutline = recordingOutlineCache.get(payload)?.get(translatedText)
         if (cachedOutline && state.generation === currentGeneration) {
           state.prepared = mountPreparedOutline(
             layer,
@@ -3458,28 +3270,25 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       }
     }
 
-    state.lastTime = frame.time
-    const translatedText = replayText(active.payload, frame.locale, resolveText)
+    state.lastProgress = frame.progress
+    const translatedText = frame.text
     const currentSource = findMatchingEndpoint(
       frame.document,
-      active.payload.key,
-      active.payload.source,
+      payload.key,
+      payload.source,
       translatedText,
     )
     const currentTarget = findMatchingEndpoint(
       frame.document,
-      active.payload.key,
-      active.payload.target,
+      payload.key,
+      payload.target,
       translatedText,
     )
     if (currentTarget) {
       state.sawTarget = true
       state.prepared.target = currentTarget
     }
-    const linearProgress = Math.min(
-      1,
-      Math.max(0, (frame.time - active.start) / active.payload.duration),
-    )
+    const linearProgress = Math.min(1, Math.max(0, frame.progress))
     const geometryProgress = transitionEase(linearProgress)
     const currentRect = interpolateRect(
       state.prepared.source.rect,
@@ -3490,10 +3299,10 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
       (!currentTarget && state.sawTarget && !isInCaptureFrame(currentRect)) ||
       (currentTarget && !isInCaptureFrame(currentTarget.rect) && !isInCaptureFrame(currentRect))
     ) {
-      restoreReplayHandoffs(state)
+      restoreFrameHandoffs(state)
       state.layer.style.display = 'none'
       frame.document.documentElement.dataset.fontMorphFallback = ''
-      return { advanceTo: active.holdEnd }
+      return { completedEarly: true }
     }
     state.layer.style.display = 'block'
     frame.document.documentElement.removeAttribute('data-font-morph-fallback')
@@ -3511,12 +3320,12 @@ export function createFontMorphReplayDirector(resolveText?: MorphTextResolver) {
     }
     const handoff = endpointHandoffOpacities(
       linearProgress,
-      active.payload.duration,
+      payload.duration,
       Boolean(currentSource),
       Boolean(currentTarget),
     )
-    setReplayHandoff(state, 'source', currentSource?.element ?? null, handoff.source)
-    setReplayHandoff(state, 'target', currentTarget?.element ?? null, handoff.destination)
+    setFrameHandoff(state, 'source', currentSource?.element ?? null, handoff.source)
+    setFrameHandoff(state, 'target', currentTarget?.element ?? null, handoff.destination)
     if (state.prepared.renderer === 'sdf') {
       // Endpoint blending is also a pure function of absolute replay time, so
       // seeking and rewinding cannot retain opacity hysteresis.
