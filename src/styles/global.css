@@ -952,7 +952,11 @@ html[data-initial-scroll] .cg-scroller {
 
 .cg-inner {
   width: max-content;
-  padding-inline-end: 12px;
+  /* A scaled edge cell and its shadow must remain inside the horizontal
+     scroller's paint box. The scroller necessarily clips both axes, so reserve
+     explicit paint gutters on the exposed left and bottom edges. */
+  padding-inline: 14px 12px;
+  padding-block-end: 14px;
 }
 
 .cg-months {
