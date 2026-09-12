@@ -4,6 +4,7 @@ import type { eventWithTime } from '@rrweb/types';
 import type {
   HarvestOptions,
   LocaleTextOverlay,
+  MessageFormatter,
   TranslationsLoader,
 } from './types';
 
@@ -163,6 +164,30 @@ function hashOf(n: SerializedNode): string | null {
   return h;
 }
 
+type IcuVariables = Record<string, string | number | boolean | null>;
+
+function icuVariablesOf(n: SerializedNode): IcuVariables | null {
+  const raw = n.attributes?.['data-_gt-icu'];
+  if (typeof raw !== 'string') return null;
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    for (const item of Object.values(value)) {
+      if (
+        item !== null &&
+        typeof item !== 'string' &&
+        typeof item !== 'number' &&
+        typeof item !== 'boolean'
+      ) {
+        return null;
+      }
+    }
+    return value as IcuVariables;
+  } catch {
+    return null;
+  }
+}
+
 /** Every recorded text node (rrweb id → text) across the FullSnapshot + mutations. */
 export function collectRecordedText(
   events: eventWithTime[],
@@ -224,8 +249,12 @@ export function recordingHasHashes(events: eventWithTime[]): boolean {
 // Hash harvest.
 // ===================================================================================
 
-/** One recorded `<T>` occurrence: its hash + its descendant text nodes, in order. */
-type HashNode = { hash: string; textNodes: { id: number; text: string }[] };
+/** One recorded hashed message and its descendant text nodes, in order. */
+type HashNode = {
+  hash: string;
+  textNodes: { id: number; text: string }[];
+  icuVariables?: IcuVariables;
+};
 
 // Collect every hash node's descendant text nodes in document order. Text is kept
 // UNTRIMMED so its position lines up with the flattened entry's leaves (which include
@@ -245,7 +274,12 @@ export function collectHashNodes(events: eventWithTime[]): HashNode[] {
     let owner = inheritedOwner;
     const hash = hashOf(n);
     if (hash) {
-      owner = { hash, textNodes: [] };
+      const icuVariables = icuVariablesOf(n);
+      owner = {
+        hash,
+        textNodes: [],
+        ...(icuVariables ? { icuVariables } : {}),
+      };
       found.push(owner);
     }
     if (typeof n.id === 'number') ownerById.set(n.id, owner);
@@ -304,10 +338,19 @@ export function collectHashNodes(events: eventWithTime[]): HashNode[] {
 export function overlayFromDict(
   hashNodes: HashNode[],
   dict: TranslationDict,
+  options?: { locale: string; formatMessage?: MessageFormatter },
 ): Record<number, string> {
   const bag: Record<number, string> = {};
   for (const node of hashNodes) {
-    const leaves = flattenEntry(dict[node.hash]);
+    const entry = dict[node.hash];
+    let leaves: GtLeaf[] | null;
+    if (node.icuVariables) {
+      if (typeof entry !== 'string' || !options?.formatMessage) continue;
+      const formatted = options.formatMessage(entry, options.locale, node.icuVariables);
+      leaves = typeof formatted === 'string' ? [{ text: formatted }] : null;
+    } else {
+      leaves = flattenEntry(entry);
+    }
     if (!leaves || leaves.length !== node.textNodes.length) continue;
     for (let i = 0; i < leaves.length; i++) {
       const leaf = leaves[i];
@@ -363,6 +406,7 @@ export async function harvestHash(
     source: string;
     loadTranslations: TranslationsLoader;
     hashMessage?: (message: string) => string | undefined;
+    formatMessage?: MessageFormatter;
   },
 ): Promise<LocaleTextOverlay> {
   const targets = locales.filter((l) => l && l !== opts.source);
@@ -382,7 +426,10 @@ export async function harvestHash(
       continue;
     }
     // `<T>` content first (precise, wins), then fill bare `gt()` text.
-    const bag = overlayFromDict(hashNodes, dict);
+    const bag = overlayFromDict(hashNodes, dict, {
+      locale: target,
+      formatMessage: opts.formatMessage,
+    });
     if (recorded && opts.hashMessage) {
       const covered = new Set(Object.keys(bag).map(Number));
       Object.assign(
@@ -438,7 +485,8 @@ export async function harvestLocales(
     source,
     loadTranslations: options.loadTranslations,
     hashMessage: options.hashMessage,
+    formatMessage: options.formatMessage,
   });
 }
 
-export type { HarvestOptions, LocaleTextOverlay, TranslationsLoader };
+export type { HarvestOptions, LocaleTextOverlay, MessageFormatter, TranslationsLoader };

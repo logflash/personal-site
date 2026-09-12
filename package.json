@@ -19,6 +19,7 @@
     "lint:fix": "oxlint --quiet --fix . && oxfmt ."
   },
   "dependencies": {
+    "@generaltranslation/format": "0.1.7",
     "@rrweb/record": "^2.1.1",
     "@rrweb/replay": "^2.1.1",
     "@tanstack/react-router": "^1.159.14",

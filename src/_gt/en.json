@@ -44,6 +44,7 @@
   "4149567d5d727b3b": "[2023]",
   "41569deb10e19b22": "Physics Olympiad Qualifier",
   "424a9891f646a1cb": "Sep",
+  "42823fd3f9685be0": "{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}",
   "43386d8d8bde81c2": "Teaching Assistant, Princeton University",
   "44a3e68a9641b4e2": "CUDA",
   "454363af2d20a603": "Altium",

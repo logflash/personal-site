@@ -1,3 +1,4 @@
+import { formatMessage } from '@generaltranslation/format'
 import { record } from '@rrweb/record'
 import { hashMessage } from 'gt-i18n/internal'
 import { GT_EVENT, GTRecorder, useRecorder } from 'gt-rrweb'
@@ -16,6 +17,8 @@ const harvest: HarvestOptions = {
   // RecordingRuntime is lazy-loaded after the avatar hold starts, so GT's
   // general-purpose ICU hasher stays out of the initial page bundle.
   hashMessage: (message) => hashMessage(message, { $format: 'ICU' }),
+  formatMessage: (message, locale, variables) =>
+    formatMessage(message, { locales: locale, variables }),
 }
 
 const MOBILE_VIEWPORT = '(max-width: 880px)'

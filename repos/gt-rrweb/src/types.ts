@@ -43,6 +43,13 @@ export function aspectOf(frame: FrameOption | undefined): number | null {
  */
 export type TranslationsLoader = (locale: string) => Promise<unknown>;
 
+/** Format a translated ICU template using variables serialized by the host app. */
+export type MessageFormatter = (
+  message: string,
+  locale: string,
+  variables: Record<string, string | number | boolean | null>,
+) => string | undefined;
+
 export type HarvestOptions = {
   /**
    * Load a locale's published translations (hash → content) — e.g. GT's `loadTranslations`
@@ -59,6 +66,11 @@ export type HarvestOptions = {
    * `<T>` content (which carries a DOM hash) is harvested.
    */
   hashMessage?: (message: string) => string | undefined;
+  /**
+   * Format hashed ICU messages that carry a JSON `data-_gt-icu` variable map. This
+   * remains host-provided so gt-rrweb does not depend on a particular i18n runtime.
+   */
+  formatMessage?: MessageFormatter;
   /**
    * The locale the recording was captured in (the source render). Defaults to the GT
    * locale cookie (`localeCookieName`), then `locales[0]`. Set this when the app doesn't
