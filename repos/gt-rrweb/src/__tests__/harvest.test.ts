@@ -35,6 +35,17 @@ const el = (
 /** A tag-ids wrapper: <span data-_gt={hash} style="display:contents">…</span>. */
 const hashSpan = (id: number, hash: string, childNodes: Ser[]): Ser =>
   el(id, 'SPAN', childNodes, { 'data-_gt': hash, style: 'display:contents' });
+const icuSpan = (
+  id: number,
+  hash: string,
+  variables: Record<string, string | number>,
+  childNodes: Ser[],
+): Ser =>
+  el(id, 'SPAN', childNodes, {
+    'data-_gt-hash': hash,
+    'data-_gt-icu': JSON.stringify(variables),
+    style: 'display:contents',
+  });
 
 const fullSnapshot = (node: Ser): eventWithTime =>
   ({
@@ -306,6 +317,47 @@ describe('overlayFromDict', () => {
     const ov = overlayFromDict(nodes, dict);
     expect(ov[3]).toBeUndefined();
     expect(ov[5]).toBe('Juan');
+  });
+
+  it('formats a translated ICU template with the recorded primitive variables', () => {
+    const icuNodes = collectHashNodes([
+      fullSnapshot(
+        el(1, 'MAIN', [
+          icuSpan(2, 'COUNT', { count: 2, date: '2026-09-11' }, [
+            text(3, '2 items on 2026-09-11'),
+          ]),
+        ]),
+      ),
+    ]);
+    const formatMessage = vi.fn(
+      (message: string, locale: string, variables: Record<string, unknown>) =>
+        `${variables.count} artículos el ${variables.date} (${locale}:${message})`,
+    );
+
+    expect(
+      overlayFromDict(icuNodes, { COUNT: '{count} artículos el {date}' }, {
+        locale: 'es',
+        formatMessage,
+      }),
+    ).toEqual({
+      3: '2 artículos el 2026-09-11 (es:{count} artículos el {date})',
+    });
+    expect(formatMessage).toHaveBeenCalledWith(
+      '{count} artículos el {date}',
+      'es',
+      { count: 2, date: '2026-09-11' },
+    );
+  });
+
+  it('skips ICU wrappers when no host formatter is configured', () => {
+    const icuNodes = collectHashNodes([
+      fullSnapshot(
+        el(1, 'MAIN', [
+          icuSpan(2, 'COUNT', { count: 1 }, [text(3, '1 item')]),
+        ]),
+      ),
+    ]);
+    expect(overlayFromDict(icuNodes, { COUNT: '{count} artículo' })).toEqual({});
   });
 });
 

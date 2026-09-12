@@ -1,3 +1,4 @@
+import { formatMessage } from '@generaltranslation/format'
 import type { Translation } from 'gt-i18n/types'
 import { Fragment, createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
 import { translationHash } from './translationHash'
@@ -89,6 +90,27 @@ export function StructuredTranslation({
 
   return (
     <span data-_gt-hash={hash} style={{ display: 'contents' }}>
+      {content}
+    </span>
+  )
+}
+
+type IcuVariables = Record<string, string | number>
+
+/** Render an extracted ICU message and preserve enough context for locale-faithful replay. */
+export function IcuTranslation({ source, variables }: { source: string; variables: IcuVariables }) {
+  const { locale, translations } = useTranslationContext()
+  const hash = translationHash(source)
+  const translated = translations[hash]
+  const template = typeof translated === 'string' ? translated : source
+  const content = formatMessage(template, { locales: locale, variables })
+
+  return (
+    <span
+      data-_gt-hash={hash}
+      data-_gt-icu={JSON.stringify(variables)}
+      style={{ display: 'contents' }}
+    >
       {content}
     </span>
   )

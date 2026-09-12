@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@generaltranslation/format':
+        specifier: 0.1.7
+        version: 0.1.7
       '@rrweb/record':
         specifier: ^2.1.1
         version: 2.1.1

@@ -16,5 +16,6 @@ export {
   type FrameOption,
   type HarvestOptions,
   type LocaleTextOverlay,
+  type MessageFormatter,
   type TranslationsLoader,
 } from './types';

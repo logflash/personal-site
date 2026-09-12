@@ -1,13 +1,16 @@
-import { memo, useEffect, useMemo, useState } from 'react'
-import { T, Var } from 'gt-react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { T, Var, msg } from 'gt-react'
 import { profile } from '../data/site'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
-import { StructuredTranslation, useTranslate } from '../lib/i18n'
+import { IcuTranslation, StructuredTranslation, useTranslate } from '../lib/i18n'
 
 const DAYS_PER_WEEK = 7
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
 const MIN_LABEL_GAP_WEEKS = 3
+const DEFAULT_SUMMARY_RESTORE_MS = 1000
 const CONTRIBUTION_SUMMARY_HASH = '4a68cb0d1371a99a'
+const DAILY_CONTRIBUTION_SUMMARY =
+  '{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}'
 
 function contributionDateFor(target: EventTarget | null): string | undefined {
   const cell = (target as Element | null)?.closest<HTMLElement>('.cg-cell:not(.cg-pad)')
@@ -25,6 +28,16 @@ export function ContributionSummaryTranslationSource() {
       <span>in the last year</span>
     </T>
   )
+}
+
+// Scan-only source for `gt translate`; the unused export is removed from the bundle.
+export const DailyContributionSummaryTranslationSource = msg(
+  '{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}',
+)
+
+function contributionDateValue(date: string): number {
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(year, month - 1, day).getTime()
 }
 
 /** Column-major weeks, padded so each column starts on Sunday. */
@@ -77,7 +90,10 @@ interface ContributionGraphProps {
  */
 export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
   const gt = useTranslate()
+  const [hoveredDate, setHoveredDate] = useState<string | null>(null)
   const [tappedDate, setTappedDate] = useState<string | null>(null)
+  const [showDefaultSummary, setShowDefaultSummary] = useState(true)
+  const defaultRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -94,6 +110,33 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     gt('Dec'),
   ]
   const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
+  const activeDate = hoveredDate ?? tappedDate
+  const activeDay = useMemo(
+    () => data?.contributions.find((day) => day.date === activeDate),
+    [activeDate, data],
+  )
+
+  const cancelDefaultRestore = () => {
+    if (defaultRestoreTimer.current === null) return
+    clearTimeout(defaultRestoreTimer.current)
+    defaultRestoreTimer.current = null
+  }
+
+  const restoreDefaultAfterDelay = () => {
+    cancelDefaultRestore()
+    setShowDefaultSummary(false)
+    defaultRestoreTimer.current = setTimeout(() => {
+      defaultRestoreTimer.current = null
+      setShowDefaultSummary(true)
+    }, DEFAULT_SUMMARY_RESTORE_MS)
+  }
+
+  useEffect(
+    () => () => {
+      if (defaultRestoreTimer.current !== null) clearTimeout(defaultRestoreTimer.current)
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!tappedDate) return
@@ -120,6 +163,17 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
           </div>
           <div
             className="cg-grid"
+            onPointerMove={(event) => {
+              if (event.pointerType !== 'mouse') return
+              cancelDefaultRestore()
+              setShowDefaultSummary(false)
+              setHoveredDate(contributionDateFor(event.target) ?? null)
+            }}
+            onPointerLeave={(event) => {
+              if (event.pointerType !== 'mouse') return
+              setHoveredDate(null)
+              restoreDefaultAfterDelay()
+            }}
             onPointerDown={(event) => {
               if (event.pointerType === 'mouse') return
               const date = contributionDateFor(event.target)
@@ -148,12 +202,21 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
       <div className="cg-meta">
         {/* Halves are nowrap, so a line break can only happen between them */}
         <a href={`https://github.com/${profile.githubUser}`} target="_blank" rel="noreferrer">
-          <StructuredTranslation
-            hash={CONTRIBUTION_SUMMARY_HASH}
-            variables={{ _gt_value_2: data.total.lastYear }}
-          >
-            <span>{data.total.lastYear} Github contributions</span> <span>in the last year</span>
-          </StructuredTranslation>
+          {activeDay ? (
+            <IcuTranslation
+              source={DAILY_CONTRIBUTION_SUMMARY}
+              variables={{ count: activeDay.count, date: contributionDateValue(activeDay.date) }}
+            />
+          ) : showDefaultSummary ? (
+            <StructuredTranslation
+              hash={CONTRIBUTION_SUMMARY_HASH}
+              variables={{ _gt_value_2: data.total.lastYear }}
+            >
+              <span>{data.total.lastYear} Github contributions</span> <span>in the last year</span>
+            </StructuredTranslation>
+          ) : (
+            <span aria-hidden="true">&nbsp;</span>
+          )}
         </a>
         <span className="cg-legend" aria-hidden="true">
           {gt('less')}
