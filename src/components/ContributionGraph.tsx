@@ -94,6 +94,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   const [tappedDate, setTappedDate] = useState<string | null>(null)
   const [showDefaultSummary, setShowDefaultSummary] = useState(true)
   const defaultRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastGraphPointerType = useRef<string | null>(null)
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -141,11 +142,11 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   useEffect(() => {
     if (!tappedDate) return
 
-    const releaseTappedCell = (event: PointerEvent) => {
+    const releaseTappedCell = (event: MouseEvent) => {
       if (contributionDateFor(event.target) !== tappedDate) setTappedDate(null)
     }
-    document.addEventListener('pointerdown', releaseTappedCell, true)
-    return () => document.removeEventListener('pointerdown', releaseTappedCell, true)
+    document.addEventListener('click', releaseTappedCell, true)
+    return () => document.removeEventListener('click', releaseTappedCell, true)
   }, [tappedDate])
 
   if (!data) return null
@@ -175,9 +176,18 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
               restoreDefaultAfterDelay()
             }}
             onPointerDown={(event) => {
-              if (event.pointerType === 'mouse') return
+              lastGraphPointerType.current = event.pointerType
+            }}
+            onClick={(event) => {
+              const pointerType =
+                (event.nativeEvent as PointerEvent).pointerType || lastGraphPointerType.current
+              lastGraphPointerType.current = null
+              if (!pointerType || pointerType === 'mouse') return
               const date = contributionDateFor(event.target)
               if (date) setTappedDate((current) => (current === date ? null : date))
+            }}
+            onPointerCancel={() => {
+              lastGraphPointerType.current = null
             }}
           >
             {weeks.map((week, w) => (
