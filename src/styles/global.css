@@ -94,7 +94,7 @@ main {
 }
 
 .section + .section {
-  margin-top: 76px;
+  margin-top: 38px;
 }
 
 /* ---- Shared pieces ---- */
@@ -615,7 +615,7 @@ main {
 
 .resume-copy {
   max-width: 660px;
-  margin-top: 38px;
+  margin-top: 20px;
   color: var(--mut);
   font-size: 14px;
   line-height: 1.5;
@@ -785,6 +785,10 @@ main {
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--acc) 55%, transparent);
   text-underline-offset: 2px;
+}
+
+.resume-copy .row-link {
+  text-decoration: none;
 }
 
 .resume-copy .h-link {
@@ -1147,8 +1151,9 @@ html[data-initial-scroll] .cg-scroller {
 }
 
 .row-link {
+  width: 100%;
   padding: 18px 14px;
-  margin: 0 -14px;
+  margin: 0;
   border-radius: 8px;
 }
 
@@ -1327,7 +1332,7 @@ html[data-initial-scroll] .cg-scroller {
   }
 
   .section + .section {
-    margin-top: 52px;
+    margin-top: 32px;
   }
 
   .h-row {
@@ -1389,7 +1394,7 @@ html[data-initial-scroll] .cg-scroller {
   }
 
   .resume-copy {
-    margin-top: 32px;
+    margin-top: 16px;
     font-size: 13.5px;
     line-height: 1.55;
   }
@@ -1504,7 +1509,6 @@ html[data-initial-scroll] .cg-scroller {
 
   .row-link {
     padding: 15px 12px;
-    margin: 0 -12px;
   }
 
   .pub {
