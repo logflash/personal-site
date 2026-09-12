@@ -465,7 +465,10 @@ function createSkillDotMigration(
   // rrweb snapshots avoids recording locale-specific coordinates.
   layer.className = 'rr-block resume-skill-migration-layer'
   layer.setAttribute('aria-hidden', 'true')
-  document.body.append(layer)
+  const coordinateRoot = sourceDots[0]?.closest<HTMLElement>('.resume-skill-card')
+  const animationRoot = coordinateRoot ?? document.body
+  animationRoot.append(layer)
+  const layerRect = layer.getBoundingClientRect()
 
   const animations: Animation[] = []
   sourceDots.forEach((sourceDot, index) => {
@@ -474,20 +477,22 @@ function createSkillDotMigration(
 
     const sourceRect = sourceDot.getBoundingClientRect()
     const destinationRect = destinationDot.getBoundingClientRect()
-    // Document-space endpoints make scrolling free: the browser moves the
-    // animation layer with the page, including scroll anchoring caused by the
-    // card's height change. No per-frame layout reads are necessary.
+    // Normalize visual rectangles into the card's local coordinate system. The
+    // recording frame scales `.layout`, and the card lives inside its own scroll
+    // container there; keeping the layer with the card handles both automatically.
+    const scaleX = sourceDot.offsetWidth > 0 ? sourceRect.width / sourceDot.offsetWidth : 1
+    const scaleY = sourceDot.offsetHeight > 0 ? sourceRect.height / sourceDot.offsetHeight : 1
     const source = {
-      left: sourceRect.left + window.scrollX,
-      top: sourceRect.top + window.scrollY,
-      width: sourceRect.width,
-      height: sourceRect.height,
+      left: (sourceRect.left - layerRect.left) / scaleX,
+      top: (sourceRect.top - layerRect.top) / scaleY,
+      width: sourceRect.width / scaleX,
+      height: sourceRect.height / scaleY,
     }
     const destination = {
-      left: destinationRect.left + window.scrollX,
-      top: destinationRect.top + window.scrollY,
-      width: destinationRect.width,
-      height: destinationRect.height,
+      left: (destinationRect.left - layerRect.left) / scaleX,
+      top: (destinationRect.top - layerRect.top) / scaleY,
+      width: destinationRect.width / scaleX,
+      height: destinationRect.height / scaleY,
     }
     const clone = document.createElement('span')
     clone.className = 'resume-skill-migrating-dot'

@@ -6,6 +6,7 @@ import {
   REPLAY_SOURCE,
   analyzePointerInput,
   buildScrollTracks,
+  clampScrollPosition,
   collectDirectedClicks,
   compressTimeline,
   detectDoubleClicks,
@@ -94,6 +95,13 @@ describe('directed pointer input', () => {
 });
 
 describe('directed pointer target projection', () => {
+  it('uses the scroll position a shorter translated document can actually reach', () => {
+    expect(clampScrollPosition({ x: 0, y: 1545 }, { x: 0, y: 1460 })).toEqual({
+      x: 0,
+      y: 1460,
+    });
+  });
+
   it('preserves a recorded point while it remains inside the target', () => {
     expect(
       projectPointIntoRect(
