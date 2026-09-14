@@ -2,7 +2,7 @@ import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
 import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import fontMorphCssUrl from '../../repos/font-morph/styles.css?url'
+import fontMorphCssUrl from '../../repos/glyphflux/styles.css?url'
 import { LazyReplayOverlay } from '../components/LazyReplayOverlay'
 import {
   RecordingRuntimeContext,
@@ -83,7 +83,7 @@ export const Route = createRootRoute({
               rel: 'preload',
               as: 'fetch',
               type: 'application/json',
-              href: `/font-morph/${loaderData.locale}.json`,
+              href: `/glyphflux/${loaderData.locale}.json`,
               crossOrigin: 'anonymous' as const,
               fetchPriority: 'low',
             },

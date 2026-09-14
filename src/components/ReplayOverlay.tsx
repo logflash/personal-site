@@ -5,7 +5,7 @@ import {
   createFontMorphReplayDirector,
   prepareFontMorphReplay,
   reserveFontMorphSettledTextHolds,
-} from 'gt-rrweb/font-morph'
+} from 'gt-rrweb/glyphflux'
 import { hashMessage } from 'gt-i18n/internal'
 import type { DragEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'

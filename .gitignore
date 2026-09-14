@@ -14,16 +14,15 @@ src/routeTree.gen.ts
 
 # Derived from authored MDX for General Translation's source extractor
 src/generated/
-public/font-morph/*.json
-repos/font-morph/test-results/
-repos/font-morph/demo/public/generated/
+public/glyphflux/*.json
+repos/glyphflux/test-results/
+repos/glyphflux/demo/public/generated/
 
 # General Translation recording demos
 .gt-*
 *.mjs
 !repos/gt-rrweb/**/*.mjs
-!repos/font-morph/**/*.mjs
+!repos/glyphflux/**/*.mjs
 !scripts/vendor-gt-rrweb.mjs
-!scripts/generate-font-morph-data.mjs
 gt-recording-*.json
 gt-replay-*.json

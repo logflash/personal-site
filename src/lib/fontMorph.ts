@@ -1,17 +1,18 @@
-import type { FontMorphPreparedManifest } from 'font-morph'
-import { configureFontMorph } from 'font-morph'
-import FontMorphOutlineWorker from '../../repos/font-morph/src/outline.worker.ts?worker'
-import { fontMorphLocaleByText } from '../generated/fontMorphData'
+import type { FontMorphPreparedManifest } from 'glyphflux'
+import { configureFontMorph } from 'glyphflux'
+import FontMorphOutlineWorker from '../../repos/glyphflux/src/outline.worker.ts?worker'
+import { glyphfluxLocaleByText } from '../generated/glyphfluxData'
 
 const preparedManifestRequests = new Map<string, Promise<FontMorphPreparedManifest>>()
 
 function loadPreparedOutlines(text: string) {
-  const locale = fontMorphLocaleByText[text]
+  const locale = glyphfluxLocaleByText[text]
   if (!locale) return undefined
   let pending = preparedManifestRequests.get(locale)
   if (!pending) {
-    pending = fetch(`/font-morph/${locale}.json`).then(async (response) => {
-      if (!response.ok) throw new Error(`Unable to load prepared font morph: ${response.status}`)
+    pending = fetch(`/glyphflux/${locale}.json`).then(async (response) => {
+      if (!response.ok)
+        throw new Error(`Unable to load prepared Glyphflux data: ${response.status}`)
       return (await response.json()) as FontMorphPreparedManifest
     })
     preparedManifestRequests.set(locale, pending)
@@ -42,4 +43,4 @@ export {
   FONT_MORPH_RECORD_EVENT,
   beginFontMorph,
   prepareFontMorph,
-} from 'font-morph'
+} from 'glyphflux'
