@@ -13,12 +13,17 @@
       "sources": [
         {
           "kind": "element",
-          "name": "QuickLink",
-          "textAttribute": "translatedLabel",
-          "attributes": { "resume": true }
+          "name": "TransitionLink",
+          "textAttribute": "translatedLabel"
         }
       ],
-      "targets": [{ "kind": "heading", "depth": 1 }]
+      "targets": [
+        {
+          "kind": "element",
+          "name": "TransitionHeading",
+          "textAttribute": "translatedLabel"
+        }
+      ]
     }
   ],
   "fonts": {

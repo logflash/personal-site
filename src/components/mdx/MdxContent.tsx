@@ -17,7 +17,6 @@ import {
 import { flushSync } from 'react-dom'
 import { externalProps } from '../../lib/links'
 import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
-import { resumeHeaderTransition } from '../../lib/headerTransitions'
 import { useMdxGT } from '../../lib/mdxTranslation'
 import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
 import { translationHash } from '../../lib/translationHash'
@@ -140,23 +139,32 @@ export function MdxParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
   )
 }
 
-export function ResumeHeading({ children }: ComponentPropsWithoutRef<'h1'>) {
+export function TransitionHeading({
+  transition,
+  returnTo,
+  returnLabel,
+  translatedLabel,
+}: {
+  transition: string
+  returnTo: string
+  returnLabel: string
+  translatedLabel: string
+}) {
   const gt = useMdxGT()
   const { locale } = rootRoute.useLoaderData()
-  const source = text(children, 'Resume heading')
 
   return (
     <TransitionPageHeading
-      transition={resumeHeaderTransition}
-      title={gt(source)}
-      translationHash={translationHash(source)}
+      transitionKey={transition}
+      title={gt(translatedLabel)}
+      translationHash={translationHash(translatedLabel)}
       renderAction={(handlers) => (
         <Link
           className="heading-control transition-page-heading-action-control"
-          to="/$locale"
+          to={returnTo as '/$locale'}
           params={{ locale }}
-          title={gt('Home')}
-          aria-label={gt('Home')}
+          title={gt(returnLabel)}
+          aria-label={gt(returnLabel)}
           {...handlers}
         >
           <UndoIcon />
@@ -217,41 +225,49 @@ export function QuickLink({
   label,
   translatedLabel,
   href,
-  resume,
   external,
 }: {
   label?: string
   translatedLabel?: string
   href?: string
-  resume?: boolean
   external?: boolean
 }) {
   const gt = useMdxGT()
-  const { locale } = rootRoute.useLoaderData()
-  const resumeMorphHandlers = useFontMorphNavigation(resumeHeaderTransition.key)
   const source = translatedLabel ?? label ?? ''
   const translatedContent = translatedLabel ? gt(translatedLabel) : source
   const translationProps = translatedLabel ? { 'data-_gt-hash': translationHash(source) } : {}
-
-  if (resume) {
-    return (
-      <Link
-        to="/$locale/resume"
-        params={{ locale }}
-        {...resumeMorphHandlers}
-        className="resume-link"
-        data-font-morph={resumeHeaderTransition.key}
-        {...translationProps}
-      >
-        {translatedContent}
-      </Link>
-    )
-  }
 
   return (
     <a href={href} {...externalProps(external)} {...translationProps}>
       {translatedContent}
     </a>
+  )
+}
+
+export function TransitionLink({
+  transition,
+  to,
+  translatedLabel,
+}: {
+  transition: string
+  to: string
+  translatedLabel: string
+}) {
+  const gt = useMdxGT()
+  const { locale } = rootRoute.useLoaderData()
+  const handlers = useFontMorphNavigation(transition)
+
+  return (
+    <Link
+      to={to as '/$locale'}
+      params={{ locale }}
+      {...handlers}
+      className="transition-link"
+      data-font-morph={transition}
+      data-_gt-hash={translationHash(translatedLabel)}
+    >
+      {gt(translatedLabel)}
+    </Link>
   )
 }
 
@@ -745,6 +761,8 @@ export const sharedMdxComponents = {
   MdxSection,
   QuickLinks,
   QuickLink,
+  TransitionHeading,
+  TransitionLink,
   Timeline,
   TimelineEntry,
   Stack,
@@ -756,7 +774,6 @@ export const sharedMdxComponents = {
 
 export const resumeMdxComponents = {
   ...sharedMdxComponents,
-  h1: ResumeHeading,
   h2: ResumeSectionHeading,
   li: ResumeListItem,
   p: ResumeParagraph,

@@ -1,7 +1,6 @@
 import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
 import { mobileNavItems, mobileResumeNavItems } from '../data/site'
-import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
-import { resumeHeaderTransition } from '../lib/headerTransitions'
+import { useActiveFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
@@ -21,7 +20,7 @@ const rootRoute = getRouteApi('__root__')
  */
 export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: MobileTopBarProps) {
   const { locale } = rootRoute.useLoaderData()
-  const resumeMorphHandlers = useFontMorphNavigation(resumeHeaderTransition.key)
+  const activeMorphHandlers = useActiveFontMorphNavigation()
   const onResumeRoute = useRouterState({
     select: (state) => state.location.pathname.endsWith('/resume'),
   })
@@ -35,7 +34,7 @@ export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: Mobil
                 className="identity-text-link"
                 to="/$locale"
                 params={{ locale }}
-                {...(onResumeRoute ? resumeMorphHandlers : {})}
+                {...activeMorphHandlers}
               >
                 {who}
               </Link>

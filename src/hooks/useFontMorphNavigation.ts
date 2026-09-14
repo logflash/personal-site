@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, type MouseEvent } from 'react'
 import { beginFontMorph, prepareFontMorph } from '../lib/fontMorph'
 
-export function useFontMorphNavigation(key: string) {
+type KeyResolver = () => string | undefined
+
+function activeDestinationKey() {
+  return document.querySelector<HTMLElement>('[data-transition-heading] [data-font-morph]')?.dataset
+    .fontMorph
+}
+
+function useResolvedFontMorphNavigation(resolveKey: KeyResolver) {
   const onClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       if (
@@ -15,13 +22,15 @@ export function useFontMorphNavigation(key: string) {
       ) {
         return
       }
-      beginFontMorph(key)
+      const key = resolveKey()
+      if (key) beginFontMorph(key)
     },
-    [key],
+    [resolveKey],
   )
   const prepare = useCallback(() => {
-    void prepareFontMorph(key).catch(() => undefined)
-  }, [key])
+    const key = resolveKey()
+    if (key) void prepareFontMorph(key).catch(() => undefined)
+  }, [resolveKey])
 
   useEffect(() => {
     // Decode the build-generated, locale-sized correspondence manifest as soon
@@ -39,4 +48,15 @@ export function useFontMorphNavigation(key: string) {
     () => ({ onClick, onPointerDown: prepare, onPointerEnter: prepare }),
     [onClick, prepare],
   )
+}
+
+export function useFontMorphNavigation(key: string) {
+  const resolveKey = useCallback(() => key, [key])
+  return useResolvedFontMorphNavigation(resolveKey)
+}
+
+/** Resolve the transition from content-authored destination markup at the
+ * moment of interaction, keeping route chrome independent of page names. */
+export function useActiveFontMorphNavigation() {
+  return useResolvedFontMorphNavigation(activeDestinationKey)
 }
