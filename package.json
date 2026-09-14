@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "glyphflux": "node repos/glyphflux/bin/glyphflux.js",
+    "fonts:ja:build": "node scripts/build-japanese-font-subsets.mjs",
+    "fonts:check": "node scripts/check-japanese-font-coverage.mjs",
     "sync:mdx": "node scripts/sync-mdx-messages.js",
     "sync:glyphflux": "corepack pnpm --filter glyphflux build && corepack pnpm run glyphflux build",
     "sync:vendored": "corepack pnpm run sync:glyphflux && corepack pnpm --filter gt-rrweb build",
@@ -17,7 +19,7 @@
     "start": "node scripts/serve.mjs",
     "translate": "node scripts/sync-mdx-messages.js && gt translate && node scripts/sync-mdx-messages.js && corepack pnpm run sync:glyphflux",
     "typecheck": "tsc --noEmit",
-    "lint": "node scripts/sync-mdx-messages.js && node scripts/check-email-identities.mjs && oxlint --quiet . && oxfmt --check .",
+    "lint": "node scripts/sync-mdx-messages.js && node scripts/check-email-identities.mjs && node scripts/check-japanese-font-coverage.mjs && oxlint --quiet . && oxfmt --check .",
     "lint:fix": "oxlint --quiet --fix . && oxfmt ."
   },
   "dependencies": {
@@ -41,6 +43,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.5.0",
+    "fontkit": "2.0.4",
     "gt": "^2.16.8",
     "oxfmt": "^0.64.0",
     "oxlint": "^1.79.0",
