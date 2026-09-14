@@ -583,7 +583,7 @@ main {
   color: var(--acc);
 }
 
-.resume-link {
+.transition-link {
   display: inline-block;
   color: var(--acc);
   font-family: var(--font-sans);

@@ -2,8 +2,7 @@ import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
 import type { MouseEvent } from 'react'
 import { navItems, resumeNavItems, type NavItem } from '../data/site'
 import { useBackToTop } from '../hooks/useHashRoute'
-import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
-import { resumeHeaderTransition } from '../lib/headerTransitions'
+import { useActiveFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { translationHash } from '../lib/translationHash'
 import { useTranslate } from '../lib/i18n'
 import { UndoIcon } from './TransitionPageHeading'
@@ -18,7 +17,7 @@ export function NavLinks({ items }: NavLinksProps) {
   const translate = useTranslate()
   const { locale } = rootRoute.useLoaderData()
   const backToTop = useBackToTop()
-  const resumeMorphHandlers = useFontMorphNavigation(resumeHeaderTransition.key)
+  const activeMorphHandlers = useActiveFontMorphNavigation()
   const onResumeRoute = useRouterState({
     select: (state) => state.location.pathname.endsWith('/resume'),
   })
@@ -49,7 +48,7 @@ export function NavLinks({ items }: NavLinksProps) {
               className="resume-home-nav-link"
               to="/$locale"
               params={{ locale }}
-              {...resumeMorphHandlers}
+              {...activeMorphHandlers}
               {...sharedProps}
             >
               <span>{content}</span>

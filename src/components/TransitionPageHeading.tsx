@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
-import type { HeaderTransition } from '../lib/headerTransitions'
 
 export type HeaderTransitionHandlers = ReturnType<typeof useFontMorphNavigation>
 
@@ -22,36 +21,36 @@ export function UndoIcon() {
  * frames, including transitions that settle early outside the viewport.
  */
 export function TransitionPageHeading({
-  transition,
+  transitionKey,
   title,
   translationHash,
   renderAction,
 }: {
-  transition: HeaderTransition
+  transitionKey: string
   title: string
   translationHash?: string
   renderAction: (handlers: HeaderTransitionHandlers) => ReactNode
 }) {
-  const handlers = useFontMorphNavigation(transition.key)
+  const handlers = useFontMorphNavigation(transitionKey)
   const [actionHovered, setActionHovered] = useState(false)
 
   return (
     <div
       className="transition-page-heading"
-      data-transition-heading={transition.key}
+      data-transition-heading={transitionKey}
       onPointerEnter={() => setActionHovered(true)}
       onPointerLeave={() => setActionHovered(false)}
     >
       <span
         className="transition-page-heading-action"
-        data-transition-action={transition.key}
+        data-transition-action={transitionKey}
         data-transition-action-hovered={actionHovered ? '' : undefined}
       >
         {renderAction(handlers)}
       </span>
       <h1
         className="transition-page-title"
-        data-font-morph={transition.key}
+        data-font-morph={transitionKey}
         {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}
       >
         {title}
