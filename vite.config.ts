@@ -7,7 +7,7 @@ import { defineConfig } from 'vite'
 
 // Inlined into a <style> tag in production (removes the only render-blocking
 // request); dev uses a normal stylesheet link so CSS edits stay live.
-const inlineCss = ['src/styles/fonts.css', 'repos/font-morph/styles.css', 'src/styles/global.css']
+const inlineCss = ['src/styles/fonts.css', 'repos/glyphflux/styles.css', 'src/styles/global.css']
   .map((f) => readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'))
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -28,8 +28,8 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: /^font-morph$/,
-        replacement: fileURLToPath(new URL('./repos/font-morph/src/index.ts', import.meta.url)),
+        find: /^glyphflux$/,
+        replacement: fileURLToPath(new URL('./repos/glyphflux/src/index.ts', import.meta.url)),
       },
       {
         find: /^gt-rrweb\/replay$/,

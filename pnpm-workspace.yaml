@@ -1,5 +1,5 @@
 packages:
-  - repos/font-morph
+  - repos/glyphflux
   - repos/gt-rrweb
 
 # pnpm >=10 blocks dependency build scripts unless approved here.

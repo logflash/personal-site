@@ -6,7 +6,7 @@ const { prepareFrames, renderFrame } = vi.hoisted(() => ({
   renderFrame: vi.fn(),
 }))
 
-vi.mock('font-morph', () => ({
+vi.mock('glyphflux', () => ({
   SETTLED_TEXT_HOLD_MS: 500,
   createFontMorphFrameRenderer: () => renderFrame,
   prepareFontMorphFrames: prepareFrames,

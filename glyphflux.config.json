@@ -1,0 +1,51 @@
+{
+  "$schema": "./repos/glyphflux/glyphflux.schema.json",
+  "defaultLocale": "en",
+  "locales": ["es", "ja"],
+  "catalogs": {
+    "path": "src/_gt/[locale].json",
+    "sourceLookup": "value"
+  },
+  "documents": [
+    {
+      "include": ["src/content/**/*.mdx"],
+      "format": "mdx",
+      "sources": [
+        {
+          "kind": "element",
+          "name": "QuickLink",
+          "textAttribute": "translatedLabel",
+          "attributes": { "resume": true }
+        }
+      ],
+      "targets": [{ "kind": "heading", "depth": 1 }]
+    }
+  ],
+  "fonts": {
+    "sans": [
+      "public/fonts/ibm-plex-sans-400-outline.ttf",
+      "public/fonts/noto-sans-jp-400-outline.ttf"
+    ],
+    "serif": [
+      "public/fonts/source-serif-4-600-outline.ttf",
+      "public/fonts/noto-serif-jp-600-outline.ttf"
+    ]
+  },
+  "morphs": [
+    {
+      "source": { "role": "sans", "weights": [500], "opticalSizes": [0] },
+      "target": { "role": "serif", "weights": [600], "opticalSizes": [20, 23] }
+    }
+  ],
+  "compiler": {
+    "size": 256,
+    "pixelsPerEm": 1024,
+    "maximumDistance": 64,
+    "supersampling": 4
+  },
+  "output": {
+    "manifests": "public/glyphflux/[locale].json",
+    "runtimeModule": "src/generated/glyphfluxData.ts",
+    "runtimeExport": "glyphfluxLocaleByText"
+  }
+}

@@ -16,7 +16,7 @@
     "@rrweb/types": ">=2.0.0",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0",
-    "font-morph": ">=0.0.0"
+    "glyphflux": ">=0.0.0"
   },
   "peerDependenciesMeta": {
     "@rrweb/record": {
@@ -25,7 +25,7 @@
     "@rrweb/replay": {
       "optional": true
     },
-    "font-morph": {
+    "glyphflux": {
       "optional": true
     }
   },
@@ -62,7 +62,7 @@
     "@types/node": "^22.13.5",
     "@types/react": ">=18.0.0 <20.0.0",
     "@types/react-dom": ">=18.0.0 <20.0.0",
-    "font-morph": "workspace:*",
+    "glyphflux": "workspace:*",
     "morphdom": "^2.7.5",
     "oxlint": "^1.79.0",
     "playwright-core": "^1.57.0",
@@ -101,6 +101,16 @@
         "default": "./dist/replay.mjs"
       }
     },
+    "./glyphflux": {
+      "require": {
+        "types": "./dist/glyphflux.d.cts",
+        "default": "./dist/glyphflux.cjs"
+      },
+      "import": {
+        "types": "./dist/glyphflux.d.mts",
+        "default": "./dist/glyphflux.mjs"
+      }
+    },
     "./font-morph": {
       "require": {
         "types": "./dist/font-morph.d.cts",
@@ -119,6 +129,9 @@
       ],
       "replay": [
         "./dist/replay.d.cts"
+      ],
+      "glyphflux": [
+        "./dist/glyphflux.d.cts"
       ],
       "font-morph": [
         "./dist/font-morph.d.cts"

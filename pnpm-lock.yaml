@@ -26,9 +26,9 @@ importers:
       '@tanstack/react-start':
         specifier: ~1.159.14
         version: 1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@7.3.6(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0))
-      font-morph:
+      glyphflux:
         specifier: workspace:*
-        version: link:repos/font-morph
+        version: link:repos/glyphflux
       gt-i18n:
         specifier: 1.0.16
         version: 1.0.16
@@ -82,11 +82,20 @@ importers:
         specifier: ^7.0.0
         version: 7.3.6(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0)
 
-  repos/font-morph:
+  repos/glyphflux:
     dependencies:
+      '@mdx-js/mdx':
+        specifier: 3.1.1
+        version: 3.1.1
+      fast-glob:
+        specifier: ^3.3.3
+        version: 3.3.3
       fontkit:
         specifier: 2.0.4
         version: 2.0.4
+      harfbuzzjs:
+        specifier: 1.6.1
+        version: 1.6.1
       kute.js:
         specifier: 2.2.6
         version: 2.2.6
@@ -94,6 +103,12 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0
     devDependencies:
+      '@tanstack/react-router':
+        specifier: ^1.159.14
+        version: 1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tanstack/react-start':
+        specifier: ~1.159.14
+        version: 1.159.14(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vite@7.3.6(@types/node@22.20.1)(tsx@4.23.12)(yaml@2.9.0))
       '@types/node':
         specifier: ^22.13.5
         version: 22.20.1
@@ -112,12 +127,18 @@ importers:
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
+      gifenc:
+        specifier: ^1.0.3
+        version: 1.0.3
       oxlint:
         specifier: ^1.79.0
         version: 1.79.0
       playwright-core:
         specifier: ^1.57.0
         version: 1.63.0
+      pngjs:
+        specifier: ^7.0.0
+        version: 7.0.0
       react:
         specifier: ^19.1.0
         version: 19.2.8
@@ -164,9 +185,9 @@ importers:
       '@types/react-dom':
         specifier: '>=18.0.0 <20.0.0'
         version: 19.2.4(@types/react@19.2.18)
-      font-morph:
+      glyphflux:
         specifier: workspace:*
-        version: link:../font-morph
+        version: link:../glyphflux
       morphdom:
         specifier: ^2.7.5
         version: 2.7.8
@@ -1952,6 +1973,9 @@ packages:
   get-tsconfig@4.14.3:
     resolution: {integrity: sha512-++QEw4DIY7WGoukz+/+A/8dGYPT9l9yIadnmSgZ8Rjr3YVSVDipQSO9CdnJo9ePqFqUUqh+wk9uIaoiAwsiPkA==}
 
+  gifenc@1.0.3:
+    resolution: {integrity: sha512-xdr6AdrfGBcfzncONUOlXMBuc5wJDtOueE3c5rdG0oNgtINLD+f2iFZltrBRZYzACRbKr+mSVU/x98zv2u3jmw==}
+
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
     engines: {node: '>= 6'}
@@ -1991,6 +2015,9 @@ packages:
     peerDependenciesMeta:
       crossws:
         optional: true
+
+  harfbuzzjs@1.6.1:
+    resolution: {integrity: sha512-+JeJmO+HzXjDwpfCOdGSyM2bNP8WzJNFKl/8TKivbInMYDtfRIuPIDLtnBNmQzcJw6GptbhHY6o5gaH6deCMEw==}
 
   hasown@2.0.4:
     resolution: {integrity: sha512-T2UbfbBEF32wiepXIsMlTW9+dDYC6wMh/t/vYA4tuOMKqWz/n3vr1NFSxQiyP+zk2mXsoMA/i/7qV6LKut1t1A==}
@@ -2467,6 +2494,10 @@ packages:
     resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
     engines: {node: '>=20'}
     hasBin: true
+
+  pngjs@7.0.0:
+    resolution: {integrity: sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow==}
+    engines: {node: '>=14.19.0'}
 
   postcss@8.5.26:
     resolution: {integrity: sha512-u82N74LFzG8ca+dD8puPnplTXoGH4fTPpVGuIbt36G3qvNlkvfD0lEAZSxaly3KX8TS/L1A1gsCEmvKmBcVbkQ==}
@@ -4656,6 +4687,8 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
+  gifenc@1.0.3: {}
+
   glob-parent@5.1.2:
     dependencies:
       is-glob: 4.0.3
@@ -4755,6 +4788,8 @@ snapshots:
     dependencies:
       rou3: 0.7.12
       srvx: 0.11.22
+
+  harfbuzzjs@1.6.1: {}
 
   hasown@2.0.4:
     dependencies:
@@ -5520,6 +5555,8 @@ snapshots:
       thread-stream: 4.2.0
 
   playwright-core@1.63.0: {}
+
+  pngjs@7.0.0: {}
 
   postcss@8.5.26:
     dependencies:

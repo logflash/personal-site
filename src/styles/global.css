@@ -1,5 +1,7 @@
 /* Design tokens. */
 :root {
+  --font-morph-duration: 760ms;
+
   --bg: #fcfbf8;
   --fg: #1e1e1c;
   --mut: #55534c;
