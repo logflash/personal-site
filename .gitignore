@@ -20,11 +20,14 @@ public/glyphflux/*.json
 repos/glyphflux/test-results/
 repos/glyphflux/demo/public/generated/
 
-# General Translation recording demos
+# Recording demos
 .gt-*
 *.mjs
 !repos/gt-rrweb/**/*.mjs
 !repos/glyphflux/**/*.mjs
+!scripts/build-japanese-font-subsets.mjs
+!scripts/check-japanese-font-coverage.mjs
+!scripts/japanese-font-text.mjs
 !scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json

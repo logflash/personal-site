@@ -11,7 +11,7 @@
   --side: #f4f1fb;
 
   --font-sans: 'IBM Plex Sans', 'Noto Sans JP', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  --font-mono: 'JetBrains Mono', 'Noto Sans JP', ui-monospace, Menlo, monospace;
   --font-serif: 'Source Serif 4', 'Noto Serif JP', Georgia, serif;
 
   /* Contribution-graph scale, empty (0) → busiest (4), toward --acc */
