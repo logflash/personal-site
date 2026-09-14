@@ -1,0 +1,4 @@
+[submodule "repos/glyphflux"]
+	path = repos/glyphflux
+	url = https://github.com/logflash/glyphflux.git
+	branch = main
