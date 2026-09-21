@@ -1,3 +1,4 @@
+import { createServerFn } from '@tanstack/react-start'
 import { profile } from '../data/site'
 
 export interface ContributionDay {
@@ -25,15 +26,17 @@ let cached: { data: ContributionsResponse | null; expires: number } | null = nul
  * client-side pop-in or layout shift. Cached per server instance; failures
  * resolve to null (the graph is decorative) and are retried after a minute.
  */
-export async function fetchContributions(): Promise<ContributionsResponse | null> {
-  if (cached && Date.now() < cached.expires) return cached.data
-  try {
-    const res = await fetch(API_URL, { signal: AbortSignal.timeout(3000) })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = (await res.json()) as ContributionsResponse
-    cached = { data, expires: Date.now() + OK_TTL_MS }
-  } catch {
-    cached = { data: null, expires: Date.now() + FAIL_TTL_MS }
-  }
-  return cached.data
-}
+export const fetchContributions = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<ContributionsResponse | null> => {
+    if (cached && Date.now() < cached.expires) return cached.data
+    try {
+      const res = await fetch(API_URL, { signal: AbortSignal.timeout(3000) })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = (await res.json()) as ContributionsResponse
+      cached = { data, expires: Date.now() + OK_TTL_MS }
+    } catch {
+      cached = { data: null, expires: Date.now() + FAIL_TTL_MS }
+    }
+    return cached.data
+  },
+)

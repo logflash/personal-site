@@ -1662,19 +1662,8 @@ function createPlayerInstance(
   function switchLocale(loc: string): void {
     if (switching || loc === ACTIVE_LOCALE) return;
     switching = true;
-    // Locale switching operates on the visible replayer's live DOM via its mirror. If
-    // we're mid/post-scrub (engine mode, visible doc morphed), hand rendering back
-    // first so the mirror + DOM are authoritative again.
-    if (engineMode) {
-      // Read the engine clock before changing which clock curTime() selects.
-      // Otherwise a locale switch after scrubbing seeks back to the stale,
-      // frozen visible-player time and host frame directors receive a rewind.
-      const timelineTime = curTime();
-      engineMode = false;
-      revealGateArmed = true;
-      replayer.pause(timelineTime);
-    }
     try {
+      const engineTimelineTime = engineMode ? curTime() : null;
       const isSource = !loc || loc === SOURCE_LOCALE;
       let newOverlay: Record<number, string> | null = null;
       if (!isSource && demoLocales && demoLocales.locales.indexOf(loc) !== -1) {
@@ -1701,7 +1690,13 @@ function createPlayerInstance(
       swapped.clear();
       overlay = newOverlay;
       ACTIVE_LOCALE = loc;
-      attachTranslator();
+
+      // A scrubbed visible document was produced by morphdom, so newly restored
+      // nodes intentionally do not belong to the visible rrweb mirror. Keep using
+      // the ID-aware scrub engine and remorph it in the target locale; handing back
+      // first would leave restored route nodes untranslated until the next rebuild.
+      if (engineTimelineTime == null) attachTranslator();
+      else morphVisibleFromEngine(engineTimelineTime);
       const fEl = container.querySelector('#flags');
       if (fEl)
         [...fEl.children].forEach((b) =>

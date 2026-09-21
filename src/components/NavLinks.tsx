@@ -18,8 +18,14 @@ export function NavLinks({ items }: NavLinksProps) {
   const { locale } = rootRoute.useLoaderData()
   const backToTop = useBackToTop()
   const activeMorphHandlers = useActiveFontMorphNavigation()
-  const onResumeRoute = useRouterState({
-    select: (state) => state.location.pathname.endsWith('/resume'),
+  const { onResumeRoute, onHomeRoute } = useRouterState({
+    select: (state) => {
+      const pathname = state.location.pathname.replace(/\/$/, '')
+      return {
+        onResumeRoute: pathname.endsWith('/resume'),
+        onHomeRoute: pathname === `/${locale}`,
+      }
+    },
   })
   const resolvedItems = items ?? (onResumeRoute ? resumeNavItems : navItems)
 
@@ -53,6 +59,20 @@ export function NavLinks({ items }: NavLinksProps) {
             >
               <span>{content}</span>
               <UndoIcon />
+            </Link>
+          )
+        }
+
+        if (!onResumeRoute && !onHomeRoute) {
+          return (
+            <Link
+              key={id}
+              to="/$locale"
+              params={{ locale }}
+              hash={id === 'home' ? undefined : id}
+              {...sharedProps}
+            >
+              {content}
             </Link>
           )
         }

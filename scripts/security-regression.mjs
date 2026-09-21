@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
+import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright-core'
 
 const port = Number(process.env.SECURITY_TEST_PORT ?? 4327)
@@ -225,6 +226,73 @@ async function assertBrowserPolicy(browser) {
   assert.deepEqual([...externalRequests], [], 'the browser must not contact third-party origins')
   assert.deepEqual(problems, [], 'the browser must not report runtime or resource errors')
 
+  const notFoundPage = await context.newPage()
+  const notFoundProblems = []
+  const notFoundExternalRequests = new Set()
+  notFoundPage.on('pageerror', (error) => notFoundProblems.push(`page: ${error.message}`))
+  notFoundPage.on('requestfailed', (request) => {
+    notFoundProblems.push(
+      `request: ${request.url()} (${request.failure()?.errorText ?? 'unknown failure'})`,
+    )
+  })
+  notFoundPage.on('request', (request) => {
+    const url = new URL(request.url())
+    if ((url.protocol === 'http:' || url.protocol === 'https:') && url.origin !== baseUrl) {
+      notFoundExternalRequests.add(url.origin)
+    }
+  })
+  await installViolationObserver(notFoundPage)
+
+  const notFoundHeadings = {
+    en: 'Sorry, page not found.',
+    es: 'Lo siento, página no encontrada.',
+    ja: 'すみません。リンク先は利用できません。',
+  }
+  for (const [locale, heading] of Object.entries(notFoundHeadings)) {
+    const response = await notFoundPage.goto(`${baseUrl}/${locale}/missing-page`, {
+      waitUntil: 'networkidle',
+    })
+    assert.equal(response?.status(), 404, `${locale} missing routes must return HTTP 404`)
+    assert.equal(await notFoundPage.locator('html').getAttribute('lang'), locale)
+    assert.equal(await notFoundPage.locator('.not-found h2').textContent(), heading)
+    assert.equal(
+      await notFoundPage.locator('head meta[name="robots"]').getAttribute('content'),
+      'noindex',
+    )
+    assert.equal(
+      await notFoundPage.locator('.side-nav a[data-section="about"]').getAttribute('href'),
+      `/${locale}#about`,
+      `${locale} 404 navigation must return to a real homepage section`,
+    )
+    assert.deepEqual(
+      await pageViolations(notFoundPage),
+      [],
+      `${locale} 404 must not violate its CSP`,
+    )
+    await notFoundPage.locator('.not-found-home-link').click()
+    await notFoundPage.waitForURL(`${baseUrl}/${locale}`)
+  }
+
+  const xssPayload = '<img src=x onerror="globalThis.__routeXss=true">'
+  const xssResponse = await notFoundPage.goto(`${baseUrl}/en/${encodeURIComponent(xssPayload)}`, {
+    waitUntil: 'networkidle',
+  })
+  assert.equal(xssResponse?.status(), 404)
+  assert.equal(await notFoundPage.locator('.not-found-path img').count(), 0)
+  assert.equal(await notFoundPage.evaluate(() => globalThis.__routeXss), undefined)
+  assert.match(
+    await notFoundPage.locator('.not-found-path').textContent(),
+    /img(?:%20| )src(?:%3D|=)x/,
+  )
+  assert.deepEqual(await pageViolations(notFoundPage), [], 'route text must not violate the CSP')
+  assert.deepEqual(
+    [...notFoundExternalRequests],
+    [],
+    '404 navigation must not contact third-party origins',
+  )
+  assert.deepEqual(notFoundProblems, [], '404 pages must not report runtime or resource errors')
+  await notFoundPage.close()
+
   const trustedTypesProbe = await page.evaluate(() => {
     const result = { html: false, script: false, scriptUrl: false }
     try {
@@ -363,9 +431,11 @@ async function assertRecordingReplay(browser) {
   const page = await context.newPage()
   const problems = []
   const externalRequests = new Set()
-  observePage(page, problems, externalRequests)
   await installViolationObserver(page)
-  await page.goto(`${baseUrl}/en`, { waitUntil: 'networkidle' })
+  await page.goto(`${baseUrl}/en/missing-page`, { waitUntil: 'networkidle' })
+  // Chromium reports the intentional 404 main-document response as a console
+  // error. Begin runtime observation after that expected response is complete.
+  observePage(page, problems, externalRequests)
 
   const avatar = page.locator('.mobile-header .avatar-hold')
   const box = await avatar.boundingBox()
@@ -385,6 +455,12 @@ async function assertRecordingReplay(browser) {
 
   const stop = page.getByRole('button', { name: 'Stop recording' })
   await stop.waitFor({ state: 'visible', timeout: 30_000 })
+
+  await page.locator('.not-found-home-link').click()
+  await page.waitForURL(`${baseUrl}/en`)
+  await page.locator('.pill-nav [data-section="about"]').click()
+  await page.waitForTimeout(250)
+
   await stop.click()
   try {
     await page.locator('.replay-overlay-box #stage').waitFor({ state: 'visible', timeout: 45_000 })
@@ -406,7 +482,64 @@ async function assertRecordingReplay(browser) {
   }
   await page.locator('#downloadJson svg').waitFor({ state: 'attached' })
   await page.locator('#darkToggle svg').waitFor({ state: 'attached' })
+
+  const downloadStarted = page.waitForEvent('download')
+  await page.locator('#downloadJson').click()
+  const download = await downloadStarted
+  const downloadPath = await download.path()
+  assert.ok(downloadPath, 'the replay JSON download must complete')
+  const recordedBundle = JSON.parse(await readFile(downloadPath, 'utf8'))
+  const snapshotRoot = recordedBundle.events.find((event) => event.type === 2)?.data?.node
+  const snapshotNodes = snapshotRoot ? [snapshotRoot] : []
+  let missingHeadingNode
+  while (snapshotNodes.length > 0) {
+    const node = snapshotNodes.pop()
+    if (node?.type === 3 && node.textContent === 'Sorry, page not found.') {
+      missingHeadingNode = node
+      break
+    }
+    snapshotNodes.push(...(node?.childNodes ?? []))
+  }
+  assert.ok(missingHeadingNode, 'the initial 404 heading must be present in the snapshot')
+  assert.equal(
+    recordedBundle.overlay.ja[missingHeadingNode.id],
+    'すみません。リンク先は利用できません。',
+    'the recorded 404 heading must be available in the Japanese overlay',
+  )
+
+  const track = page.locator('#track')
+  const trackBox = await track.boundingBox()
+  assert.ok(trackBox, 'the replay scrubber must be measurable')
+  const scrubTo = async (fraction) => {
+    const clientX = trackBox.x + trackBox.width * fraction
+    const clientY = trackBox.y + trackBox.height / 2
+    const pointer = { pointerId: 7, pointerType: 'mouse', clientX, clientY, buttons: 1 }
+    await track.dispatchEvent('pointerdown', pointer)
+    await track.dispatchEvent('pointerup', { ...pointer, buttons: 0 })
+    await page.waitForTimeout(350)
+  }
+
+  const replayDocument = page.frameLocator('#player iframe')
+  await scrubTo(0)
+  assert.equal(await replayDocument.locator('.not-found').count(), 1)
+  assert.equal(
+    await replayDocument.locator('.not-found h2').textContent(),
+    'Sorry, page not found.',
+  )
+
+  const japaneseFlag = page.locator('#flags button[data-loc="ja"]')
+  await japaneseFlag.click()
   await page.waitForTimeout(1_000)
+  assert.equal(await japaneseFlag.getAttribute('class'), 'active')
+  assert.equal(
+    await replayDocument.locator('.not-found h2').textContent(),
+    'すみません。リンク先は利用できません。',
+  )
+
+  await scrubTo(0.999)
+  assert.equal(await replayDocument.locator('.not-found').count(), 0)
+  assert.equal(await replayDocument.locator('#about').count(), 1)
+  assert.equal(await replayDocument.locator('#about h2').textContent(), '概要')
 
   assert.deepEqual(await pageViolations(page), [], 'recording and replay must not violate the CSP')
   assert.deepEqual([...externalRequests], [], 'recording and replay must stay on the app origin')

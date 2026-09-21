@@ -102,6 +102,100 @@ main {
   margin-top: 38px;
 }
 
+/* ---- Not found ---- */
+
+.not-found-frame {
+  position: relative;
+  z-index: 0;
+  width: min(100%, 660px);
+  isolation: isolate;
+}
+
+.not-found-code {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  right: 0;
+  color: transparent;
+  font-family: var(--font-serif);
+  font-size: clamp(120px, 17vw, 220px);
+  font-weight: 600;
+  line-height: 0.7;
+  opacity: 0.7;
+  pointer-events: none;
+  transform: translateY(-50%);
+  user-select: none;
+  -webkit-text-stroke: 1px var(--line);
+}
+
+.not-found-path {
+  max-width: 100%;
+  margin-bottom: 20px;
+  overflow: hidden;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.not-found .h-row {
+  margin-bottom: 14px;
+}
+
+.not-found .hash {
+  display: none;
+}
+
+.not-found .body-text {
+  max-width: 500px;
+  margin-bottom: 24px;
+  font-size: 15px;
+}
+
+.not-found-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 9px 13px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--acc);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.not-found-home-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.not-found-home-link svg path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.not-found-home-link:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) {
+  html:not(.touch) .not-found-home-link:hover {
+    border-color: var(--acc);
+    background: var(--hov);
+    color: var(--fg);
+  }
+}
+
 /* ---- Shared pieces ---- */
 
 .avatar {
@@ -1340,6 +1434,12 @@ html[data-initial-scroll] .cg-scroller {
 
   main {
     padding: 40px 22px 32px;
+  }
+
+  .not-found-code {
+    top: 50%;
+    right: -8px;
+    font-size: clamp(104px, 36vw, 160px);
   }
 
   .section {

@@ -139,6 +139,18 @@ export function MdxParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
   )
 }
 
+export function NotFoundHomeLink({ translatedLabel }: { translatedLabel: string }) {
+  const gt = useMdxGT()
+  const { locale } = rootRoute.useLoaderData()
+
+  return (
+    <Link className="not-found-home-link" to="/$locale" params={{ locale }}>
+      <UndoIcon />
+      <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span>
+    </Link>
+  )
+}
+
 export function TransitionHeading({
   transition,
   returnTo,
@@ -770,6 +782,7 @@ export const sharedMdxComponents = {
   Project,
   ContactRows,
   ContactRow,
+  NotFoundHomeLink,
 }
 
 export const resumeMdxComponents = {
