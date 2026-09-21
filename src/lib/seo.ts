@@ -17,7 +17,28 @@ const OG_LOCALES: Record<string, string> = {
   ja: 'ja_JP',
 }
 
-/** Route head() payload for a locale page: meta, canonical + hreflang, JSON-LD. */
+export function personStructuredData(locale: string) {
+  const url = `${SITE_URL}/${locale}`
+  const image = `${SITE_URL}${profile.avatar}`
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Person',
+    name: profile.name,
+    url,
+    image,
+    jobTitle: 'Ph.D. student',
+    affiliation: { '@type': 'Organization', name: 'MIT' },
+    sameAs: [
+      'https://github.com/logflash',
+      'https://www.linkedin.com/in/ian-henriques/',
+      'https://x.com/logflash_',
+      'https://scholar.google.com/citations?user=PfM704AAAAAJ',
+    ],
+  }
+}
+
+/** Route head() payload for a locale page: meta, canonical, and hreflang. */
 export function localeHead(locale: string) {
   const description = DESCRIPTIONS[locale] ?? DESCRIPTIONS[DEFAULT_LOCALE]
   const url = `${SITE_URL}/${locale}`
@@ -46,26 +67,6 @@ export function localeHead(locale: string) {
         href: `${SITE_URL}/${l}`,
       })),
       { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_URL}/${DEFAULT_LOCALE}` },
-    ],
-    scripts: [
-      {
-        type: 'application/ld+json',
-        children: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Person',
-          name: profile.name,
-          url,
-          image,
-          jobTitle: 'Ph.D. student',
-          affiliation: { '@type': 'Organization', name: 'MIT' },
-          sameAs: [
-            'https://github.com/logflash',
-            'https://www.linkedin.com/in/ian-henriques/',
-            'https://x.com/logflash_',
-            'https://scholar.google.com/citations?user=PfM704AAAAAJ',
-          ],
-        }),
-      },
     ],
   }
 }

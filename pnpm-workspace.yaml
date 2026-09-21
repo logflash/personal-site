@@ -9,3 +9,9 @@ allowBuilds:
   tree-sitter-python: true
 overrides:
   kute.js>svg-path-commander: 2.1.11
+  h3-v2: npm:h3@2.0.1-rc.18
+  'js-yaml@>=4.0.0 <4.3.2': 4.3.2
+  'esbuild@>=0.27.3 <0.28.1': 0.28.2
+  vitest: 4.1.11
+  '@tanstack/react-router': 1.170.38
+  '@tanstack/react-start': 1.168.56

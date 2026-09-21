@@ -4,6 +4,16 @@ import morphdomDefault from 'morphdom';
 
 import type { LocaleTextOverlay } from '../types';
 import {
+  createDownloadIcon,
+  createFullscreenEnterIcon,
+  createFullscreenExitIcon,
+  createMoonIcon,
+  createPauseIcon,
+  createPlayIcon,
+  createReplayerDom,
+  createSunIcon,
+} from './dom';
+import {
   REPLAY_EVENT as EVT,
   REPLAY_SOURCE as SRC,
   analyzePointerInput,
@@ -22,7 +32,7 @@ import {
   scrollPositionAt,
   type DirectedClick,
 } from './director';
-import { GT_REPLAYER_CLASS, REPLAYER_CSS, REPLAYER_HTML } from './styles';
+import { GT_REPLAYER_CLASS, REPLAYER_CSS } from './styles';
 
 /**
  * The recording a replayer plays. Structurally a {@link RecorderBundle}: the rrweb
@@ -166,7 +176,7 @@ function createPlayerInstance(
 ): GTReplayerHandle {
   const ownerDoc = container.ownerDocument ?? document;
   container.classList.add(GT_REPLAYER_CLASS);
-  container.innerHTML = REPLAYER_HTML;
+  container.replaceChildren(createReplayerDom(ownerDoc));
   injectStyles(ownerDoc);
 
   function must<T extends HTMLElement>(sel: string): T {
@@ -179,13 +189,20 @@ function createPlayerInstance(
   // host app's console for a condition the player already surfaces.
   const showError = (msg: string): void => {
     const s = container.querySelector('#stage');
-    if (s)
-      s.insertAdjacentHTML(
-        'beforeend',
-        '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#e88;font:14px system-ui">' +
-          msg +
-          '</div>',
-      );
+    if (s) {
+      const error = ownerDoc.createElement('div');
+      Object.assign(error.style, {
+        position: 'absolute',
+        inset: '0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#e88',
+        font: '14px system-ui',
+      });
+      error.textContent = msg;
+      s.appendChild(error);
+    }
   };
 
   let events = bundle.events;
@@ -509,13 +526,9 @@ function createPlayerInstance(
 
   // Theme toggle in the HUD (sun when dark → go light, moon when light → go dark).
   const darkToggle = must<HTMLButtonElement>('#darkToggle');
-  const SUN_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
-  const MOON_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
   function syncDarkIcon(): void {
     // Show the icon for the mode you'll switch TO (dark now → Sun → light).
-    darkToggle.innerHTML = darkMode ? SUN_SVG : MOON_SVG;
+    darkToggle.replaceChildren(darkMode ? createSunIcon(ownerDoc) : createMoonIcon(ownerDoc));
     darkToggle.title = darkMode
       ? 'Switch to light mode'
       : 'Switch to dark mode';
@@ -533,14 +546,12 @@ function createPlayerInstance(
   // Fullscreen API can't fullscreen a <div>), and additionally request native
   // fullscreen where supported for an immersive, chrome-hidden view.
   const fsToggle = must<HTMLButtonElement>('#fsToggle');
-  const FS_ENTER_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>';
-  const FS_EXIT_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
   const inFullscreen = (): boolean => container.classList.contains('gt-fs');
   function syncFsIcon(): void {
     const on = inFullscreen();
-    fsToggle.innerHTML = on ? FS_EXIT_SVG : FS_ENTER_SVG;
+    fsToggle.replaceChildren(
+      on ? createFullscreenExitIcon(ownerDoc) : createFullscreenEnterIcon(ownerDoc),
+    );
     fsToggle.title = on ? 'Exit full screen' : 'Full screen';
   }
   function setFullscreen(on: boolean): void {
@@ -1441,14 +1452,11 @@ function createPlayerInstance(
   let paused = false;
   const playpause = must('#playpause');
   const playBtn = must<HTMLButtonElement>('#playBtn');
-  const PLAY_SVG =
-    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-  const PAUSE_SVG =
-    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z"/></svg>';
   function setPaused(p: boolean): void {
     paused = p;
     playpause.classList.toggle('show', p);
-    playBtn.innerHTML = p ? PLAY_SVG : PAUSE_SVG; // button shows the action
+    // The button shows the action that will occur when it is pressed.
+    playBtn.replaceChildren(p ? createPlayIcon(ownerDoc) : createPauseIcon(ownerDoc));
   }
   setPaused(false); // init: playing → show the pause icon
   function showControls(): void {
@@ -1780,10 +1788,8 @@ function createPlayerInstance(
     }
   })();
 
-  const DOWNLOAD_SVG =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>';
   const downloadJson = must<HTMLButtonElement>('#downloadJson');
-  downloadJson.innerHTML = DOWNLOAD_SVG;
+  downloadJson.appendChild(createDownloadIcon(ownerDoc));
   downloadJson.title = 'Download replay JSON';
   downloadJson.onclick = (event) => {
     event.stopPropagation();
@@ -1840,7 +1846,7 @@ function createPlayerInstance(
       if (engine) engine.pause();
     } catch {}
     engineHost.remove();
-    container.innerHTML = '';
+    container.replaceChildren();
     container.classList.remove(GT_REPLAYER_CLASS, 'chrome-light');
   }
 

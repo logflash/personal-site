@@ -11,6 +11,8 @@ import {
   type RecordingRuntimeStatus,
 } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
+import { TRUSTED_TYPES_BOOT_SCRIPT } from '../lib/security'
+import { personStructuredData } from '../lib/seo'
 import { TranslationProvider } from '../lib/i18n'
 import loadTranslations from '../loadTranslations'
 import fontsCssUrl from '../styles/fonts.css?url'
@@ -99,7 +101,6 @@ export const Route = createRootRoute({
           ]
         : []),
     ],
-    styles: import.meta.env.DEV ? [] : [{ children: __INLINE_CSS__ }],
   }),
   shellComponent: RootDocument,
 })
@@ -151,7 +152,12 @@ function RootDocument({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: the theme script may set data-theme pre-hydration
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <script nonce={nonce}>{TRUSTED_TYPES_BOOT_SCRIPT}</script>
         <script nonce={nonce}>{DISPLAY_BOOT_SCRIPT}</script>
+        <script nonce={nonce} type="application/ld+json">
+          {JSON.stringify(personStructuredData(locale))}
+        </script>
+        {import.meta.env.DEV ? null : <style nonce={nonce}>{__INLINE_CSS__}</style>}
         <HeadContent />
       </head>
       <body>
