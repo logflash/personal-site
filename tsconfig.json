@@ -13,12 +13,11 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "glyphflux": ["repos/glyphflux/src/index.ts"],
-      "gt-rrweb": ["repos/gt-rrweb/src/index.ts"],
-      "gt-rrweb/harvest": ["repos/gt-rrweb/src/harvest.ts"],
-      "gt-rrweb/replay": ["repos/gt-rrweb/src/replay.ts"]
+      "glyphflux": ["./repos/glyphflux/src/index.ts"],
+      "gt-rrweb": ["./repos/gt-rrweb/src/index.ts"],
+      "gt-rrweb/harvest": ["./repos/gt-rrweb/src/harvest.ts"],
+      "gt-rrweb/replay": ["./repos/gt-rrweb/src/replay.ts"]
     },
     "types": ["vite/client"]
   },
