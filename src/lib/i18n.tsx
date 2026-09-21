@@ -97,13 +97,24 @@ export function StructuredTranslation({
 
 type IcuVariables = Record<string, string | number>
 
-/** Render an extracted ICU message and preserve enough context for locale-faithful replay. */
-export function IcuTranslation({ source, variables }: { source: string; variables: IcuVariables }) {
+/** Format an ICU message with the active locale without adding wrapper markup. */
+export function useIcuFormatter(source: string) {
   const { locale, translations } = useTranslationContext()
   const hash = translationHash(source)
   const translated = translations[hash]
   const template = typeof translated === 'string' ? translated : source
-  const content = formatMessage(template, { locales: locale, variables })
+
+  return useCallback(
+    (variables: IcuVariables) => formatMessage(template, { locales: locale, variables }),
+    [locale, template],
+  )
+}
+
+/** Render an extracted ICU message and preserve enough context for locale-faithful replay. */
+export function IcuTranslation({ source, variables }: { source: string; variables: IcuVariables }) {
+  const format = useIcuFormatter(source)
+  const hash = translationHash(source)
+  const content = format(variables)
 
   return (
     <span

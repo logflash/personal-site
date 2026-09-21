@@ -1168,6 +1168,24 @@ html[data-initial-scroll] .cg-scroller {
   max-width: 100%;
 }
 
+/* All summary variants occupy the same grid cell. Invisible localized copies
+   of the default and widest daily caption make the flex row reserve whichever
+   layout needs the most room at the current viewport, so the legend and the
+   content below it do not jump when a day becomes active. */
+.cg-summary {
+  display: grid;
+}
+
+.cg-summary > .cg-summary-slot {
+  display: block;
+  grid-area: 1 / 1;
+}
+
+.cg-summary-reserve {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 @media (hover: hover) {
   html:not(.touch) .cg-meta a:hover {
     color: var(--acc);

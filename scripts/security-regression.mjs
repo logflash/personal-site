@@ -396,6 +396,47 @@ async function assertStableSidebarGeometry(browser) {
   await context.close()
 }
 
+async function assertStableContributionSummaryGeometry(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    hasTouch: true,
+    isMobile: true,
+  })
+  const page = await context.newPage()
+
+  const geometry = () =>
+    page.evaluate(() => {
+      const meta = document.querySelector('.cg-meta')?.getBoundingClientRect()
+      const summary = document.querySelector('.cg-summary')?.getBoundingClientRect()
+      const legend = document.querySelector('.cg-legend')?.getBoundingClientRect()
+      return {
+        metaHeight: meta?.height,
+        summaryHeight: summary?.height,
+        summaryWidth: summary?.width,
+        legendTop: meta && legend ? legend.top - meta.top : undefined,
+      }
+    })
+
+  for (const locale of ['en', 'es', 'ja']) {
+    await page.goto(`${baseUrl}/${locale}`, { waitUntil: 'networkidle' })
+    const cells = page.locator('.cg-cell:not(.cg-pad)')
+    const cellCount = await cells.count()
+    assert.ok(cellCount > 0, `${locale} contribution graph must render`)
+    const baseline = await geometry()
+
+    for (const index of [0, Math.floor(cellCount / 2), cellCount - 1]) {
+      await cells.nth(index).tap()
+      assert.deepEqual(
+        await geometry(),
+        baseline,
+        `${locale} daily contribution summaries must not move the mobile layout`,
+      )
+    }
+  }
+
+  await context.close()
+}
+
 async function assertInlineStylesheetBlocked(browser) {
   const context = await browser.newContext()
   const page = await context.newPage()
@@ -563,6 +604,7 @@ try {
   browser = await chromium.launch({ channel: 'chrome', headless: true })
   await assertBrowserPolicy(browser)
   await assertStableSidebarGeometry(browser)
+  await assertStableContributionSummaryGeometry(browser)
   await assertInlineStylesheetBlocked(browser)
   await assertRecordingReplay(browser)
   console.log('Security regression checks passed.')

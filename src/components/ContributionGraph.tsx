@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { T, Var, msg } from 'gt-react'
 import { profile } from '../data/site'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
-import { IcuTranslation, StructuredTranslation, useTranslate } from '../lib/i18n'
+import { IcuTranslation, StructuredTranslation, useIcuFormatter, useTranslate } from '../lib/i18n'
 
 const DAYS_PER_WEEK = 7
 const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
@@ -90,6 +90,7 @@ interface ContributionGraphProps {
  */
 export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
   const gt = useTranslate()
+  const formatDailySummary = useIcuFormatter(DAILY_CONTRIBUTION_SUMMARY)
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
   const [tappedDate, setTappedDate] = useState<string | null>(null)
   const [showDefaultSummary, setShowDefaultSummary] = useState(true)
@@ -116,6 +117,17 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     () => data?.contributions.find((day) => day.date === activeDate),
     [activeDate, data],
   )
+  const longestDailySummary = useMemo(() => {
+    if (!data) return ''
+
+    return data.contributions.reduce((longest, day) => {
+      const summary = formatDailySummary({
+        count: day.count,
+        date: contributionDateValue(day.date),
+      })
+      return summary.length > longest.length ? summary : longest
+    }, '')
+  }, [data, formatDailySummary])
 
   const cancelDefaultRestore = () => {
     if (defaultRestoreTimer.current === null) return
@@ -211,22 +223,41 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
       </div>
       <div className="cg-meta">
         {/* Halves are nowrap, so a line break can only happen between them */}
-        <a href={`https://github.com/${profile.githubUser}`} target="_blank" rel="noreferrer">
-          {activeDay ? (
-            <IcuTranslation
-              source={DAILY_CONTRIBUTION_SUMMARY}
-              variables={{ count: activeDay.count, date: contributionDateValue(activeDay.date) }}
-            />
-          ) : showDefaultSummary ? (
+        <a
+          className="cg-summary"
+          href={`https://github.com/${profile.githubUser}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <span className="cg-summary-slot">
+            {activeDay ? (
+              <IcuTranslation
+                source={DAILY_CONTRIBUTION_SUMMARY}
+                variables={{ count: activeDay.count, date: contributionDateValue(activeDay.date) }}
+              />
+            ) : showDefaultSummary ? (
+              <StructuredTranslation
+                hash={CONTRIBUTION_SUMMARY_HASH}
+                variables={{ _gt_value_2: data.total.lastYear }}
+              >
+                <span>{data.total.lastYear} Github contributions</span>{' '}
+                <span>in the last year</span>
+              </StructuredTranslation>
+            ) : (
+              <span aria-hidden="true">&nbsp;</span>
+            )}
+          </span>
+          <span className="cg-summary-slot cg-summary-reserve" aria-hidden="true">
             <StructuredTranslation
               hash={CONTRIBUTION_SUMMARY_HASH}
               variables={{ _gt_value_2: data.total.lastYear }}
             >
               <span>{data.total.lastYear} Github contributions</span> <span>in the last year</span>
             </StructuredTranslation>
-          ) : (
-            <span aria-hidden="true">&nbsp;</span>
-          )}
+          </span>
+          <span className="cg-summary-slot cg-summary-reserve" aria-hidden="true">
+            {longestDailySummary}
+          </span>
         </a>
         <span className="cg-legend" aria-hidden="true">
           {gt('less')}
