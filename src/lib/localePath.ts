@@ -26,5 +26,6 @@ export function pathnameForLocale(pathname: string, locale: string): string {
  * visit to the bare `/` redirects to the locale the visitor picked last.
  */
 export function persistLocaleCookie(locale: string) {
-  document.cookie = `generaltranslation.locale=${locale}; path=/; max-age=31536000`
+  const secure = location.protocol === 'https:' ? '; secure' : ''
+  document.cookie = `generaltranslation.locale=${locale}; path=/; max-age=31536000; samesite=lax${secure}`
 }

@@ -1,4 +1,4 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
 import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -105,6 +105,7 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: ReactNode }) {
+  const nonce = useRouter().options.ssr?.nonce
   const { locale, translations } = Route.useLoaderData()
   const [replay, setReplay] = useState<RecorderBundle | null>(null)
   const [runtime, setRuntime] = useState<RecordingRuntimeComponent | null>(null)
@@ -150,7 +151,7 @@ function RootDocument({ children }: { children: ReactNode }) {
     // suppressHydrationWarning: the theme script may set data-theme pre-hydration
     <html lang={locale} suppressHydrationWarning>
       <head>
-        <script>{DISPLAY_BOOT_SCRIPT}</script>
+        <script nonce={nonce}>{DISPLAY_BOOT_SCRIPT}</script>
         <HeadContent />
       </head>
       <body>
@@ -173,7 +174,7 @@ function RootDocument({ children }: { children: ReactNode }) {
             ) : null}
           </RecordingRuntimeContext.Provider>
         </TranslationProvider>
-        <script>{INITIAL_LAYOUT_SCRIPT}</script>
+        <script nonce={nonce}>{INITIAL_LAYOUT_SCRIPT}</script>
         <Scripts />
       </body>
     </html>

@@ -21,23 +21,15 @@ export default async function handler(req, res) {
 
   const response = await server.fetch(request)
 
-  // Cache rendered locale pages on the CDN. gtMiddleware attaches a locale
-  // cookie to every page, which would veto CDN caching — but on /:locale
-  // pages it's deterministic (always the path's locale) and the client-side
-  // locale switcher writes the same cookie, so it's safe to drop here. The
-  // `/` redirect varies by cookie and Accept-Language: uncached, cookie kept.
-  const cacheable = (req.method === 'GET' || req.method === 'HEAD') && response.status === 200
   res.statusCode = response.status
   response.headers.forEach((value, key) => {
     if (key !== 'set-cookie') res.setHeader(key, value)
   })
-  if (cacheable) {
-    // Set this after copying the fetch response: TanStack's generic
-    // `Cache-Control: public` would otherwise overwrite the CDN policy.
-    res.setHeader('cache-control', 'public, s-maxage=300, stale-while-revalidate=86400')
-  } else {
-    const cookies = response.headers.getSetCookie?.() ?? []
-    if (cookies.length > 0) res.setHeader('set-cookie', cookies)
-  }
+  // A CSP nonce must be unique per response, so rendered HTML cannot be shared
+  // through Vercel's CDN cache. Static assets retain their independent cache
+  // policy and are still served directly by the CDN.
+  res.setHeader('cache-control', 'private, no-store')
+  const cookies = response.headers.getSetCookie?.() ?? []
+  if (cookies.length > 0) res.setHeader('set-cookie', cookies)
   res.end(Buffer.from(await response.arrayBuffer()))
 }
