@@ -1,3 +1,5 @@
+import { nonceStyleElement } from '../csp';
+
 // Web fonts break in cross-origin replay. rrweb keeps `@font-face` rules but leaves
 // their `src: url(...)` pointing at the app's origin; fonts are ALWAYS CORS-checked,
 // so a replay served from any other origin (or a static file) fails the fetch and
@@ -134,7 +136,7 @@ export async function fetchInlinedFontCss(): Promise<string> {
 export function injectFontStyle(css: string): void {
   if (typeof document === 'undefined') return;
   if (!css || document.getElementById(FONT_STYLE_ID)) return;
-  const style = document.createElement('style');
+  const style = nonceStyleElement(document.createElement('style'), document);
   style.id = FONT_STYLE_ID;
   style.textContent = css;
   document.head.appendChild(style);

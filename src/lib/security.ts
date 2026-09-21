@@ -9,6 +9,10 @@ export type RequestRejection = {
 }
 
 export const CSP_NONCE_META_SELECTOR = 'meta[property="csp-nonce"]'
+// @rrweb/replay creates an empty <style> before trusted code populates its CSSOM.
+// Authorizing only the SHA-256 of that empty element does not allow non-empty
+// stylesheet markup; arbitrary CSS remains nonce-gated.
+const EMPTY_STYLE_ELEMENT_HASH = "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"
 
 /**
  * React writes TanStack Start's hydration import into an HTMLScriptElement.
@@ -28,9 +32,12 @@ export function createContentSecurityPolicy(nonce: string, development: boolean)
     "default-src 'none'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "script-src-attr 'none'",
-    // The app and rrweb reconstruct dynamic presentation state. Keeping this
-    // exception scoped to CSS leaves script execution nonce-gated.
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self'",
+    `style-src-elem 'self' 'nonce-${nonce}' ${EMPTY_STYLE_ELEMENT_HASH}`,
+    // The app and rrweb reconstruct dynamic presentation state with element
+    // style attributes. Keep that exception separate from stylesheet elements,
+    // which remain restricted to same-origin files and nonced blocks.
+    "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     `connect-src ${connectSources}`,

@@ -2,6 +2,7 @@ import { Replayer as RRWebReplayer } from '@rrweb/replay';
 import type { eventWithTime } from '@rrweb/types';
 import morphdomDefault from 'morphdom';
 
+import { documentCspNonce, nonceStyleElement, withCspStyleNonces } from '../csp';
 import type { LocaleTextOverlay } from '../types';
 import {
   createDownloadIcon,
@@ -162,7 +163,7 @@ const STYLE_ID = 'gt-replayer-styles';
 
 function injectStyles(doc: Document): void {
   if (doc.getElementById(STYLE_ID)) return;
-  const style = doc.createElement('style');
+  const style = nonceStyleElement(doc.createElement('style'), doc);
   style.id = STYLE_ID;
   style.textContent = REPLAYER_CSS;
   doc.head.appendChild(style);
@@ -205,7 +206,7 @@ function createPlayerInstance(
     }
   };
 
-  let events = bundle.events;
+  let events = withCspStyleNonces(bundle.events, documentCspNonce(ownerDoc));
   if (!Array.isArray(events) || events.length < 2) {
     showError('recording has too few events');
     return { destroy() {} };
@@ -518,7 +519,7 @@ function createPlayerInstance(
     if (!appCssText) captureAppCss();
     if (!appCssText) return;
     if (doc.getElementById('__gt-css-bridge')) return; // already bridged this doc
-    const bridge = doc.createElement('style');
+    const bridge = nonceStyleElement(doc.createElement('style'), ownerDoc);
     bridge.id = '__gt-css-bridge';
     bridge.textContent = appCssText;
     doc.head.insertBefore(bridge, doc.head.firstChild);

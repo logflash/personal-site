@@ -57,6 +57,8 @@ async function assertHttpPolicy() {
     "form-action 'none'",
     "frame-ancestors 'none'",
     "script-src-attr 'none'",
+    "style-src 'self'",
+    "style-src-attr 'unsafe-inline'",
     "require-trusted-types-for 'script'",
     'trusted-types default',
   ]) {
@@ -65,6 +67,16 @@ async function assertHttpPolicy() {
 
   const nonce = csp.match(/'nonce-([^']+)'/)?.[1]
   assert.ok(nonce, 'CSP must contain a per-response nonce')
+  assert.ok(
+    csp.includes(
+      `style-src-elem 'self' 'nonce-${nonce}' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='`,
+    ),
+    'stylesheet elements must be same-origin, nonced, or the rrweb empty element',
+  )
+  assert.ok(
+    !csp.includes("style-src 'self' 'unsafe-inline'"),
+    'unsafe-inline must not apply to stylesheet elements',
+  )
   assert.match(
     html,
     new RegExp(`<meta[^>]+property="csp-nonce"[^>]+content="${nonce}"`),
@@ -201,6 +213,32 @@ async function assertBrowserPolicy(browser) {
   await context.close()
 }
 
+async function assertInlineStylesheetBlocked(browser) {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  await installViolationObserver(page)
+  await page.goto(`${baseUrl}/en`, { waitUntil: 'networkidle' })
+
+  const applied = await page.evaluate(() => {
+    const target = document.createElement('div')
+    target.id = 'csp-style-probe'
+    document.body.appendChild(target)
+    const style = document.createElement('style')
+    style.textContent = '#csp-style-probe{--csp-probe:applied}'
+    document.head.appendChild(style)
+    return getComputedStyle(target).getPropertyValue('--csp-probe').trim()
+  })
+  assert.equal(applied, '', 'an unnonced inline stylesheet must not apply')
+  assert.equal(
+    (await pageViolations(page)).some(
+      (violation) => violation.directive === 'style-src-elem' && violation.blocked === 'inline',
+    ),
+    true,
+    'the browser must report the blocked inline stylesheet',
+  )
+  await context.close()
+}
+
 async function assertRecordingReplay(browser) {
   const context = await browser.newContext({
     viewport: { width: 412, height: 915 },
@@ -233,7 +271,24 @@ async function assertRecordingReplay(browser) {
   const stop = page.getByRole('button', { name: 'Stop recording' })
   await stop.waitFor({ state: 'visible', timeout: 30_000 })
   await stop.click()
-  await page.locator('.replay-overlay-box #stage').waitFor({ state: 'visible', timeout: 45_000 })
+  try {
+    await page.locator('.replay-overlay-box #stage').waitFor({ state: 'visible', timeout: 45_000 })
+  } catch (error) {
+    const diagnostics = {
+      violations: await pageViolations(page),
+      problems,
+      styles: await page.evaluate(() =>
+        [...document.querySelectorAll('style')].map((style) => ({
+          id: style.id,
+          nonce: style.nonce,
+          rules: style.sheet?.cssRules.length ?? null,
+        })),
+      ),
+    }
+    throw new Error(`Replay did not become visible: ${JSON.stringify(diagnostics)}`, {
+      cause: error,
+    })
+  }
   await page.locator('#downloadJson svg').waitFor({ state: 'attached' })
   await page.locator('#darkToggle svg').waitFor({ state: 'attached' })
   await page.waitForTimeout(1_000)
@@ -259,6 +314,7 @@ try {
   await assertHttpPolicy()
   browser = await chromium.launch({ channel: 'chrome', headless: true })
   await assertBrowserPolicy(browser)
+  await assertInlineStylesheetBlocked(browser)
   await assertRecordingReplay(browser)
   console.log('Security regression checks passed.')
 } finally {

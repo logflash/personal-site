@@ -2,6 +2,7 @@ import { record } from '@rrweb/record';
 import { EventType } from '@rrweb/types';
 import type { eventWithTime } from '@rrweb/types';
 
+import { nonceStyleElement } from '../csp';
 import { harvestLocales } from '../harvest';
 import {
   fetchInlinedFontCss,
@@ -108,7 +109,7 @@ function applyFrame(cfg: CoreConfig): void {
     .split(',')
     .map((s) => `html.gt-recording ${s.trim()}`)
     .join(',');
-  const style = document.createElement('style');
+  const style = nonceStyleElement(document.createElement('style'), document);
   style.id = FRAME_STYLE_ID;
   style.textContent = `${rule}{${box}}`;
   document.head.appendChild(style);
