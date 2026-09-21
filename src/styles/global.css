@@ -77,12 +77,15 @@ a {
 /* ---- Layout ---- */
 
 .layout {
+  --sidebar-width: 250px;
+
   display: grid;
-  grid-template-columns: 250px 1fr;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
   min-height: 100vh;
 }
 
 .content {
+  grid-column: 2;
   min-width: 0;
 }
 
@@ -247,8 +250,15 @@ main {
   flex-direction: column;
   padding: 36px 26px 24px;
   gap: 28px;
-  position: sticky;
+  /* A viewport-height sticky element can move by the fractional remainder of
+     its containing block when the document clamps to its final anchor. Keep
+     persistent chrome viewport-fixed so content height and locale metrics can
+     never change its raster position. A transformed recording layout remains
+     its fixed containing block, preserving capture behavior. */
+  position: fixed;
   top: 0;
+  left: 0;
+  width: var(--sidebar-width);
   height: 100vh;
   height: 100dvh;
   transition: background-color 0.25s;

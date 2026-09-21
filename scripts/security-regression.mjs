@@ -213,6 +213,83 @@ async function assertBrowserPolicy(browser) {
   await context.close()
 }
 
+async function sidebarGeometry(page) {
+  return page.evaluate(() => {
+    const sidebar = document.querySelector('.sidebar')?.getBoundingClientRect()
+    const handle = document.querySelector('.sidebar .handle')?.getBoundingClientRect()
+    const content = document.querySelector('.content')?.getBoundingClientRect()
+
+    return {
+      sidebarLeft: sidebar?.left,
+      sidebarTop: sidebar?.top,
+      sidebarWidth: sidebar?.width,
+      handleTop: handle?.top,
+      contentLeft: content?.left,
+    }
+  })
+}
+
+async function assertStableSidebarGeometry(browser) {
+  const context = await browser.newContext({ viewport: { width: 1365, height: 768 } })
+  const page = await context.newPage()
+  const pageAnchors = [
+    { path: '', sections: ['about', 'research', 'projects', 'contact', 'home'] },
+    { path: '/resume', sections: ['education', 'experience', 'skills'] },
+  ]
+
+  for (const locale of ['en', 'es', 'ja']) {
+    let resumeBaseline
+
+    for (const { path, sections } of pageAnchors) {
+      await page.goto(`${baseUrl}/${locale}${path}`, { waitUntil: 'networkidle' })
+      await page.evaluate(async () => {
+        await document.fonts.ready
+        document.documentElement.style.scrollBehavior = 'auto'
+      })
+      const baseline = await sidebarGeometry(page)
+      if (path === '/resume') resumeBaseline = baseline
+
+      for (const section of sections) {
+        await page.locator(`.side-nav [data-section="${section}"]`).click()
+        await page.waitForTimeout(50)
+        assert.deepEqual(
+          await sidebarGeometry(page),
+          baseline,
+          `${locale}${path || '/'} #${section} must not move the desktop sidebar`,
+        )
+      }
+    }
+
+    await page.evaluate(() => {
+      globalThis.__sidebarHandleTops = []
+      const deadline = performance.now() + 1_000
+      const sample = () => {
+        const top = document.querySelector('.sidebar .handle')?.getBoundingClientRect().top
+        if (top !== undefined) globalThis.__sidebarHandleTops.push(top)
+        if (performance.now() < deadline) requestAnimationFrame(sample)
+      }
+      requestAnimationFrame(sample)
+    })
+    await page.locator('.resume-home-nav-link').click()
+    await page.waitForURL(`${baseUrl}/${locale}`)
+    await page.waitForTimeout(1_000)
+    const handleTops = await page.evaluate(() => globalThis.__sidebarHandleTops)
+    assert.ok(handleTops.length > 0, `${locale} must sample the sidebar during navigation`)
+    assert.deepEqual(
+      [...new Set(handleTops)],
+      [resumeBaseline.handleTop],
+      `${locale} resume-to-home navigation must not move the handle between frames`,
+    )
+    assert.deepEqual(
+      await sidebarGeometry(page),
+      resumeBaseline,
+      `${locale} resume-to-home navigation must not move the desktop sidebar`,
+    )
+  }
+
+  await context.close()
+}
+
 async function assertInlineStylesheetBlocked(browser) {
   const context = await browser.newContext()
   const page = await context.newPage()
@@ -314,6 +391,7 @@ try {
   await assertHttpPolicy()
   browser = await chromium.launch({ channel: 'chrome', headless: true })
   await assertBrowserPolicy(browser)
+  await assertStableSidebarGeometry(browser)
   await assertInlineStylesheetBlocked(browser)
   await assertRecordingReplay(browser)
   console.log('Security regression checks passed.')
