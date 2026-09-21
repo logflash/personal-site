@@ -105,27 +105,7 @@ main {
 /* ---- Not found ---- */
 
 .not-found-frame {
-  position: relative;
-  z-index: 0;
   width: min(100%, 660px);
-  isolation: isolate;
-}
-
-.not-found-code {
-  position: absolute;
-  z-index: -1;
-  top: 50%;
-  right: 0;
-  color: transparent;
-  font-family: var(--font-serif);
-  font-size: clamp(120px, 17vw, 220px);
-  font-weight: 600;
-  line-height: 0.7;
-  opacity: 0.7;
-  pointer-events: none;
-  transform: translateY(-50%);
-  user-select: none;
-  -webkit-text-stroke: 1px var(--line);
 }
 
 .not-found-path {
@@ -137,10 +117,6 @@ main {
   font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.not-found .h-row {
-  margin-bottom: 14px;
 }
 
 .not-found .hash {
@@ -1434,12 +1410,6 @@ html[data-initial-scroll] .cg-scroller {
 
   main {
     padding: 40px 22px 32px;
-  }
-
-  .not-found-code {
-    top: 50%;
-    right: -8px;
-    font-size: clamp(104px, 36vw, 160px);
   }
 
   .section {

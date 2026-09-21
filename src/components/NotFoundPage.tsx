@@ -22,9 +22,6 @@ export function NotFoundPage() {
       <title>Page not found — Ian Henriques</title>
       <meta name="robots" content="noindex" />
       <div className="not-found-frame">
-        <div className="not-found-code" aria-hidden="true">
-          404
-        </div>
         <div className="not-found-path">{sanitizeDisplayPath(pathname)}</div>
         <MissingContent components={sharedMdxComponents} />
       </div>
