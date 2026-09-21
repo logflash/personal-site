@@ -7,11 +7,24 @@ import { defineConfig } from 'vite'
 
 // Inlined into a <style> tag in production (removes the only render-blocking
 // request); dev uses a normal stylesheet link so CSS edits stay live.
-const inlineCss = ['src/styles/fonts.css', 'repos/glyphflux/styles.css', 'src/styles/global.css']
+const firstPaintAssets = new Map([
+  [
+    '../assets/avatar-160.webp?inline',
+    `data:image/webp;base64,${readFileSync(
+      new URL('./src/assets/avatar-160.webp', import.meta.url),
+    ).toString('base64')}`,
+  ],
+])
+
+let inlineCss = ['src/styles/fonts.css', 'repos/glyphflux/styles.css', 'src/styles/global.css']
   .map((f) => readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'))
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/\s+/g, ' ')
+
+for (const [assetPath, dataUrl] of firstPaintAssets) {
+  inlineCss = inlineCss.replaceAll(assetPath, dataUrl)
+}
 
 export default defineConfig({
   // MDX stays a build-time concern: its output passes through the same React

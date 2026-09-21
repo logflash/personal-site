@@ -12,7 +12,6 @@ export const profile = {
   githubUser: 'logflash',
   copyrightYear: 2026,
   avatar: '/avatar.png', // 256px — og:image and favicon
-  avatarSmall: '/avatar-160.webp', // rendered at 40/76px in the UI
 }
 
 export const navItems: NavItem[] = [

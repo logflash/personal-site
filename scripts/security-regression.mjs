@@ -157,6 +157,42 @@ async function pageViolations(page) {
   return page.evaluate(() => globalThis.__securityViolations)
 }
 
+async function assertAvatarReady(page, locale, route) {
+  const avatars = await page.locator('.avatar').evaluateAll((elements) =>
+    elements.map((element) => ({
+      tag: element.tagName,
+      role: element.getAttribute('role'),
+      label: element.getAttribute('aria-label'),
+      background: getComputedStyle(element).backgroundImage,
+    })),
+  )
+
+  assert.equal(avatars.length, 2, `${locale} ${route} must render both responsive identities`)
+  for (const avatar of avatars) {
+    assert.deepEqual(
+      { tag: avatar.tag, role: avatar.role, label: avatar.label },
+      { tag: 'SPAN', role: 'img', label: 'Ian Henriques' },
+      `${locale} ${route} avatar must preserve image semantics`,
+    )
+    assert.match(
+      avatar.background,
+      /^url\(["']?data:image\/webp;base64,/,
+      `${locale} ${route} avatar must be available in critical CSS`,
+    )
+  }
+
+  assert.deepEqual(
+    await page.evaluate(() =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => entry.name.includes('avatar-160.webp'))
+        .map((entry) => entry.name),
+    ),
+    [],
+    `${locale} ${route} must not wait for a separate UI-avatar request`,
+  )
+}
+
 async function assertBrowserPolicy(browser) {
   const context = await browser.newContext()
   const page = await context.newPage()
@@ -170,6 +206,7 @@ async function assertBrowserPolicy(browser) {
     assert.equal(await page.evaluate(() => crossOriginIsolated), true)
     assert.equal(await page.locator('html').getAttribute('lang'), locale)
     assert.equal((await page.title()).length > 0, true)
+    await assertAvatarReady(page, locale, 'home')
 
     const transition = page.locator('a[data-font-morph]').first()
     await transition.waitFor({ state: 'visible' })
@@ -177,6 +214,7 @@ async function assertBrowserPolicy(browser) {
     await page.waitForURL(`${baseUrl}/${locale}/resume`)
     await page.waitForTimeout(900)
     assert.equal((await page.title()).length > 0, true)
+    await assertAvatarReady(page, locale, 'resume')
 
     await page.locator('.resume-home-nav-link').first().click()
     await page.waitForURL(`${baseUrl}/${locale}`)

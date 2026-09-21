@@ -104,7 +104,7 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
         onDragLeave={() => setDropReady(false)}
         onDrop={onDrop}
       >
-        <img className="avatar" src={profile.avatarSmall} alt={profile.name} draggable={false} />
+        <span className="avatar" role="img" aria-label={profile.name} />
         <svg className="avatar-ring" viewBox="0 0 48 48" aria-hidden="true">
           <circle className="ring-track" cx="24" cy="24" r="23" />
           <circle className="ring-progress" cx="24" cy="24" r="23" pathLength={100} />

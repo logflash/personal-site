@@ -107,7 +107,10 @@ main {
 .avatar {
   display: block;
   border-radius: 50%;
-  object-fit: cover;
+  /* This small, first-paint asset is deliberately inlined with the critical
+     CSS. A separately fetched <img> can paint empty on a cold load or when the
+     identity tree remounts between sibling routes. */
+  background: center / cover no-repeat url('../assets/avatar-160.webp?inline');
   flex: none;
 }
 
