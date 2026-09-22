@@ -577,7 +577,9 @@ async function assertRecordingReplay(browser) {
     'すみません。リンク先は利用できません。',
   )
 
-  await scrubTo(0.999)
+  // The route mutation may land at the recording's final timestamp; 99.9%
+  // is not guaranteed to include it when the recording is short.
+  await scrubTo(1)
   assert.equal(await replayDocument.locator('.not-found').count(), 0)
   assert.equal(await replayDocument.locator('#about').count(), 1)
   assert.equal(await replayDocument.locator('#about h2').textContent(), '概要')
