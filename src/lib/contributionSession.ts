@@ -81,11 +81,15 @@ export function decodeContributionSession(
 }
 
 /** Force reloads usually send no-cache; ordinary reloads usually send max-age=0. */
-export function shouldRefreshContributions(request: Request): boolean {
-  const url = new URL(request.url)
+export function requestBypassesCache(request: Request): boolean {
   return (
-    url.searchParams.has('refreshContributions') ||
     /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(request.headers.get('cache-control') ?? '') ||
     /(?:^|,)\s*no-cache\s*(?:,|$)/i.test(request.headers.get('pragma') ?? '')
+  )
+}
+
+export function shouldRefreshContributions(request: Request): boolean {
+  return (
+    new URL(request.url).searchParams.has('refreshContributions') || requestBypassesCache(request)
   )
 }

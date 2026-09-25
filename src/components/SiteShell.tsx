@@ -3,6 +3,7 @@ import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { useTheme } from '../hooks/useTheme'
 import { MobileTopBar } from './MobileTopBar'
 import { Sidebar } from './Sidebar'
+import { profile } from '../data/site'
 
 export function SiteShell({
   children,
@@ -24,7 +25,12 @@ export function SiteShell({
           onToggleTheme={toggleTheme}
           suppressLocaleInteraction={suppressLocaleInteraction}
         />
-        <main className={mainClassName}>{children}</main>
+        <main className={mainClassName}>
+          {children}
+          <footer className="copyright-mobile">
+            © {profile.copyrightYear} {profile.name}
+          </footer>
+        </main>
       </div>
     </div>
   )

@@ -1,11 +1,15 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { T, Var, msg } from 'gt-react'
 import { profile } from '../data/site'
+import {
+  CONTRIBUTION_SCROLL_CUE_STORAGE_KEY,
+  CONTRIBUTION_WEEK_PITCH_PX,
+} from '../lib/contributionGraphLayout'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
 import { IcuTranslation, StructuredTranslation, useIcuFormatter, useTranslate } from '../lib/i18n'
+import { translationHash } from '../lib/translationHash'
 
 const DAYS_PER_WEEK = 7
-const WEEK_PITCH_PX = 12 // 9px cell + 3px gap; mirrors .cg-cell/.cg-grid in global.css
 const MIN_LABEL_GAP_WEEKS = 3
 const DEFAULT_SUMMARY_RESTORE_MS = 1000
 const CONTRIBUTION_SUMMARY_HASH = '4a68cb0d1371a99a'
@@ -34,6 +38,7 @@ export function ContributionSummaryTranslationSource() {
 export const DailyContributionSummaryTranslationSource = msg(
   '{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}',
 )
+export const ContributionScrollTranslationSource = msg('Scroll to see more months')
 
 function contributionDateValue(date: string): number {
   const [year, month, day] = date.split('-').map(Number)
@@ -96,6 +101,17 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   const [showDefaultSummary, setShowDefaultSummary] = useState(true)
   const defaultRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastGraphPointerType = useRef<string | null>(null)
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+
+  const dismissScrollCue = () => {
+    if (document.documentElement.hasAttribute('data-contribution-scroll-cue-dismissed')) return
+    document.documentElement.dataset.contributionScrollCueDismissed = ''
+    try {
+      sessionStorage.setItem(CONTRIBUTION_SCROLL_CUE_STORAGE_KEY, '1')
+    } catch {
+      // The cue still dismisses for this document if storage is unavailable.
+    }
+  }
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -165,61 +181,88 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
 
   return (
     <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
-      <div className="cg-scroller">
-        <div className="cg-inner">
-          <div className="cg-months" aria-hidden="true">
-            {toMonthLabels(weeks, monthLabels).map(({ week, name }) => (
-              <span key={week} style={{ left: week * WEEK_PITCH_PX }}>
-                {name}
-              </span>
-            ))}
-          </div>
-          <div
-            className="cg-grid"
-            onPointerMove={(event) => {
-              if (event.pointerType !== 'mouse') return
-              cancelDefaultRestore()
-              setShowDefaultSummary(false)
-              setHoveredDate(contributionDateFor(event.target) ?? null)
-            }}
-            onPointerLeave={(event) => {
-              if (event.pointerType !== 'mouse') return
-              setHoveredDate(null)
-              restoreDefaultAfterDelay()
-            }}
-            onPointerDown={(event) => {
-              lastGraphPointerType.current = event.pointerType
-            }}
-            onClick={(event) => {
-              const pointerType =
-                (event.nativeEvent as PointerEvent).pointerType || lastGraphPointerType.current
-              lastGraphPointerType.current = null
-              if (!pointerType || pointerType === 'mouse') return
-              const date = contributionDateFor(event.target)
-              if (date) setTappedDate((current) => (current === date ? null : date))
-            }}
-            onPointerCancel={() => {
-              lastGraphPointerType.current = null
-            }}
-          >
-            {weeks.map((week, w) => (
-              <div key={w} className="cg-week">
-                {week.map((day, d) =>
-                  day ? (
-                    <span
-                      key={day.date}
-                      className={`cg-cell cg-l${Math.min(day.level, 4)}${tappedDate === day.date ? ' cg-touch-active' : ''}`}
-                      data-contribution-date={day.date}
-                      title={`${day.count} ${day.count === 1 ? gt('contribution') : gt('contributions')} · ${day.date}`}
-                    />
-                  ) : (
-                    <span key={`pad-${d}`} className="cg-cell cg-pad" />
-                  ),
-                )}
-              </div>
-            ))}
+      <div className="cg-scroll-viewport">
+        <div className="cg-scroller" ref={scrollerRef} onScroll={dismissScrollCue}>
+          <div className="cg-inner">
+            <div className="cg-months" aria-hidden="true">
+              {toMonthLabels(weeks, monthLabels).map(({ week, name }) => (
+                <span key={week} style={{ left: week * CONTRIBUTION_WEEK_PITCH_PX }}>
+                  {name}
+                </span>
+              ))}
+            </div>
+            <div
+              className="cg-grid"
+              onPointerMove={(event) => {
+                if (event.pointerType !== 'mouse') return
+                cancelDefaultRestore()
+                setShowDefaultSummary(false)
+                setHoveredDate(contributionDateFor(event.target) ?? null)
+              }}
+              onPointerLeave={(event) => {
+                if (event.pointerType !== 'mouse') return
+                setHoveredDate(null)
+                restoreDefaultAfterDelay()
+              }}
+              onPointerDown={(event) => {
+                lastGraphPointerType.current = event.pointerType
+              }}
+              onClick={(event) => {
+                const pointerType =
+                  (event.nativeEvent as PointerEvent).pointerType || lastGraphPointerType.current
+                lastGraphPointerType.current = null
+                if (!pointerType || pointerType === 'mouse') return
+                const date = contributionDateFor(event.target)
+                if (date) setTappedDate((current) => (current === date ? null : date))
+              }}
+              onPointerCancel={() => {
+                lastGraphPointerType.current = null
+              }}
+            >
+              {weeks.map((week, w) => (
+                <div key={w} className="cg-week">
+                  {week.map((day, d) =>
+                    day ? (
+                      <span
+                        key={day.date}
+                        className={`cg-cell cg-l${Math.min(day.level, 4)}${tappedDate === day.date ? ' cg-touch-active' : ''}`}
+                        data-contribution-date={day.date}
+                        title={`${day.count} ${day.count === 1 ? gt('contribution') : gt('contributions')} · ${day.date}`}
+                      />
+                    ) : (
+                      <span key={`pad-${d}`} className="cg-cell cg-pad" />
+                    ),
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+        <button
+          className="cg-scroll-hint"
+          type="button"
+          onClick={() => {
+            dismissScrollCue()
+            const scroller = scrollerRef.current
+            scroller?.scrollTo({ left: scroller.scrollWidth, behavior: 'smooth' })
+          }}
+        >
+          <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">
+            <path
+              d="m2 2 6 6-6 6"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span
+            className="cg-scroll-hint-text"
+            data-_gt-hash={translationHash('Scroll to see more months')}
+          >
+            {gt('Scroll to see more months')}
+          </span>
+        </button>
       </div>
       <div className="cg-meta">
         {/* Halves are nowrap, so a line break can only happen between them */}

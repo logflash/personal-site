@@ -6,8 +6,12 @@ const source = await readFile(new URL('../src/lib/contributionSession.ts', impor
 const { outputText } = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 })
-const { encodeContributionSession, decodeContributionSession, shouldRefreshContributions } =
-  await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const {
+  encodeContributionSession,
+  decodeContributionSession,
+  requestBypassesCache,
+  shouldRefreshContributions,
+} = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
 
 const days = Array.from({ length: 367 }, (_, index) => ({
   date: new Date(Date.UTC(2025, 8, 21 + index)).toISOString().slice(0, 10),
@@ -37,5 +41,9 @@ assert.equal(shouldRefreshContributions(request({ 'cache-control': 'max-age=0' }
 assert.equal(shouldRefreshContributions(request({ 'cache-control': 'no-cache' })), true)
 assert.equal(shouldRefreshContributions(request({ pragma: 'no-cache' })), true)
 assert.equal(shouldRefreshContributions(request({}, '?refreshContributions=1')), true)
+assert.equal(requestBypassesCache(request({ 'cache-control': 'max-age=0' })), false)
+assert.equal(requestBypassesCache(request({ 'cache-control': 'no-cache' })), true)
+assert.equal(requestBypassesCache(request({ pragma: 'no-cache' })), true)
+assert.equal(requestBypassesCache(request({}, '?refreshContributions=1')), false)
 
 console.log('Contribution session tests passed')

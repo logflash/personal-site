@@ -209,13 +209,61 @@ async function assertBrowserPolicy(browser) {
     assert.equal((await page.title()).length > 0, true)
     await assertAvatarReady(page, locale, 'home')
 
-    const transition = page.locator('a[data-font-morph]').first()
+    const transition = page.locator('a.transition-link').first()
     await transition.waitFor({ state: 'visible' })
+    assert.equal(
+      await transition.locator('span[data-font-morph][data-_gt-hash]').count(),
+      1,
+      `${locale} quick-link card must keep the morph and translation identity on its text`,
+    )
     await transition.click()
     await page.waitForURL(`${baseUrl}/${locale}/resume`)
     await page.waitForTimeout(900)
     assert.equal((await page.title()).length > 0, true)
     await assertAvatarReady(page, locale, 'resume')
+
+    const entry = page.locator('.resume-entry').first()
+    await entry.locator('summary').click()
+    assert.equal(await entry.evaluate((element) => element.open), true)
+    await entry.locator('.disclosure-close').click()
+    assert.equal(await entry.evaluate((element) => element.open), false)
+    assert.equal(
+      await entry.locator('summary').evaluate((element) => element === document.activeElement),
+      true,
+      `${locale} entry collapse must return keyboard focus to its summary`,
+    )
+
+    await page.evaluate(() => {
+      globalThis.__skillAnimations = []
+      window.addEventListener('resume-skill-card:record', (event) => {
+        globalThis.__skillAnimations.push(event.detail)
+      })
+    })
+    const skill = page.locator('.resume-skill-card').first()
+    await skill.locator('.resume-skill-card-toggle').click()
+    await page.waitForFunction(() => !document.querySelector('.resume-skill-migration-layer'))
+    await skill.locator('.disclosure-close').click()
+    await page.waitForFunction(() => !document.querySelector('.resume-skill-migration-layer'))
+    assert.equal(
+      await skill.locator('.resume-skill-card-toggle').getAttribute('aria-expanded'),
+      'false',
+    )
+    assert.equal(
+      await skill
+        .locator('.resume-skill-card-toggle')
+        .evaluate((element) => element === document.activeElement),
+      true,
+      `${locale} skill collapse must move focus outside the inert content`,
+    )
+    const skillAnimations = await page.evaluate(() => globalThis.__skillAnimations)
+    assert.deepEqual(
+      skillAnimations.map(({ key, open }) => ({ key, open })),
+      [
+        { key: await skill.getAttribute('data-gt-skill-card'), open: true },
+        { key: await skill.getAttribute('data-gt-skill-card'), open: false },
+      ],
+      `${locale} both skill controls must retain compact semantic replay events`,
+    )
 
     await page.locator('.resume-home-nav-link').first().click()
     await page.waitForURL(`${baseUrl}/${locale}`)

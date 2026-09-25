@@ -1,4 +1,6 @@
 import { HeadContent, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
+import { getRequest } from '@tanstack/react-start/server'
 import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -12,6 +14,11 @@ import {
   type RecordingRuntimeStatus,
 } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, localeFromPath } from '../lib/localePath'
+import {
+  CONTRIBUTION_SCROLL_CUE_STORAGE_KEY,
+  INITIAL_RIGHT_REVEAL_PX,
+} from '../lib/contributionGraphLayout'
+import { requestBypassesCache } from '../lib/contributionSession'
 import { TRUSTED_TYPES_BOOT_SCRIPT } from '../lib/security'
 import { personStructuredData } from '../lib/seo'
 import { TranslationProvider } from '../lib/i18n'
@@ -32,14 +39,25 @@ const DISPLAY_BOOT_SCRIPT = `try{if(localStorage.getItem('ian-site-theme')==='da
 // before the client bundle or first visible paint. It positions both scroll
 // axes that have non-default starting points. If a future route stops
 // rendering its anchor on the server, useDeepLinkScroll remains the fallback.
-const INITIAL_LAYOUT_SCRIPT = `try{document.querySelectorAll('.cg-scroller').forEach((scroller)=>{scroller.scrollLeft=scroller.scrollWidth})}finally{document.documentElement.removeAttribute('data-initial-scroll')}if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
+const INITIAL_LAYOUT_SCRIPT = `try{document.querySelectorAll('.cg-scroller').forEach((scroller)=>{const max=Math.max(0,scroller.scrollWidth-scroller.clientWidth);scroller.scrollLeft=Math.max(0,max-${INITIAL_RIGHT_REVEAL_PX})})}finally{document.documentElement.removeAttribute('data-initial-scroll')}if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
+
+const contributionCueShouldReset = createIsomorphicFn()
+  .server(() => requestBypassesCache(getRequest()))
+  .client(() => false)
+
+const contributionCueBootScript = (reset: boolean) =>
+  `try{if(${reset})sessionStorage.removeItem('${CONTRIBUTION_SCROLL_CUE_STORAGE_KEY}');if(sessionStorage.getItem('${CONTRIBUTION_SCROLL_CUE_STORAGE_KEY}')==='1')document.documentElement.dataset.contributionScrollCueDismissed=''}catch(e){}`
 
 export const Route = createRootRoute({
   loader: async ({ location }) => {
     // The path prefix is the source of truth; the bare `/` route performs
     // cookie/header detection before redirecting here (routes/index.tsx).
     const locale = localeFromPath(location.pathname) ?? DEFAULT_LOCALE
-    return { locale, translations: await loadTranslations(locale) }
+    return {
+      locale,
+      translations: await loadTranslations(locale),
+      resetContributionCue: contributionCueShouldReset(),
+    }
   },
   head: ({ loaderData }) => ({
     meta: [
@@ -109,7 +127,7 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
   const nonce = useRouter().options.ssr?.nonce
-  const { locale, translations } = Route.useLoaderData()
+  const { locale, translations, resetContributionCue } = Route.useLoaderData()
   const [replay, setReplay] = useState<RecorderBundle | null>(null)
   const [runtime, setRuntime] = useState<RecordingRuntimeComponent | null>(null)
   const [recorderStatus, setRecorderStatus] = useState<RecordingRuntimeStatus>('idle')
@@ -155,7 +173,9 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang={locale} suppressHydrationWarning>
       <head>
         <script nonce={nonce}>{TRUSTED_TYPES_BOOT_SCRIPT}</script>
-        <script nonce={nonce}>{DISPLAY_BOOT_SCRIPT}</script>
+        <script nonce={nonce}>
+          {contributionCueBootScript(resetContributionCue) + DISPLAY_BOOT_SCRIPT}
+        </script>
         <script nonce={nonce} type="application/ld+json">
           {JSON.stringify(personStructuredData(locale))}
         </script>

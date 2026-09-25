@@ -21,6 +21,7 @@ import { useMdxGT } from '../../lib/mdxTranslation'
 import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
 import { translationHash } from '../../lib/translationHash'
 import { SectionHeading } from '../SectionHeading'
+import { CollapseLabel, DisclosureLabel } from '../DisclosureLabel'
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 
 interface SectionContextValue {
@@ -217,20 +218,7 @@ export function ResumeListItem({ children }: ComponentPropsWithoutRef<'li'>) {
 }
 
 export function QuickLinks({ children }: { children: ReactNode }) {
-  return (
-    <div className="quick-links">
-      {elements(children).map((child, index) => (
-        <Fragment key={index}>
-          {index > 0 && (
-            <span className="sep" aria-hidden="true">
-              ·
-            </span>
-          )}
-          {child}
-        </Fragment>
-      ))}
-    </div>
-  )
+  return <div className="quick-links">{elements(children)}</div>
 }
 
 export function QuickLink({
@@ -270,15 +258,10 @@ export function TransitionLink({
   const handlers = useFontMorphNavigation(transition)
 
   return (
-    <Link
-      to={to as '/$locale'}
-      params={{ locale }}
-      {...handlers}
-      className="transition-link"
-      data-font-morph={transition}
-      data-_gt-hash={translationHash(translatedLabel)}
-    >
-      {gt(translatedLabel)}
+    <Link to={to as '/$locale'} params={{ locale }} {...handlers} className="transition-link">
+      <span data-font-morph={transition} data-_gt-hash={translationHash(translatedLabel)}>
+        {gt(translatedLabel)}
+      </span>
     </Link>
   )
 }
@@ -352,7 +335,7 @@ export function Paper({
 }: {
   name?: string
   translatedName?: string
-  venue: string
+  venue?: string
   description: string
   url: string
 }) {
@@ -371,12 +354,12 @@ export function Paper({
             {translatedName ? gt(translatedName) : displayName}
           </span>
           <span className="pdf-chip">PDF</span>
-          <span className="venue">{venue}</span>
+          {venue && <span className="venue">{venue}</span>}
         </span>
         <span className="item-desc" data-_gt-hash={translationHash(description)}>
           {gt(description)}
         </span>
-        <span className="venue venue-sm">{venue}</span>
+        {venue && <span className="venue venue-sm">{venue}</span>}
       </span>
     </a>
   )
@@ -463,9 +446,26 @@ export function ResumeEntry({
               ))}
             </span>
           ) : null}
+          <DisclosureLabel />
         </span>
       </summary>
-      <div className="resume-entry-details">{children}</div>
+      <div className="resume-entry-details">
+        {children}
+        <button
+          type="button"
+          className="disclosure-close"
+          onClick={(event) => {
+            const entry = event.currentTarget.closest('details')
+            if (!entry) return
+            entry.open = false
+            const summary = entry.querySelector('summary')
+            summary?.focus({ preventScroll: true })
+            summary?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+          }}
+        >
+          <CollapseLabel />
+        </button>
+      </div>
     </details>
   )
 }
@@ -578,6 +578,7 @@ function createSkillDotMigration(
 export function ResumeSkillCard({ title, children }: { title: string; children: ReactNode }) {
   const gt = useMdxGT()
   const contentId = useId()
+  const toggleRef = useRef<HTMLButtonElement>(null)
   const summaryDotsRef = useRef<HTMLSpanElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
@@ -599,6 +600,8 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
     if (!content || !summaryDots || transitioningRef.current) return
 
     const nextOpen = !open
+    const returnFocus = !nextOpen && content.contains(document.activeElement)
+    if (returnFocus) toggleRef.current?.focus({ preventScroll: true })
     const sourceHeight = content.getBoundingClientRect().height
     // The hidden content retains its final width, so scrollHeight includes
     // every locale-specific line wrap. Read it exactly once before migration.
@@ -608,6 +611,7 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
 
     if (!canMigrate) {
       flushSync(() => setOpen(nextOpen))
+      if (returnFocus) toggleRef.current?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
       return
     }
 
@@ -639,6 +643,9 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
       migration.layer.remove()
       if (cleanupRef.current === cleanup) cleanupRef.current = null
       transitioningRef.current = false
+      if (returnFocus && toggleRef.current?.isConnected) {
+        toggleRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+      }
     }
     cleanupRef.current = cleanup
 
@@ -652,24 +659,28 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
       data-open={open || undefined}
     >
       <button
+        ref={toggleRef}
         type="button"
         className="resume-skill-card-toggle"
         aria-expanded={open}
         aria-controls={contentId}
         onClick={toggle}
       >
-        <strong className="resume-skill-card-title" data-_gt-hash={titleHash}>
-          {gt(title)}
-        </strong>
-        <span ref={summaryDotsRef} className="resume-skill-card-dots" aria-hidden="true">
-          {skills.map(({ props }, index) => (
-            <span
-              key={`${props.label}-${index}`}
-              className="lang-dot"
-              style={{ background: resumeSkillColor(props.label, Boolean(props.language)) }}
-            />
-          ))}
+        <span className="resume-skill-card-overview">
+          <strong className="resume-skill-card-title" data-_gt-hash={titleHash}>
+            {gt(title)}
+          </strong>
+          <span ref={summaryDotsRef} className="resume-skill-card-dots" aria-hidden="true">
+            {skills.map(({ props }, index) => (
+              <span
+                key={`${props.label}-${index}`}
+                className="lang-dot"
+                style={{ background: resumeSkillColor(props.label, Boolean(props.language)) }}
+              />
+            ))}
+          </span>
         </span>
+        <DisclosureLabel />
       </button>
       <div
         ref={contentRef}
@@ -680,6 +691,9 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
       >
         <div className="resume-skill-card-details">
           <ul className="resume-skill-list">{skills}</ul>
+          <button type="button" className="disclosure-close" onClick={toggle}>
+            <CollapseLabel />
+          </button>
         </div>
       </div>
     </section>
@@ -700,7 +714,8 @@ export function Project({
   color: string
 }) {
   const gt = useMdxGT()
-  const repoPath = url.replace('https://', '')
+  const repositoryHost = new URL(url).hostname
+  const repositoryLabel = repositoryHost === 'github.com' ? 'GitHub' : repositoryHost
   const languageChips = languages.split(' · ').map((language) => ({
     language,
     color: LANGUAGE_COLORS[language] ?? color,
@@ -712,7 +727,7 @@ export function Project({
         <span className="item-name" data-_gt-hash={translationHash(translatedName)}>
           {gt(translatedName)}
         </span>
-        <span className="repo-path">{repoPath}</span>
+        <span className="repo-path">{repositoryLabel} ↗</span>
       </span>
       <span className="item-desc" data-_gt-hash={translationHash(description)}>
         {gt(description)}

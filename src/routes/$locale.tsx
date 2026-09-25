@@ -2,7 +2,6 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ContributionGraph } from '../components/ContributionGraph'
 import { ContentSection } from '../components/ContentSection'
 import { SiteShell } from '../components/SiteShell'
-import { profile } from '../data/site'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { fetchContributions } from '../lib/contributions'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
@@ -37,9 +36,6 @@ function LocalePage() {
       <ContentSection name="research" />
       <ContentSection name="projects" />
       <ContentSection name="contact" />
-      <div className="copyright-mobile">
-        © {profile.copyrightYear} {profile.name}
-      </div>
     </SiteShell>
   )
 }
