@@ -20,6 +20,7 @@
     "audit:security": "corepack pnpm audit --audit-level high",
     "test:security": "node scripts/security-regression.mjs",
     "test:contributions": "node scripts/test-contribution-session.mjs",
+    "test:project-stars": "node scripts/test-project-stars.mjs",
     "translate": "node scripts/sync-mdx-messages.js && gt translate && node scripts/sync-mdx-messages.js && corepack pnpm run sync:glyphflux",
     "typecheck": "tsc --noEmit",
     "lint": "node scripts/sync-mdx-messages.js && node scripts/check-email-identities.mjs && node scripts/check-japanese-font-coverage.mjs && oxlint --quiet . && oxfmt --check .",

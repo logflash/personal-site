@@ -30,6 +30,7 @@ repos/glyphflux/demo/public/generated/
 !scripts/japanese-font-text.mjs
 !scripts/security-regression.mjs
 !scripts/test-contribution-session.mjs
+!scripts/test-project-stars.mjs
 !scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json

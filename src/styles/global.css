@@ -1479,6 +1479,45 @@ html[data-initial-scroll] .cg-scroller {
   gap: 5px;
 }
 
+.project-meta {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.project-meta .chips {
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 5px 14px;
+  margin-top: 0;
+}
+
+.project-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  margin-left: auto;
+  color: var(--mut);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1;
+}
+
+.project-stars-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .repo-path {
   font-family: var(--font-mono);
   font-size: 11.5px;

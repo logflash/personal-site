@@ -1,9 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ContributionGraph } from '../components/ContributionGraph'
 import { ContentSection } from '../components/ContentSection'
+import { ProjectStarsContext } from '../components/ProjectStarsContext'
 import { SiteShell } from '../components/SiteShell'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
-import { fetchContributions } from '../lib/contributions'
+import { fetchGitHubStats } from '../lib/githubStats'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
 import { localeHead } from '../lib/seo'
 
@@ -14,7 +15,7 @@ export const Route = createFileRoute('/$locale')({
       throw redirect({ to: '/$locale', params: { locale: DEFAULT_LOCALE } })
     }
   },
-  loader: async () => ({ contributions: await fetchContributions() }),
+  loader: () => fetchGitHubStats(),
   head: ({ params }) => localeHead(params.locale),
   component: LocalePage,
 })
@@ -24,7 +25,7 @@ export const Route = createFileRoute('/$locale')({
 // anchors) plus a reset when the viewport returns to the top; nav
 // highlights on all viewports follow the hash.
 function LocalePage() {
-  const { contributions } = Route.useLoaderData()
+  const { contributions, projectStars } = Route.useLoaderData()
   useClearHashAtTop()
   useDeepLinkScroll()
 
@@ -34,7 +35,9 @@ function LocalePage() {
       <ContributionGraph data={contributions} />
       <ContentSection name="about" />
       <ContentSection name="research" />
-      <ContentSection name="projects" />
+      <ProjectStarsContext.Provider value={projectStars}>
+        <ContentSection name="projects" />
+      </ProjectStarsContext.Provider>
       <ContentSection name="contact" />
     </SiteShell>
   )

@@ -1,4 +1,5 @@
 import { Link, getRouteApi } from '@tanstack/react-router'
+import { msg } from 'gt-react'
 import {
   Children,
   Fragment,
@@ -20,7 +21,9 @@ import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
 import { useMdxGT } from '../../lib/mdxTranslation'
 import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
 import { translationHash } from '../../lib/translationHash'
+import { githubRepositoryKey } from '../../lib/projectRepositories'
 import { SectionHeading } from '../SectionHeading'
+import { ProjectStarsContext } from '../ProjectStarsContext'
 import { CollapseLabel, DisclosureLabel } from '../DisclosureLabel'
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 
@@ -32,6 +35,8 @@ interface SectionContextValue {
 const SectionContext = createContext<SectionContextValue | null>(null)
 const rootRoute = getRouteApi('__root__')
 const RESUME_SKILL_MIGRATION_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
+
+export const ProjectStarsTranslationSource = msg('GitHub stars')
 
 function text(children: ReactNode, component: string): string {
   if (typeof children === 'string') return children.trim()
@@ -714,8 +719,11 @@ export function Project({
   color: string
 }) {
   const gt = useMdxGT()
+  const projectStars = useContext(ProjectStarsContext)
   const repositoryHost = new URL(url).hostname
   const repositoryLabel = repositoryHost === 'github.com' ? 'GitHub' : repositoryHost
+  const repositoryKey = githubRepositoryKey(url)
+  const starCount = repositoryKey === null ? undefined : projectStars[repositoryKey]
   const languageChips = languages.split(' · ').map((language) => ({
     language,
     color: LANGUAGE_COLORS[language] ?? color,
@@ -732,13 +740,27 @@ export function Project({
       <span className="item-desc" data-_gt-hash={translationHash(description)}>
         {gt(description)}
       </span>
-      <span className="chips">
-        {languageChips.map(({ language, color: chipColor }) => (
-          <span key={language} className="chip">
-            <span className="lang-dot" style={{ background: chipColor }} />
-            {language}
+      <span className="project-meta">
+        <span className="chips">
+          {languageChips.map(({ language, color: chipColor }) => (
+            <span key={language} className="chip">
+              <span className="lang-dot" style={{ background: chipColor }} />
+              {language}
+            </span>
+          ))}
+        </span>
+        {starCount !== undefined && starCount > 0 && (
+          <span className="project-stars">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="m12 2.5 2.96 6 6.62.96-4.79 4.67 1.13 6.59L12 17.61l-5.92 3.11 1.13-6.59L2.42 9.46l6.62-.96L12 2.5Z" />
+            </svg>
+            <span aria-hidden="true">{starCount}</span>
+            <span className="project-stars-label">
+              <span data-_gt-hash={translationHash('GitHub stars')}>{gt('GitHub stars')}</span>:{' '}
+              {starCount}
+            </span>
           </span>
-        ))}
+        )}
       </span>
     </a>
   )

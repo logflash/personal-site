@@ -1,11 +1,5 @@
-import { createServerFn } from '@tanstack/react-start'
-import { getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
 import { profile } from '../data/site'
-import {
-  decodeContributionSession,
-  encodeContributionSession,
-  shouldRefreshContributions,
-} from './contributionSession'
+import { encodeContributionSession } from './contributionSession'
 
 export interface ContributionDay {
   date: string
@@ -22,35 +16,27 @@ export interface ContributionsResponse {
 // mirror (the one react-github-calendar uses) serves the same data as JSON.
 const API_URL = `https://github-contributions-api.jogruber.de/v4/${profile.githubUser}?y=last`
 
-const SESSION_COOKIE = 'contribution-calendar-v1'
+export const CONTRIBUTION_SESSION_COOKIE = 'contribution-calendar-v1'
 
 /**
- * Fetched in the route loader so the graph is part of the SSR HTML — no
- * client-side pop-in or layout shift. A compact session cookie avoids repeated
- * upstream requests across document reloads, including on serverless hosts.
+ * Fetch the chart while other GitHub metadata is fetched in parallel. The
+ * caller writes the combined session cookie after both requests finish.
  */
-export const fetchContributions = createServerFn({ method: 'GET' }).handler(
-  async (): Promise<ContributionsResponse | null> => {
-    const request = getRequest()
-    const saved = decodeContributionSession(getCookie(SESSION_COOKIE))
-    if (saved && !shouldRefreshContributions(request)) return saved
+export async function loadContributions(
+  saved: ContributionsResponse | null,
+  refresh: boolean,
+): Promise<{ data: ContributionsResponse | null; cookie: string | null }> {
+  if (saved && !refresh) return { data: saved, cookie: null }
 
-    try {
-      const res = await fetch(API_URL, { cache: 'no-store', signal: AbortSignal.timeout(3000) })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = (await res.json()) as ContributionsResponse
-      const encoded = encodeContributionSession(data)
-      if (!encoded) throw new Error('Invalid contribution calendar response')
-      setCookie(SESSION_COOKIE, encoded, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: new URL(request.url).protocol === 'https:',
-        path: '/',
-      })
-      return data
-    } catch {
-      // A failed forced refresh should not erase a previously rendered graph.
-      return saved
-    }
-  },
-)
+  try {
+    const res = await fetch(API_URL, { cache: 'no-store', signal: AbortSignal.timeout(3000) })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = (await res.json()) as ContributionsResponse
+    const cookie = encodeContributionSession(data)
+    if (!cookie) throw new Error('Invalid contribution calendar response')
+    return { data, cookie }
+  } catch {
+    // A failed forced refresh should not erase a previously rendered graph.
+    return { data: saved, cookie: null }
+  }
+}
