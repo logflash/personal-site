@@ -1663,6 +1663,22 @@ html[data-initial-scroll] .cg-scroller {
     inset: -10px;
   }
 
+  .back-to-top {
+    color: var(--acc);
+    border-color: color-mix(in srgb, var(--acc) 55%, var(--line));
+    background: var(--hov);
+  }
+
+  .back-to-top svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .back-to-top:focus-visible {
+    outline: 2px solid var(--acc);
+    outline-offset: 2px;
+  }
+
   .mobile-header .theme-toggle {
     width: 44px;
     height: 44px;
@@ -1778,6 +1794,10 @@ html[data-initial-scroll] .cg-scroller {
   @media (hover: hover) {
     html:not(.touch) .heading-control:hover {
       border-color: var(--mut);
+    }
+
+    html:not(.touch) .back-to-top:hover {
+      border-color: var(--acc);
     }
   }
 
