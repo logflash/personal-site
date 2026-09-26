@@ -658,9 +658,6 @@ main {
 
 .intro {
   margin: 0;
-  font-size: 16px;
-  line-height: 1.75;
-  color: var(--mut);
 }
 
 .intro + .intro {
@@ -1463,7 +1460,8 @@ html[data-initial-scroll] .cg-scroller {
   margin: 0 0 18px;
 }
 
-.body-text {
+.body-text,
+.intro {
   font-size: 14.5px;
   line-height: 1.75;
   color: var(--mut);
@@ -1925,12 +1923,8 @@ html[data-initial-scroll] .cg-scroller {
     margin-bottom: 14px;
   }
 
+  .body-text,
   .intro {
-    font-size: 14.5px;
-    line-height: 1.7;
-  }
-
-  .body-text {
     font-size: 13.5px;
     line-height: 1.7;
   }
