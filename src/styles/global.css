@@ -1886,6 +1886,10 @@ html[data-initial-scroll] .cg-scroller {
     display: none;
   }
 
+  .resume-entry-details > :has(+ .disclosure-close:last-child) {
+    margin-bottom: 0;
+  }
+
   .resume-copy .resume-skill-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px 16px;

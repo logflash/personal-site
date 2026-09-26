@@ -25,7 +25,7 @@ import { translationHash } from '../../lib/translationHash'
 import { githubRepositoryKey } from '../../lib/projectRepositories'
 import { SectionHeading } from '../SectionHeading'
 import { ProjectStarsContext } from '../ProjectStarsContext'
-import { CollapseLabel, DisclosureLabel } from '../DisclosureLabel'
+import { CollapseLabel, DisclosureCloseButton, DisclosureLabel } from '../DisclosureLabel'
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 
 interface SectionContextValue {
@@ -385,10 +385,13 @@ export function PublicationEntry({
         </span>
       </summary>
       <div className="resume-entry-details">
-        <p data-_gt-hash={translationHash(description)}>{gt(description)}</p>
+        <p className="resume-copy-paragraph" data-_gt-hash={translationHash(description)}>
+          {gt(description)}
+        </p>
         <a href={url} {...externalProps(true)}>
           <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span> ↗
         </a>
+        <DisclosureCloseButton />
       </div>
     </details>
   )
@@ -526,20 +529,7 @@ export function ResumeEntry({
       </summary>
       <div className="resume-entry-details">
         {children}
-        <button
-          type="button"
-          className="disclosure-close"
-          onClick={(event) => {
-            const entry = event.currentTarget.closest('details')
-            if (!entry) return
-            entry.open = false
-            const summary = entry.querySelector('summary')
-            summary?.focus({ preventScroll: true })
-            summary?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
-          }}
-        >
-          <CollapseLabel />
-        </button>
+        <DisclosureCloseButton />
       </div>
     </details>
   )

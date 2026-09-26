@@ -45,3 +45,22 @@ export function CollapseLabel() {
     </>
   )
 }
+
+export function DisclosureCloseButton() {
+  return (
+    <button
+      type="button"
+      className="disclosure-close"
+      onClick={(event) => {
+        const entry = event.currentTarget.closest('details')
+        if (!entry) return
+        entry.open = false
+        const summary = entry.querySelector('summary')
+        summary?.focus({ preventScroll: true })
+        summary?.scrollIntoView({ block: 'nearest', behavior: 'instant' })
+      }}
+    >
+      <CollapseLabel />
+    </button>
+  )
+}
