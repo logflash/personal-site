@@ -1722,10 +1722,6 @@ html[data-initial-scroll] .cg-scroller {
     min-height: 0;
   }
 
-  .section {
-    max-width: none;
-  }
-
   .section + .section {
     margin-top: 32px;
   }
