@@ -38,7 +38,7 @@
   },
   "morphs": [
     {
-      "source": { "role": "sans", "weights": [500], "opticalSizes": [0] },
+      "source": { "role": "sans", "weights": [400, 500], "opticalSizes": [0] },
       "target": { "role": "serif", "weights": [600], "opticalSizes": [20, 23] }
     }
   ],

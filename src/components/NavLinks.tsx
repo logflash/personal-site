@@ -31,6 +31,7 @@ function PageNavLink({ item, surface }: { item: NavItem; surface: FontMorphCause
       params={{ locale }}
       data-page-link={item.id}
       aria-current={active ? 'page' : undefined}
+      activeProps={{ 'aria-current': active ? 'page' : undefined }}
       {...handlers}
       onClick={active ? (event) => event.preventDefault() : handlers.onClick}
     >

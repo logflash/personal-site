@@ -672,6 +672,11 @@ async function assertMorphCauses(browser) {
         assert.equal(events[1].key, key)
         assert.equal(events[0].source.style.fontRole, 'sans')
         assert.equal(events[1].target.style.fontRole, 'sans')
+        const settledWeight = await page
+          .locator(source)
+          .evaluate((element) => getComputedStyle(element).fontWeight)
+        assert.equal(events[0].source.style.fontWeight, cause === 'card' ? '500' : '400')
+        assert.equal(events[1].target.style.fontWeight, settledWeight)
       }
     }
     if (width === 1365) {
