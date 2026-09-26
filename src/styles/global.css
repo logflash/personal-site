@@ -364,7 +364,7 @@ main {
 .side-nav [data-font-morph],
 .pill-nav [data-font-morph] {
   display: inline-block;
-  font-weight: 500;
+  font-weight: inherit;
 }
 
 .side-nav a[aria-current='page'],
