@@ -17,6 +17,7 @@ import {
 } from 'react'
 import { flushSync } from 'react-dom'
 import { externalProps } from '../../lib/links'
+import { useCoupledDisclosureActions } from '../../hooks/useCoupledDisclosureActions'
 import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
 import { useMdxGT } from '../../lib/mdxTranslation'
 import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
@@ -96,17 +97,26 @@ export function MdxSection({
   id,
   tight = false,
   className,
+  coupleDisclosureActions,
   children,
 }: {
   id: string
   tight?: boolean
   className?: string
+  coupleDisclosureActions?: 'auto' | 'wrapped'
   children: ReactNode
 }) {
+  const sectionRef = useRef<HTMLElement>(null)
+  useCoupledDisclosureActions(sectionRef, Boolean(coupleDisclosureActions))
   const value = { id, tight }
   return (
     <SectionContext.Provider value={value}>
-      <section id={id} className={className ? `section ${className}` : 'section'}>
+      <section
+        ref={sectionRef}
+        id={id}
+        className={className ? `section ${className}` : 'section'}
+        data-coupled-disclosure-wrapped={coupleDisclosureActions === 'wrapped' ? '' : undefined}
+      >
         {children}
       </section>
     </SectionContext.Provider>
@@ -425,7 +435,9 @@ export function ResumeEntry({
           <img src={logo} alt="" width="48" height="48" loading="lazy" decoding="async" />
         </span>
         <span className="resume-entry-overview">
-          <span className={`resume-entry-facts${gpa ? ' resume-entry-facts-with-gpa' : ''}`}>
+          <span
+            className={`resume-entry-facts${gpa ? ' resume-entry-facts-with-gpa' : ''}${!languageChips ? ' resume-entry-facts-with-action' : ''}`}
+          >
             <strong className="resume-entry-title" data-_gt-hash={translationHash(title)}>
               {gt(title)}
             </strong>
@@ -440,6 +452,11 @@ export function ResumeEntry({
                 {gt(gpa)}
               </em>
             ) : null}
+            {!languageChips && (
+              <span className="resume-entry-action">
+                <DisclosureLabel />
+              </span>
+            )}
           </span>
           {languageChips ? (
             <span className="chips resume-entry-languages">
@@ -449,9 +466,9 @@ export function ResumeEntry({
                   {language}
                 </span>
               ))}
+              <DisclosureLabel />
             </span>
           ) : null}
-          <DisclosureLabel />
         </span>
       </summary>
       <div className="resume-entry-details">
@@ -683,9 +700,9 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
                 style={{ background: resumeSkillColor(props.label, Boolean(props.language)) }}
               />
             ))}
+            <DisclosureLabel />
           </span>
         </span>
-        <DisclosureLabel />
       </button>
       <div
         ref={contentRef}

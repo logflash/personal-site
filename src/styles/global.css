@@ -816,6 +816,23 @@ main {
   gap: 4px 20px;
 }
 
+.resume-entry-facts-with-action {
+  --disclosure-action-natural-wrap: 0;
+
+  grid-template-areas:
+    'title date'
+    'fact action';
+}
+
+.resume-entry-facts-with-action.resume-entry-facts-with-gpa {
+  --disclosure-action-natural-wrap: 1;
+
+  grid-template-areas:
+    'title date'
+    'fact gpa'
+    '. action';
+}
+
 .resume-entry-title {
   grid-area: title;
   color: var(--fg);
@@ -847,13 +864,37 @@ main {
   color: var(--fg);
 }
 
+.resume-entry-facts-with-action:not(.resume-entry-facts-with-gpa) .resume-entry-fact {
+  grid-column: 1 / -1;
+  padding-right: 22px;
+}
+
+.resume-entry-action {
+  grid-area: action;
+  align-self: end;
+  justify-self: end;
+}
+
 .resume-entry-gpa {
   grid-area: gpa;
   color: var(--fg);
 }
 
-.resume-entry-languages {
+.chips.resume-entry-languages {
   margin-top: 4px;
+  flex-wrap: wrap;
+  column-gap: 10px;
+}
+
+.resume-entry-languages > .disclosure-label,
+.resume-skill-card-dots > .disclosure-label {
+  margin-inline-start: auto;
+}
+
+.section[data-coupled-disclosure-wrapped] .resume-entry-languages > .disclosure-label {
+  flex-basis: 100%;
+  justify-content: flex-end;
+  margin-inline-start: 0;
 }
 
 .resume-entry-details {
@@ -981,10 +1022,11 @@ main {
 }
 
 .disclosure-label {
-  display: flex;
-  align-self: flex-end;
-  margin-top: 2px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
   color: var(--mut);
+  vertical-align: -2px;
 }
 
 .resume-entry[open] .disclosure-label,
@@ -1748,6 +1790,14 @@ html[data-initial-scroll] .cg-scroller {
       '. gpa';
   }
 
+  .resume-entry-facts-with-action.resume-entry-facts-with-gpa {
+    grid-template-areas:
+      'title date'
+      'fact fact'
+      '. gpa'
+      '. action';
+  }
+
   .resume-entry-gpa {
     justify-self: end;
   }
@@ -1766,7 +1816,6 @@ html[data-initial-scroll] .cg-scroller {
   }
 
   .resume-entry-languages {
-    flex-wrap: wrap;
     row-gap: 6px;
   }
 
@@ -1932,9 +1981,48 @@ html[data-initial-scroll] .cg-scroller {
       'gpa';
   }
 
+  .resume-entry-facts-with-action {
+    --disclosure-action-natural-wrap: 1;
+
+    grid-template-areas:
+      'title'
+      'fact'
+      'date'
+      'action';
+  }
+
+  .resume-entry-facts-with-action.resume-entry-facts-with-gpa {
+    grid-template-areas:
+      'title'
+      'fact'
+      'date'
+      'gpa'
+      'action';
+  }
+
+  .resume-entry-facts-with-action:not(.resume-entry-facts-with-gpa) .resume-entry-fact {
+    padding-right: 0;
+  }
+
   .resume-entry-date,
   .resume-entry-gpa {
     justify-self: end;
+  }
+}
+
+@media (min-width: 561px) {
+  .section[data-coupled-disclosure-wrapped]
+    .resume-entry-facts-with-action:not(.resume-entry-facts-with-gpa) {
+    grid-template-areas:
+      'title date'
+      'fact fact'
+      '. action';
+  }
+
+  .section[data-coupled-disclosure-wrapped]
+    .resume-entry-facts-with-action:not(.resume-entry-facts-with-gpa)
+    .resume-entry-fact {
+    padding-right: 0;
   }
 }
 
