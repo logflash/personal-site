@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, type MouseEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type MouseEvent } from 'react'
 import { beginFontMorph, prepareFontMorph } from '../lib/fontMorph'
+import {
+  destinationMorphKey,
+  morphSourceKey,
+  rememberMorphCause,
+  type FontMorphCause,
+} from '../lib/fontMorphCause'
 
 type KeyResolver = () => string | undefined
 
@@ -8,7 +14,7 @@ function activeDestinationKey() {
     .fontMorph
 }
 
-function useResolvedFontMorphNavigation(resolveKey: KeyResolver) {
+function useResolvedFontMorphNavigation(resolveKey: KeyResolver, remember?: () => void) {
   const onClick = useCallback(
     (event: MouseEvent<HTMLAnchorElement>) => {
       if (
@@ -23,9 +29,12 @@ function useResolvedFontMorphNavigation(resolveKey: KeyResolver) {
         return
       }
       const key = resolveKey()
-      if (key) beginFontMorph(key)
+      if (key) {
+        remember?.()
+        beginFontMorph(key)
+      }
     },
-    [resolveKey],
+    [resolveKey, remember],
   )
   const prepare = useCallback(() => {
     const key = resolveKey()
@@ -50,9 +59,36 @@ function useResolvedFontMorphNavigation(resolveKey: KeyResolver) {
   )
 }
 
-export function useFontMorphNavigation(key: string) {
-  const resolveKey = useCallback(() => key, [key])
-  return useResolvedFontMorphNavigation(resolveKey)
+export function useFontMorphNavigation(key: string, cause?: FontMorphCause) {
+  const resolveKey = useCallback(() => (cause ? morphSourceKey(key, cause) : key), [key, cause])
+  const remember = useCallback(() => {
+    if (cause) rememberMorphCause(key, cause)
+  }, [key, cause])
+  return useResolvedFontMorphNavigation(resolveKey, remember)
+}
+
+export function useDestinationMorphKey(key: string) {
+  const [resolved, setResolved] = useState(() => morphSourceKey(key, 'sidebar'))
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    const active = root.dataset.fontMorphActive
+    setResolved(
+      active === key || active === `${key}::sidebar` || active === `${key}::topbar`
+        ? active
+        : destinationMorphKey(key),
+    )
+    const update = () => {
+      if (!root.hasAttribute('data-font-morph-active')) setResolved(destinationMorphKey(key))
+    }
+    const observer = new MutationObserver(update)
+    observer.observe(root, { attributes: true, attributeFilter: ['data-font-morph-active'] })
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [key])
+  return resolved
 }
 
 /** Resolve the transition from content-authored destination markup at the

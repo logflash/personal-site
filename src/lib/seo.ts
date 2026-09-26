@@ -39,23 +39,29 @@ export function personStructuredData(locale: string) {
 }
 
 /** Route head() payload for a locale page: meta, canonical, and hreflang. */
-export function localeHead(locale: string) {
+export function localeHead(locale: string, page?: 'publications' | 'projects') {
   const description = DESCRIPTIONS[locale] ?? DESCRIPTIONS[DEFAULT_LOCALE]
-  const url = `${SITE_URL}/${locale}`
+  const suffix = page ? `/${page}` : ''
+  const titles: Record<string, Record<string, string>> = {
+    publications: { en: 'Publications', es: 'Publicaciones', ja: '発表論文' },
+    projects: { en: 'Projects', es: 'Proyectos', ja: 'プロジェクト' },
+  }
+  const title = page ? `${titles[page][locale] ?? titles[page].en} — ${profile.name}` : profile.name
+  const url = `${SITE_URL}/${locale}${suffix}`
   const image = `${SITE_URL}${profile.avatar}`
 
   return {
     meta: [
-      { title: profile.name },
+      { title },
       { name: 'description', content: description },
       { property: 'og:type', content: 'profile' },
-      { property: 'og:title', content: profile.name },
+      { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: url },
       { property: 'og:image', content: image },
       { property: 'og:locale', content: OG_LOCALES[locale] ?? OG_LOCALES[DEFAULT_LOCALE] },
       { name: 'twitter:card', content: 'summary' },
-      { name: 'twitter:title', content: profile.name },
+      { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },
       { name: 'twitter:image', content: image },
     ],
@@ -64,9 +70,9 @@ export function localeHead(locale: string) {
       ...SUPPORTED_LOCALES.map((l) => ({
         rel: 'alternate',
         hrefLang: l,
-        href: `${SITE_URL}/${l}`,
+        href: `${SITE_URL}/${l}${suffix}`,
       })),
-      { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_URL}/${DEFAULT_LOCALE}` },
+      { rel: 'alternate', hrefLang: 'x-default', href: `${SITE_URL}/${DEFAULT_LOCALE}${suffix}` },
     ],
   }
 }

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
+import { useDestinationMorphKey, useFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 
 export type HeaderTransitionHandlers = ReturnType<typeof useFontMorphNavigation>
 
@@ -31,7 +31,8 @@ export function TransitionPageHeading({
   translationHash?: string
   renderAction: (handlers: HeaderTransitionHandlers) => ReactNode
 }) {
-  const handlers = useFontMorphNavigation(transitionKey)
+  const endpointKey = useDestinationMorphKey(transitionKey)
+  const handlers = useFontMorphNavigation(endpointKey)
   const [actionHovered, setActionHovered] = useState(false)
 
   return (
@@ -50,7 +51,7 @@ export function TransitionPageHeading({
       </span>
       <h1
         className="transition-page-title"
-        data-font-morph={transitionKey}
+        data-font-morph={endpointKey}
         {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}
       >
         {title}

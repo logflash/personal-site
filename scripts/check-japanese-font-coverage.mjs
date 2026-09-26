@@ -9,6 +9,8 @@ const fonts = [
   ['noto-sans-jp-400-subset.woff2', 400],
   ['noto-sans-jp-600-subset.woff2', 600],
   ['noto-serif-jp-600-subset.woff2', 600],
+  ['noto-sans-jp-400-outline.ttf', 400],
+  ['noto-serif-jp-600-outline.ttf', 600],
 ]
 
 for (const [name, expectedWeight] of fonts) {

@@ -361,6 +361,19 @@ main {
   color: var(--mut);
 }
 
+.side-nav [data-font-morph],
+.pill-nav [data-font-morph] {
+  display: inline-block;
+  font-weight: 500;
+}
+
+.side-nav a[aria-current='page'],
+.pill-nav a[aria-current='page'] {
+  color: var(--fg);
+  background: var(--hov);
+  font-weight: 500;
+}
+
 .side-nav .resume-home-nav-link {
   display: flex;
   align-items: center;
@@ -379,13 +392,12 @@ main {
 }
 
 :root[data-active-section='home'] .side-nav a[data-section='home'],
-:root[data-active-section='about'] .side-nav a[data-section='about'],
-:root[data-active-section='research'] .side-nav a[data-section='research'],
 :root[data-active-section='projects'] .side-nav a[data-section='projects'],
 :root[data-active-section='contact'] .side-nav a[data-section='contact'],
 :root[data-active-section='education'] .side-nav a[data-section='education'],
 :root[data-active-section='experience'] .side-nav a[data-section='experience'],
-:root[data-active-section='skills'] .side-nav a[data-section='skills'] {
+:root[data-active-section='skills'] .side-nav a[data-section='skills'],
+:root[data-active-section='publications'] .side-nav a[data-section='publications'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -507,13 +519,12 @@ main {
   white-space: nowrap;
 }
 
-:root[data-active-section='about'] .pill-nav a[data-section='about'],
-:root[data-active-section='research'] .pill-nav a[data-section='research'],
 :root[data-active-section='projects'] .pill-nav a[data-section='projects'],
 :root[data-active-section='contact'] .pill-nav a[data-section='contact'],
 :root[data-active-section='education'] .pill-nav a[data-section='education'],
 :root[data-active-section='experience'] .pill-nav a[data-section='experience'],
-:root[data-active-section='skills'] .pill-nav a[data-section='skills'] {
+:root[data-active-section='skills'] .pill-nav a[data-section='skills'],
+:root[data-active-section='publications'] .pill-nav a[data-section='publications'] {
   background: var(--hov);
   color: var(--fg);
   font-weight: 500;
@@ -652,11 +663,17 @@ main {
   color: var(--mut);
 }
 
+.intro + .intro {
+  margin-top: 18px;
+}
+
 .quick-links {
-  display: flex;
+  display: grid;
+  max-width: 660px;
   gap: 8px;
   align-items: center;
   margin-top: 24px;
+  margin-bottom: 38px;
   font-size: 14px;
   font-weight: 500;
   flex-wrap: wrap;
@@ -665,9 +682,9 @@ main {
 .quick-links a {
   display: flex;
   align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 10px 16px;
+  justify-content: space-between;
+  min-height: 56px;
+  padding: 14px 24px;
   border: 1px solid var(--line);
   border-radius: 8px;
   color: var(--acc);
@@ -678,8 +695,49 @@ main {
   outline-offset: 3px;
 }
 
-.transition-link > [data-font-morph] {
+.quick-links a::after {
+  content: '→';
+  color: var(--mut);
+}
+
+.quick-links a[target='_blank']::after {
+  content: '↗';
+}
+
+.publication-entry-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.collection-page .stack {
+  margin-top: 16px;
+}
+
+.collection-page .project {
+  border: 1px solid var(--line);
+}
+
+.transition-link [data-font-morph] {
   display: inline-block;
+}
+
+.quick-link-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.quick-link-description {
+  color: var(--mut);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
 }
 
 .transition-link {
@@ -1403,6 +1461,9 @@ html[data-initial-scroll] .cg-scroller {
 
 .body-text {
   margin: 0 0 18px;
+}
+
+.body-text {
   font-size: 14.5px;
   line-height: 1.75;
   color: var(--mut);
@@ -1657,6 +1718,10 @@ html[data-initial-scroll] .cg-scroller {
     padding: 40px 22px 32px;
   }
 
+  .resume-page {
+    min-height: 0;
+  }
+
   .section {
     max-width: none;
   }
@@ -1850,23 +1915,26 @@ html[data-initial-scroll] .cg-scroller {
     }
   }
 
-  .intro {
-    font-size: 14.5px;
-    line-height: 1.7;
-  }
-
   .quick-links {
     margin-top: 18px;
     font-size: 13.5px;
   }
 
   .quick-links a {
-    padding-inline: 12px;
+    padding-inline: 20px;
     flex: 1 1 auto;
   }
 
   .body-text {
     margin-bottom: 14px;
+  }
+
+  .intro {
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+
+  .body-text {
     font-size: 13.5px;
     line-height: 1.7;
   }
@@ -2040,9 +2108,6 @@ html[data-initial-scroll] .cg-scroller {
     max-width: 80px;
   }
 
-  .quick-links a {
-    padding-inline: 8px;
-  }
 }
 
 /* ---- Recording overlay ---- */

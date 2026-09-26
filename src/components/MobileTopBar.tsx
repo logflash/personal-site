@@ -1,5 +1,7 @@
-import { Link, getRouteApi, useRouterState } from '@tanstack/react-router'
-import { mobileNavItems, mobileResumeNavItems } from '../data/site'
+import { Link, getRouteApi } from '@tanstack/react-router'
+import { useContext } from 'react'
+import { SitePageContext } from './SitePageContext'
+import { mobileNavItems, pageNavItems } from '../data/site'
 import { useActiveFontMorphNavigation } from '../hooks/useFontMorphNavigation'
 import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
@@ -21,9 +23,13 @@ const rootRoute = getRouteApi('__root__')
 export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: MobileTopBarProps) {
   const { locale } = rootRoute.useLoaderData()
   const activeMorphHandlers = useActiveFontMorphNavigation()
-  const onResumeRoute = useRouterState({
-    select: (state) => state.location.pathname.endsWith('/resume'),
-  })
+  const page = useContext(SitePageContext)
+  const pageItems = pageNavItems(`/${page}`)
+  const items = pageItems
+    ? pageItems.filter((item) => item.id !== 'home')
+    : page === 'home'
+      ? mobileNavItems
+      : mobileNavItems.filter((item) => !item.to)
   return (
     <div className="mobile-top">
       <header className="mobile-header">
@@ -45,9 +51,11 @@ export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: Mobil
         <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
         <ThemeToggle onToggle={onToggleTheme} />
       </header>
-      <nav className="pill-nav" aria-label="Primary">
-        <NavLinks items={onResumeRoute ? mobileResumeNavItems : mobileNavItems} />
-      </nav>
+      {items.length > 0 && (
+        <nav className="pill-nav" aria-label="Primary">
+          <NavLinks items={items} surface="topbar" />
+        </nav>
+      )}
     </div>
   )
 }

@@ -1,7 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ContributionGraph } from '../components/ContributionGraph'
 import { ContentSection } from '../components/ContentSection'
-import { ProjectStarsContext } from '../components/ProjectStarsContext'
 import { SiteShell } from '../components/SiteShell'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
 import { fetchGitHubStats } from '../lib/githubStats'
@@ -20,12 +19,12 @@ export const Route = createFileRoute('/$locale')({
   component: LocalePage,
 })
 
-// The whole site is a single page composed of hash-linked sections. The
+// The homepage is composed of hash-linked sections. The
 // hash route changes only through clicks (sidebar, pills, headings, hash
 // anchors) plus a reset when the viewport returns to the top; nav
 // highlights on all viewports follow the hash.
 function LocalePage() {
-  const { contributions, projectStars } = Route.useLoaderData()
+  const { contributions } = Route.useLoaderData()
   useClearHashAtTop()
   useDeepLinkScroll()
 
@@ -33,11 +32,7 @@ function LocalePage() {
     <SiteShell>
       <ContentSection name="home" />
       <ContributionGraph data={contributions} />
-      <ContentSection name="about" />
-      <ContentSection name="research" />
-      <ProjectStarsContext.Provider value={projectStars}>
-        <ContentSection name="projects" />
-      </ProjectStarsContext.Provider>
+      <ContentSection name="homeLinks" />
       <ContentSection name="contact" />
     </SiteShell>
   )

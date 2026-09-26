@@ -96,6 +96,17 @@ try {
     ])
 
     const bytes = await readFile(outputPath)
+    // Glyphflux must cover the same translated text and use exactly the same
+    // outlines as the browser. Its compiler consumes uncompressed OpenType.
+    if (weight === 400 || family === 'notoserifjp') {
+      await run('fonttools', [
+        'ttLib.woff2',
+        'decompress',
+        outputPath,
+        '--output-file',
+        resolve(fontDirectory, output.replace('-subset.woff2', '-outline.ttf')),
+      ])
+    }
     const hash = createHash('sha256').update(bytes).digest('hex')
     console.log(`${output}\t${bytes.length} bytes\t${hash}`)
   }

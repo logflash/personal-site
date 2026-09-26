@@ -38,7 +38,7 @@ function ResumePage() {
   }, [])
 
   return (
-    <SiteShell mainClassName="resume-page">
+    <SiteShell page="resume" mainClassName="resume-page">
       <ResumeContent components={resumeMdxComponents} />
     </SiteShell>
   )

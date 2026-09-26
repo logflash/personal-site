@@ -308,8 +308,8 @@ async function assertBrowserPolicy(browser) {
       'noindex',
     )
     assert.equal(
-      await notFoundPage.locator('.side-nav a[data-section="about"]').getAttribute('href'),
-      `/${locale}#about`,
+      await notFoundPage.locator('.side-nav a[data-section="contact"]').getAttribute('href'),
+      `/${locale}#contact`,
       `${locale} 404 navigation must return to a real homepage section`,
     )
     assert.deepEqual(
@@ -387,7 +387,8 @@ async function assertStableSidebarGeometry(browser) {
   const context = await browser.newContext({ viewport: { width: 1365, height: 768 } })
   const page = await context.newPage()
   const pageAnchors = [
-    { path: '', sections: ['about', 'research', 'projects', 'contact', 'home'] },
+    { path: '', sections: ['contact', 'home'] },
+    { path: '/publications', sections: [] },
     { path: '/resume', sections: ['education', 'experience', 'skills'] },
   ]
 
@@ -511,6 +512,210 @@ async function assertInlineStylesheetBlocked(browser) {
   await context.close()
 }
 
+async function assertCollectionNavigation(browser) {
+  const labels = {
+    en: ['Publications', 'Projects'],
+    es: ['Publicaciones', 'Proyectos'],
+    ja: ['発表論文', 'プロジェクト'],
+  }
+  for (const width of [412, 1365]) {
+    const context = await browser.newContext({
+      viewport: { width, height: 915 },
+      isMobile: width === 412,
+      hasTouch: width === 412,
+    })
+    const page = await context.newPage()
+    for (const [locale, [publications, projects]] of Object.entries(labels)) {
+      await page.goto(`${baseUrl}/${locale}`, { waitUntil: 'networkidle' })
+      const cards = page.locator('.quick-links > a')
+      assert.equal(await cards.count(), 3)
+      assert.equal(await cards.locator('.quick-link-description').count(), 3)
+      const chart = await page.locator('.cg').boundingBox()
+      const boxes = await cards.evaluateAll((elements) =>
+        elements.map((element) => {
+          const { x, y, width, height } = element.getBoundingClientRect()
+          return { x, y, width, height }
+        }),
+      )
+      assert.ok(boxes[0].y >= chart.y + chart.height, 'cards belong below the chart')
+      for (const [index, box] of boxes.entries()) {
+        assert.ok(Math.abs(box.width - chart.width) < 1, 'cards must match the content width')
+        if (index) assert.ok(box.y >= boxes[index - 1].y + boxes[index - 1].height)
+      }
+      for (const [route, title] of [
+        ['publications', publications],
+        ['projects', projects],
+      ]) {
+        await page.evaluate(() => {
+          globalThis.__pageMorphs = []
+          window.addEventListener('font-morph:record', (event) => {
+            globalThis.__pageMorphs.push(event.detail.key)
+          })
+        })
+        await page.locator(`.quick-links [data-font-morph="${route}-title"]`).click()
+        await page.waitForURL(`${baseUrl}/${locale}/${route}`)
+        await page.waitForFunction((key) => globalThis.__pageMorphs.includes(key), `${route}-title`)
+        await page.waitForFunction(
+          () => !document.documentElement.hasAttribute('data-font-morph-active'),
+        )
+        assert.equal(await page.locator('.transition-page-title').innerText(), title)
+        assert.equal(
+          await page.locator('link[rel="canonical"]').getAttribute('href'),
+          `https://ianhenriques.com/${locale}/${route}`,
+        )
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          false,
+        )
+        if (route === 'publications') {
+          assert.equal(await page.locator('a[href^="https://scholar.google.com/"]').count(), 1)
+          const entry = page.locator('.publication-entry')
+          await entry.locator('summary').click()
+          assert.equal(await entry.evaluate((element) => element.open), true)
+          await entry.locator('summary').click()
+          assert.equal(await entry.evaluate((element) => element.open), false)
+        } else {
+          assert.equal(await page.locator('.project').count(), 6)
+          assert.equal(await page.locator('#course-projects').count(), 0)
+        }
+        const home = width === 412 ? '.identity-text-link' : '.side-nav .resume-home-nav-link'
+        await page.locator(home).click()
+        await page.waitForURL(`${baseUrl}/${locale}`)
+        await page.waitForFunction(
+          () => !document.documentElement.hasAttribute('data-font-morph-active'),
+        )
+        assert.equal(await page.locator('.quick-links').count(), 1)
+      }
+    }
+    await context.close()
+  }
+}
+
+async function assertMorphCauses(browser) {
+  for (const width of [412, 1365]) {
+    const surface = width === 412 ? 'topbar' : 'sidebar'
+    const nav = width === 412 ? '.pill-nav' : '.side-nav'
+    const home = width === 412 ? '.identity-text-link' : '.side-nav .resume-home-nav-link'
+    const context = await browser.newContext({
+      viewport: { width, height: 1200 },
+      isMobile: width === 412,
+      hasTouch: width === 412,
+    })
+    const page = await context.newPage()
+    // No stored cause: a direct load reverses to the responsive navigation.
+    await page.goto(`${baseUrl}/en/publications`, { waitUntil: 'networkidle' })
+    assert.equal(
+      await page.locator('.transition-page-title').getAttribute('data-font-morph'),
+      `publications-title::${surface}`,
+    )
+    await page.locator(home).click()
+    await page.waitForURL(`${baseUrl}/en`)
+    await page.waitForFunction(
+      () => !document.documentElement.hasAttribute('data-font-morph-active'),
+    )
+
+    for (const route of ['resume', 'publications', 'projects']) {
+      for (const cause of ['card', surface]) {
+        await page.evaluate(() => {
+          globalThis.__causeEvents = []
+          if (!globalThis.__causeObserver) {
+            globalThis.__causeObserver = true
+            window.addEventListener('font-morph:record', (event) =>
+              globalThis.__causeEvents.push(event.detail),
+            )
+          }
+        })
+        const key = cause === 'card' ? `${route}-title` : `${route}-title::${surface}`
+        const source =
+          cause === 'card'
+            ? `.quick-links [data-font-morph="${key}"]`
+            : `${nav} [data-page-link="${route}"]`
+        await page.locator(source).click()
+        await page.waitForURL(`${baseUrl}/en/${route}`)
+        await page.waitForFunction(() => globalThis.__causeEvents.length >= 1)
+        await page.waitForFunction(
+          () => !document.documentElement.hasAttribute('data-font-morph-active'),
+        )
+        assert.equal(
+          await page.locator('.transition-page-title').getAttribute('data-font-morph'),
+          key,
+        )
+        assert.equal(
+          await page.locator('[data-page-link]').count(),
+          0,
+          'page links are homepage-only on every inner route',
+        )
+        if (route !== 'resume') {
+          assert.equal(await page.locator(`.pill-nav [data-section="${route}"]`).count(), 1)
+          assert.equal(
+            await page.locator('.pill-nav a').count(),
+            1,
+            'a collection topbar contains only its own page',
+          )
+        }
+        await page.locator(home).click()
+        await page.waitForURL(`${baseUrl}/en`)
+        await page.waitForFunction(() => globalThis.__causeEvents.length >= 2)
+        // Non-participating labels must not disappear while the reverse morph runs.
+        const other = route === 'resume' ? 'projects' : 'resume'
+        assert.equal(
+          await page
+            .locator(`${nav} [data-page-link="${other}"] span`)
+            .evaluate((element) => getComputedStyle(element).opacity),
+          '1',
+        )
+        await page.waitForFunction(
+          () => !document.documentElement.hasAttribute('data-font-morph-active'),
+        )
+        const events = await page.evaluate(() => globalThis.__causeEvents)
+        assert.equal(events[0].key, key)
+        assert.equal(events[1].key, key)
+        assert.equal(events[0].source.style.fontRole, 'sans')
+        assert.equal(events[1].target.style.fontRole, 'sans')
+      }
+    }
+    if (width === 1365) {
+      await page.locator('.side-nav [data-page-link="publications"]').click()
+      await page.waitForURL(`${baseUrl}/en/publications`)
+      await page.waitForFunction(() =>
+        document.documentElement.hasAttribute('data-font-morph-active'),
+      )
+      await page.setViewportSize({ width: 412, height: 1200 })
+      await page.waitForFunction(
+        () => !document.documentElement.hasAttribute('data-font-morph-active'),
+      )
+      assert.equal(
+        await page.locator('.transition-page-title').getAttribute('data-font-morph'),
+        'publications-title::topbar',
+      )
+      await page.locator('.identity-text-link').click()
+      await page.waitForURL(`${baseUrl}/en`)
+      await page.waitForFunction(
+        () => !document.documentElement.hasAttribute('data-font-morph-active'),
+      )
+      await page.setViewportSize({ width, height: 1200 })
+    }
+    // A new document preserves a cause; a cache-bypass session reset clears it.
+    await page.locator('.quick-links [data-font-morph="publications-title"]').click()
+    await page.waitForURL(`${baseUrl}/en/publications`)
+    await page.waitForFunction(
+      () => !document.documentElement.hasAttribute('data-font-morph-active'),
+    )
+    await page.goto(`${baseUrl}/es/publications`, { waitUntil: 'networkidle' })
+    assert.equal(
+      await page.locator('.transition-page-title').getAttribute('data-font-morph'),
+      'publications-title',
+    )
+    await page.setExtraHTTPHeaders({ 'Cache-Control': 'no-cache' })
+    await page.reload({ waitUntil: 'networkidle' })
+    assert.equal(
+      await page.locator('.transition-page-title').getAttribute('data-font-morph'),
+      `publications-title::${surface}`,
+    )
+    await context.close()
+  }
+}
+
 async function assertRecordingReplay(browser) {
   const context = await browser.newContext({
     viewport: { width: 412, height: 915 },
@@ -547,7 +752,19 @@ async function assertRecordingReplay(browser) {
 
   await page.locator('.not-found-home-link').click()
   await page.waitForURL(`${baseUrl}/en`)
-  await page.locator('.pill-nav [data-section="about"]').click()
+  await page.locator('.pill-nav [data-section="contact"]').click()
+  await page.waitForTimeout(250)
+
+  await page.locator('.quick-links [data-font-morph="publications-title"]').click()
+  await page.waitForURL(`${baseUrl}/en/publications`)
+  await page.waitForFunction(() => !document.documentElement.hasAttribute('data-font-morph-active'))
+  await page.locator('.identity-text-link').click()
+  await page.waitForURL(`${baseUrl}/en`)
+  await page.waitForFunction(() => !document.documentElement.hasAttribute('data-font-morph-active'))
+  await page.locator('.pill-nav [data-page-link="publications"]').click()
+  await page.waitForURL(`${baseUrl}/en/publications`)
+  await page.waitForFunction(() => !document.documentElement.hasAttribute('data-font-morph-active'))
+  await page.locator('.publication-entry summary').click()
   await page.waitForTimeout(250)
 
   await stop.click()
@@ -578,6 +795,19 @@ async function assertRecordingReplay(browser) {
   const downloadPath = await download.path()
   assert.ok(downloadPath, 'the replay JSON download must complete')
   const recordedBundle = JSON.parse(await readFile(downloadPath, 'utf8'))
+  for (const key of ['publications-title', 'publications-title::topbar']) {
+    assert.ok(
+      recordedBundle.events.some(
+        (event) =>
+          event.type === 5 && event.data?.tag === 'font-morph' && event.data.payload?.key === key,
+      ),
+      `recording must preserve the ${key} source`,
+    )
+  }
+  assert.ok(
+    recordedBundle.events.some((event) => event.type === 5 && event.data?.tag === 'font-morph'),
+    'Publications navigation must record the compact font-morph event',
+  )
   const snapshotRoot = recordedBundle.events.find((event) => event.type === 2)?.data?.node
   const snapshotNodes = snapshotRoot ? [snapshotRoot] : []
   let missingHeadingNode
@@ -629,8 +859,16 @@ async function assertRecordingReplay(browser) {
   // is not guaranteed to include it when the recording is short.
   await scrubTo(1)
   assert.equal(await replayDocument.locator('.not-found').count(), 0)
-  assert.equal(await replayDocument.locator('#about').count(), 1)
-  assert.equal(await replayDocument.locator('#about h2').textContent(), '概要')
+  assert.equal(await replayDocument.locator('#publications').count(), 1)
+  assert.equal(await replayDocument.locator('.transition-page-title').textContent(), '発表論文')
+  assert.equal(
+    await replayDocument.locator('.publication-entry').evaluate((element) => element.open),
+    true,
+  )
+  assert.equal(
+    await replayDocument.locator('.publication-entry .resume-entry-details a').innerText(),
+    '論文を開く ↗',
+  )
 
   assert.deepEqual(await pageViolations(page), [], 'recording and replay must not violate the CSP')
   assert.deepEqual([...externalRequests], [], 'recording and replay must stay on the app origin')
@@ -656,6 +894,8 @@ try {
   await assertStableSidebarGeometry(browser)
   await assertStableContributionSummaryGeometry(browser)
   await assertInlineStylesheetBlocked(browser)
+  await assertCollectionNavigation(browser)
+  await assertMorphCauses(browser)
   await assertRecordingReplay(browser)
   console.log('Security regression checks passed.')
 } finally {

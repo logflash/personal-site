@@ -241,11 +241,13 @@ export function QuickLink({
   translatedLabel,
   href,
   external,
+  description,
 }: {
   label?: string
   translatedLabel?: string
   href?: string
   external?: boolean
+  description?: string
 }) {
   const gt = useMdxGT()
   const source = translatedLabel ?? label ?? ''
@@ -253,8 +255,15 @@ export function QuickLink({
   const translationProps = translatedLabel ? { 'data-_gt-hash': translationHash(source) } : {}
 
   return (
-    <a href={href} {...externalProps(external)} {...translationProps}>
-      {translatedContent}
+    <a href={href} {...externalProps(external)}>
+      <span className="quick-link-copy">
+        <span {...translationProps}>{translatedContent}</span>
+        {description && (
+          <span className="quick-link-description" data-_gt-hash={translationHash(description)}>
+            {gt(description)}
+          </span>
+        )}
+      </span>
     </a>
   )
 }
@@ -263,19 +272,28 @@ export function TransitionLink({
   transition,
   to,
   translatedLabel,
+  description,
 }: {
   transition: string
   to: string
   translatedLabel: string
+  description?: string
 }) {
   const gt = useMdxGT()
   const { locale } = rootRoute.useLoaderData()
-  const handlers = useFontMorphNavigation(transition)
+  const handlers = useFontMorphNavigation(transition, 'card')
 
   return (
     <Link to={to as '/$locale'} params={{ locale }} {...handlers} className="transition-link">
-      <span data-font-morph={transition} data-_gt-hash={translationHash(translatedLabel)}>
-        {gt(translatedLabel)}
+      <span className="quick-link-copy">
+        <span data-font-morph={transition} data-_gt-hash={translationHash(translatedLabel)}>
+          {gt(translatedLabel)}
+        </span>
+        {description && (
+          <span className="quick-link-description" data-_gt-hash={translationHash(description)}>
+            {gt(description)}
+          </span>
+        )}
       </span>
     </Link>
   )
@@ -339,6 +357,41 @@ function PaperIcon() {
 
 export function Stack({ children }: { children: ReactNode }) {
   return <div className="stack">{elements(children)}</div>
+}
+
+export function PublicationEntry({
+  name,
+  venue,
+  description,
+  url,
+  translatedLabel,
+}: {
+  name: string
+  venue: string
+  description: string
+  url: string
+  translatedLabel: string
+}) {
+  const gt = useMdxGT()
+  return (
+    <details className="resume-entry publication-entry">
+      <summary className="resume-entry-toggle">
+        <span className="resume-entry-overview">
+          <strong className="resume-entry-title">{name}</strong>
+          <span className="publication-entry-meta">
+            {venue}
+            <DisclosureLabel />
+          </span>
+        </span>
+      </summary>
+      <div className="resume-entry-details">
+        <p data-_gt-hash={translationHash(description)}>{gt(description)}</p>
+        <a href={url} {...externalProps(true)}>
+          <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span> ↗
+        </a>
+      </div>
+    </details>
+  )
 }
 
 export function Paper({
@@ -848,4 +901,10 @@ export const resumeMdxComponents = {
   ResumeSkill,
   ResumeSkillCard,
   ResumeCopy,
+}
+
+export const pageMdxComponents = {
+  ...sharedMdxComponents,
+  PageCopy: ResumeCopy,
+  PublicationEntry,
 }

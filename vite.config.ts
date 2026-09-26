@@ -16,7 +16,12 @@ const firstPaintAssets = new Map([
   ],
 ])
 
-let inlineCss = ['src/styles/fonts.css', 'repos/glyphflux/styles.css', 'src/styles/global.css']
+let inlineCss = [
+  'src/styles/fonts.css',
+  'repos/glyphflux/styles.css',
+  'src/styles/global.css',
+  'src/generated/fontMorphSources.css',
+]
   .map((f) => readFileSync(new URL(`./${f}`, import.meta.url), 'utf8'))
   .join('\n')
   .replace(/\/\*[\s\S]*?\*\//g, '')

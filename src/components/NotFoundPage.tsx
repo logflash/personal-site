@@ -18,7 +18,7 @@ export function NotFoundPage() {
   }, [])
 
   return (
-    <SiteShell mainClassName="not-found-page">
+    <SiteShell page="not-found" mainClassName="not-found-page">
       <title>Page not found — Ian Henriques</title>
       <meta name="robots" content="noindex" />
       <div className="not-found-frame">
