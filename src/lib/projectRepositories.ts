@@ -1,10 +1,12 @@
 export const PROJECT_REPOSITORIES = [
+  'logflash/glyphflux',
   'logflash/behavior-cloning-mechinterp',
   'logflash/neu-scene-decoding',
   'logflash/timeskip-diffuser',
   'logflash/pacman-optimal-dev',
   'pacbot-competition/pacbot-2',
   'logflash/embedded-solar-mppt',
+  'logflash/uav-swarm-a-star',
 ] as const
 
 export type ProjectStarCounts = Record<string, number>

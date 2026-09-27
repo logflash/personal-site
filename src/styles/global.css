@@ -719,6 +719,17 @@ main {
   margin-top: 16px;
 }
 
+.collection-page h3 {
+  margin: 32px 0 0;
+  color: var(--fg);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.collection-page h3:first-child {
+  margin-top: 0;
+}
+
 .stack:has(> .project, > .publication-entry) {
   gap: 12px;
 }
@@ -1619,6 +1630,10 @@ html[data-initial-scroll] .cg-scroller {
   font-family: var(--font-mono);
   font-size: 11.5px;
   line-height: 1;
+}
+
+.project-stars svg {
+  color: #e3b341;
 }
 
 .project-stars-label {
