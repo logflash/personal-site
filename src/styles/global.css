@@ -710,8 +710,21 @@ main {
   font-size: 12px;
 }
 
+.publication-entry .resume-entry-details > a {
+  display: block;
+  margin-top: 1em;
+}
+
 .collection-page .stack {
   margin-top: 16px;
+}
+
+.stack:has(> .project, > .publication-entry) {
+  gap: 12px;
+}
+
+.stack > .publication-entry + .publication-entry {
+  margin-top: 0;
 }
 
 .collection-page .project {
