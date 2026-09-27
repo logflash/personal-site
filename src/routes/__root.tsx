@@ -1,6 +1,7 @@
 import { HeadContent, Scripts, createRootRoute, useRouter } from '@tanstack/react-router'
 import { createIsomorphicFn } from '@tanstack/react-start'
 import { getRequest } from '@tanstack/react-start/server'
+import { Analytics } from '@vercel/analytics/react'
 import type { RecorderBundle } from 'gt-rrweb'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
@@ -207,6 +208,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         </TranslationProvider>
         <script nonce={nonce}>{INITIAL_LAYOUT_SCRIPT}</script>
         <Scripts />
+        {import.meta.env.PROD ? <Analytics /> : null}
       </body>
     </html>
   )

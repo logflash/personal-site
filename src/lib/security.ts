@@ -18,9 +18,10 @@ const EMPTY_STYLE_ELEMENT_HASH = "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3
  * React writes TanStack Start's hydration import into an HTMLScriptElement.
  * Trusted Types therefore needs a default policy. Executable text is limited
  * to same-origin imports, while valid JSON supports non-executable JSON-LD.
- * HTML is limited to React's two inert operations; script URLs stay unavailable.
+ * HTML is limited to React's two inert operations; script URLs are limited to
+ * the exact same-origin Vercel Analytics loader.
  */
-export const TRUSTED_TYPES_BOOT_SCRIPT = `(()=>{const tt=globalThis.trustedTypes;if(!tt)return;tt.createPolicy('default',{createHTML(value){if(value===''||value==='<'+'script></'+'script>')return value;throw new TypeError('HTML string sinks are disabled')},createScript(value){try{JSON.parse(value);return value}catch{}try{if(!value.startsWith('import(')||!value.endsWith(')'))throw 0;const specifier=JSON.parse(value.slice(7,-1));if(typeof specifier!=='string'||!specifier.startsWith('/'))throw 0;const url=new URL(specifier,location.href);if(url.origin!==location.origin)throw 0;return value}catch{throw new TypeError('Only JSON and same-origin hydration imports are allowed')}},createScriptURL(){throw new TypeError('Script URL string sinks are disabled')}})})()`
+export const TRUSTED_TYPES_BOOT_SCRIPT = `(()=>{const tt=globalThis.trustedTypes;if(!tt)return;tt.createPolicy('default',{createHTML(value){if(value===''||value==='<'+'script></'+'script>')return value;throw new TypeError('HTML string sinks are disabled')},createScript(value){try{JSON.parse(value);return value}catch{}try{if(!value.startsWith('import(')||!value.endsWith(')'))throw 0;const specifier=JSON.parse(value.slice(7,-1));if(typeof specifier!=='string'||!specifier.startsWith('/'))throw 0;const url=new URL(specifier,location.href);if(url.origin!==location.origin)throw 0;return value}catch{throw new TypeError('Only JSON and same-origin hydration imports are allowed')}},createScriptURL(value){if(value==='/_vercel/insights/script.js')return value;throw new TypeError('Script URL string sinks are disabled')}})})()`
 
 export function createCspNonce() {
   return crypto.randomUUID().replaceAll('-', '')

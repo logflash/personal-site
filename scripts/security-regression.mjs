@@ -22,6 +22,18 @@ function stopProcess(child) {
   if (child.exitCode === null && child.signalCode === null) child.kill()
 }
 
+async function analyticsContext(browser, options) {
+  const context = await browser.newContext(options)
+  // Vercel serves this asset at the edge; the local production server does not.
+  await context.route('**/_vercel/insights/script.js', (route) =>
+    route.fulfill({
+      contentType: 'application/javascript',
+      body: 'window.__analyticsLoaded = (window.__analyticsLoaded || 0) + 1;',
+    }),
+  )
+  return context
+}
+
 async function waitForServer(child, output) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     if (child.exitCode !== null) {
@@ -195,7 +207,7 @@ async function assertAvatarReady(page, locale, route) {
 }
 
 async function assertBrowserPolicy(browser) {
-  const context = await browser.newContext()
+  const context = await analyticsContext(browser)
   const page = await context.newPage()
   const problems = []
   const externalRequests = new Set()
@@ -308,9 +320,14 @@ async function assertBrowserPolicy(browser) {
       'noindex',
     )
     assert.equal(
-      await notFoundPage.locator('.side-nav a[data-section="contact"]').getAttribute('href'),
-      `/${locale}#contact`,
-      `${locale} 404 navigation must return to a real homepage section`,
+      await notFoundPage.locator('.side-nav a[data-section="home"]').getAttribute('href'),
+      `/${locale}`,
+      `${locale} 404 navigation must return home`,
+    )
+    assert.equal(await notFoundPage.locator('.side-nav [data-section="contact"]').count(), 0)
+    assert.equal(
+      await notFoundPage.locator('.side-nav [aria-current="page"]').getAttribute('data-section'),
+      'not-found',
     )
     assert.deepEqual(
       await pageViolations(notFoundPage),
@@ -364,6 +381,12 @@ async function assertBrowserPolicy(browser) {
     return result
   })
   assert.deepEqual(trustedTypesProbe, { html: true, script: true, scriptUrl: true })
+  assert.equal(await page.evaluate(() => window.__analyticsLoaded), 1)
+  assert.equal(
+    await page.locator('script[src="/_vercel/insights/script.js"]').count(),
+    1,
+    'analytics loads once under the production CSP',
+  )
   await context.close()
 }
 
@@ -384,7 +407,7 @@ async function sidebarGeometry(page) {
 }
 
 async function assertStableSidebarGeometry(browser) {
-  const context = await browser.newContext({ viewport: { width: 1365, height: 768 } })
+  const context = await analyticsContext(browser, { viewport: { width: 1365, height: 768 } })
   const page = await context.newPage()
   const pageAnchors = [
     { path: '', sections: ['contact', 'home'] },
@@ -446,7 +469,7 @@ async function assertStableSidebarGeometry(browser) {
 }
 
 async function assertStableContributionSummaryGeometry(browser) {
-  const context = await browser.newContext({
+  const context = await analyticsContext(browser, {
     viewport: { width: 412, height: 915 },
     hasTouch: true,
     isMobile: true,
@@ -487,7 +510,7 @@ async function assertStableContributionSummaryGeometry(browser) {
 }
 
 async function assertInlineStylesheetBlocked(browser) {
-  const context = await browser.newContext()
+  const context = await analyticsContext(browser)
   const page = await context.newPage()
   await installViolationObserver(page)
   await page.goto(`${baseUrl}/en`, { waitUntil: 'networkidle' })
@@ -519,7 +542,7 @@ async function assertCollectionNavigation(browser) {
     ja: ['発表論文', 'プロジェクト'],
   }
   for (const width of [412, 1365]) {
-    const context = await browser.newContext({
+    const context = await analyticsContext(browser, {
       viewport: { width, height: 915 },
       isMobile: width === 412,
       hasTouch: width === 412,
@@ -596,7 +619,7 @@ async function assertMorphCauses(browser) {
     const surface = width === 412 ? 'topbar' : 'sidebar'
     const nav = width === 412 ? '.pill-nav' : '.side-nav'
     const home = width === 412 ? '.identity-text-link' : '.side-nav .resume-home-nav-link'
-    const context = await browser.newContext({
+    const context = await analyticsContext(browser, {
       viewport: { width, height: 1200 },
       isMobile: width === 412,
       hasTouch: width === 412,
@@ -722,7 +745,7 @@ async function assertMorphCauses(browser) {
 }
 
 async function assertRecordingReplay(browser) {
-  const context = await browser.newContext({
+  const context = await analyticsContext(browser, {
     viewport: { width: 412, height: 915 },
     hasTouch: true,
     isMobile: true,
