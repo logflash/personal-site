@@ -23,6 +23,7 @@ const ROUTES = [
   ['/dist/', join(PKG_DIR, 'dist')],
   ['/rrweb-replay/', join(PKG_DIR, 'node_modules/@rrweb/replay/dist')],
   ['/rrweb-record/', join(PKG_DIR, 'node_modules/@rrweb/record/dist')],
+  ['/rrweb-types/', join(PKG_DIR, 'node_modules/@rrweb/types/dist')],
   ['/', E2E_DIR],
 ];
 

@@ -42,7 +42,8 @@
         "imports": {
           "react": "/harness/react-stub.mjs",
           "react/jsx-runtime": "/harness/jsx-runtime-stub.mjs",
-          "@rrweb/replay": "/rrweb-replay/replay.js"
+          "@rrweb/replay": "/rrweb-replay/replay.js",
+          "@rrweb/types": "/rrweb-types/types.js"
         }
       }
     </script>
@@ -88,6 +89,7 @@
       const frames = [];
       let advanced = false;
       const handle = createGTReplayer(document.getElementById('app'), bundle, {
+        frameTitle: params.get('title') || undefined,
         initialLocale: params.get('locale') || undefined,
         switchLocalesAllowed: params.get('locales') !== 'off',
         debug: params.get('debug') === '1',

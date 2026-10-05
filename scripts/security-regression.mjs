@@ -3,9 +3,128 @@ import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright-core'
+import AxeBuilder from '@axe-core/playwright'
 
 const port = Number(process.env.SECURITY_TEST_PORT ?? 4327)
 const baseUrl = `http://localhost:${port}`
+const accessibilityScans = process.argv.includes('--accessibility')
+const replayOnly = process.argv.includes('--replay-only')
+
+async function assertAccessible(page, label, { sandboxedReplay = false } = {}) {
+  // Scan a settled UI, not colors sampled halfway through a theme transition.
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  )
+  await page.waitForFunction(
+    () =>
+      !document.documentElement.hasAttribute('data-font-morph-active') &&
+      document
+        .getAnimations()
+        .every(
+          (animation) =>
+            animation.playState !== 'running' ||
+            animation.effect?.getTiming().iterations === Infinity,
+        ),
+  )
+  const builder = new AxeBuilder({ page }).withTags([
+    'wcag2a',
+    'wcag2aa',
+    'wcag21a',
+    'wcag21aa',
+    'wcag22aa',
+  ])
+  if (sandboxedReplay) {
+    // The captured document deliberately disables scripts. Scan the dialog,
+    // controls and iframe element, but don't execute axe inside the recording.
+    // Live versions of the captured routes are scanned separately above.
+    builder.setLegacyMode(true).options({ iframes: false })
+  }
+  let timeout
+  const results = await Promise.race([
+    builder.analyze(),
+    new Promise((_, reject) => {
+      timeout = setTimeout(
+        () => reject(new Error(`${label}: accessibility scan timed out`)),
+        30_000,
+      )
+    }),
+  ]).finally(() => clearTimeout(timeout))
+  assert.deepEqual(
+    results.violations.map(({ id, impact, nodes }) => ({
+      id,
+      impact,
+      nodes: nodes.map(({ target, failureSummary }) => ({ target, failureSummary })),
+    })),
+    [],
+    `${label}: accessibility violations`,
+  )
+}
+
+async function assertAccessibleRoutes(browser) {
+  for (const mobile of [false, true]) {
+    const context = await analyticsContext(browser, {
+      viewport: mobile ? { width: 412, height: 915 } : { width: 1440, height: 1000 },
+      isMobile: mobile,
+      hasTouch: mobile,
+    })
+    const page = await context.newPage()
+    for (const locale of ['en', 'es', 'ja']) {
+      for (const route of ['', '/resume', '/publications', '/projects', '/missing-page']) {
+        await page.goto(`${baseUrl}/${locale}${route}`, { waitUntil: 'networkidle' })
+        await page.evaluate(() => document.fonts.ready)
+        for (const theme of ['light', 'dark']) {
+          if ((await page.locator('html').getAttribute('data-theme')) !== theme) {
+            await page.locator('.theme-toggle:visible').click()
+            await page.waitForFunction(
+              (value) => document.documentElement.dataset.theme === value,
+              theme,
+            )
+          }
+          await assertAccessible(
+            page,
+            `${mobile ? 'mobile' : 'desktop'} ${locale}${route} ${theme}`,
+          )
+        }
+        const toggles = page.locator(
+          'details:not([open]) > summary, .resume-skill-card-toggle[aria-expanded="false"]',
+        )
+        while (await toggles.count()) await toggles.first().click()
+        if (
+          await page
+            .locator('details[open], .resume-skill-card-toggle[aria-expanded="true"]')
+            .count()
+        ) {
+          await page.waitForFunction(() =>
+            document
+              .getAnimations()
+              .every(
+                (animation) =>
+                  animation.playState !== 'running' ||
+                  animation.effect?.getTiming().iterations === Infinity,
+              ),
+          )
+          for (const theme of ['dark', 'light']) {
+            if ((await page.locator('html').getAttribute('data-theme')) !== theme) {
+              await page.locator('.theme-toggle:visible').click()
+              await page.waitForFunction(
+                (value) => document.documentElement.dataset.theme === value,
+                theme,
+              )
+            }
+            await assertAccessible(
+              page,
+              `${mobile ? 'mobile' : 'desktop'} ${locale}${route} ${theme} expanded`,
+            )
+          }
+        }
+        console.log(
+          `Accessibility scan passed: ${mobile ? 'mobile' : 'desktop'} /${locale}${route}.`,
+        )
+      }
+    }
+    await context.close()
+  }
+}
 const expectedHeaders = {
   'cache-control': /(?:^|,\s*)private(?:\s*,|$).*no-store|(?:^|,\s*)no-store(?:\s*,|$).*private/i,
   'cross-origin-embedder-policy': /^require-corp$/i,
@@ -24,6 +143,7 @@ function stopProcess(child) {
 
 async function analyticsContext(browser, options) {
   const context = await browser.newContext(options)
+  context.setDefaultTimeout(30_000)
   // Vercel serves this asset at the edge; the local production server does not.
   await context.route('**/_vercel/insights/script.js', (route) =>
     route.fulfill({
@@ -598,7 +718,7 @@ async function assertCollectionNavigation(browser) {
           await entry.locator('summary').click()
           assert.equal(await entry.evaluate((element) => element.open), false)
         } else {
-          assert.equal(await page.locator('.project').count(), 6)
+          assert.equal(await page.locator('.project').count(), 8)
           assert.equal(await page.locator('#course-projects').count(), 0)
         }
         const home = width === 412 ? '.identity-text-link' : '.side-nav .resume-home-nav-link'
@@ -623,6 +743,10 @@ async function assertMorphCauses(browser) {
       viewport: { width, height: 1200 },
       isMobile: width === 412,
       hasTouch: width === 412,
+      // Playwright request routing disables the cache and otherwise injects
+      // no-cache headers, turning ordinary navigation into a session reset.
+      // Set the normal case explicitly; the hard-reload case overrides it below.
+      extraHTTPHeaders: { 'Cache-Control': 'max-age=0', Pragma: '' },
     })
     const page = await context.newPage()
     // No stored cause: a direct load reverses to the responsive navigation.
@@ -823,6 +947,22 @@ async function assertRecordingReplay(browser) {
   const downloadPath = await download.path()
   assert.ok(downloadPath, 'the replay JSON download must complete')
   const recordedBundle = JSON.parse(await readFile(downloadPath, 'utf8'))
+  const backdropEvents = await page.locator('dialog[open]').evaluate((dialog, recording) => {
+    const dataTransfer = new DataTransfer()
+    dataTransfer.items.add(
+      new File([JSON.stringify(recording)], 'recording.json', { type: 'application/json' }),
+    )
+    return ['dragover', 'drop'].map((type) => {
+      const event = new DragEvent(type, { dataTransfer, bubbles: true, cancelable: true })
+      dialog.dispatchEvent(event)
+      return event.defaultPrevented
+    })
+  }, recordedBundle)
+  assert.deepEqual(
+    backdropEvents,
+    [true, true],
+    'backdrop file drops must never navigate the browser',
+  )
   for (const key of ['publications-title', 'publications-title::topbar']) {
     assert.ok(
       recordedBundle.events.some(
@@ -866,6 +1006,28 @@ async function assertRecordingReplay(browser) {
     await page.waitForTimeout(350)
   }
 
+  // Confirm that the compact events actually reconstruct painted Glyphflux
+  // frames inside the modal, not merely that their JSON payloads were saved.
+  for (const locale of ['en', 'es', 'ja']) {
+    await page.locator(`#flags button[data-loc="${locale}"]`).click()
+    await scrubTo(0)
+    await page.locator('#playBtn').click()
+    await page.waitForFunction(
+      () => {
+        const canvas = document.querySelector('#director canvas[data-font-morph-renderer="sdf"]')
+        if (!canvas?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return false
+        const context = canvas.getContext('2d')
+        if (!context || !canvas.width || !canvas.height) return false
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+        return pixels.some((value, index) => index % 4 === 3 && value > 0)
+      },
+      null,
+      { timeout: 30_000 },
+    )
+    await page.locator('#playBtn').click()
+    console.log(`Replay reconstructed a visible Glyphflux frame: ${locale}.`)
+  }
+  await page.locator('#flags button[data-loc="en"]').click()
   const replayDocument = page.frameLocator('#player iframe')
   await scrubTo(0)
   assert.equal(await replayDocument.locator('.not-found').count(), 1)
@@ -901,7 +1063,111 @@ async function assertRecordingReplay(browser) {
   assert.deepEqual(await pageViolations(page), [], 'recording and replay must not violate the CSP')
   assert.deepEqual([...externalRequests], [], 'recording and replay must stay on the app origin')
   assert.deepEqual(problems, [], 'recording and replay must not report runtime errors')
+  if (accessibilityScans)
+    await assertAccessible(page, 'recording replay dialog', { sandboxedReplay: true })
+  await page.locator('.replay-close').focus()
+  for (let index = 0; index < 20; index += 1) {
+    await page.keyboard.press('Tab')
+    assert.equal(
+      await page.evaluate(() => Boolean(document.activeElement?.closest('dialog[open]'))),
+      true,
+      'replay must confine keyboard focus, including the replay iframe',
+    )
+  }
+  await page.locator('.replay-close').focus()
+  await page.keyboard.press('Escape')
+  await page.locator('dialog').waitFor({ state: 'detached' })
+  const tools = page.locator('.mobile-header .identity-tools')
+  const open = tools.getByRole('button', { name: 'Open recording', exact: true })
+  await open.focus()
+  await tools.locator('input[type="file"]').setInputFiles({
+    name: 'recording.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(recordedBundle)),
+  })
+  await page.locator('dialog[open] #stage').waitFor({ timeout: 45_000 })
+  await page.locator('.replay-close').click()
+  assert.equal(
+    await open.evaluate((el) => el === document.activeElement),
+    true,
+    'closing replay restores its opener',
+  )
   await context.close()
+}
+
+async function assertKeyboardNavigation(browser) {
+  for (const locale of ['en', 'es', 'ja']) {
+    for (const mobile of [false, true]) {
+      const context = await analyticsContext(browser, {
+        viewport: mobile ? { width: 412, height: 915 } : { width: 1440, height: 1000 },
+        isMobile: mobile,
+        hasTouch: mobile,
+      })
+      const page = await context.newPage()
+      await page.goto(`${baseUrl}/${locale}`)
+      await page.locator('.cg-cell[tabindex="0"]').waitFor()
+      await page.keyboard.press('Tab')
+      assert.equal(
+        await page.locator('.skip-link').evaluate((el) => el === document.activeElement),
+        true,
+      )
+      await page.keyboard.press('Enter')
+      assert.equal(await page.locator('main').evaluate((el) => el === document.activeElement), true)
+      assert.equal(await page.locator('.cg-cell[tabindex="0"]').count(), 1)
+      await page.locator('.cg-cell[tabindex="0"]').focus()
+      await page.keyboard.press('Home')
+      const first = page.locator('[data-contribution-date]').first()
+      assert.equal(await first.evaluate((el) => el === document.activeElement), true)
+      assert.ok(await first.getAttribute('aria-label'))
+      await page.keyboard.press('Enter')
+      assert.equal(await first.getAttribute('aria-pressed'), 'true')
+      await page.keyboard.press('End')
+      assert.equal(
+        await page
+          .locator('[data-contribution-date]')
+          .last()
+          .evaluate((el) => el === document.activeElement),
+        true,
+      )
+      const nav = page.locator(`${mobile ? '.pill-nav' : '.side-nav'} [data-page-link="resume"]`)
+      await nav.focus()
+      await page.keyboard.press('Enter')
+      await page.waitForURL(`${baseUrl}/${locale}/resume`)
+      await page.waitForFunction(() => document.activeElement?.matches('main h1, main h2'))
+      await page.goBack()
+      await page.waitForURL(new RegExp(`/${locale}(?:#.*)?$`))
+      await page.waitForFunction(
+        (selector) => document.activeElement?.matches(selector),
+        `${mobile ? '.pill-nav' : '.side-nav'} [data-page-link="resume"]`,
+      )
+      if (mobile) {
+        const cell = page.locator('[data-contribution-date]').last()
+        const pointer = { pointerId: 9, pointerType: 'touch', bubbles: true }
+        await cell.dispatchEvent('pointerdown', pointer)
+        await cell.dispatchEvent('pointermove', { ...pointer, clientX: 100 })
+        await cell.dispatchEvent('pointercancel', pointer)
+        assert.equal(await cell.getAttribute('aria-pressed'), 'false', 'a swipe is not a tap')
+        await cell.tap()
+        assert.equal(
+          await cell.getAttribute('aria-pressed'),
+          'true',
+          'touch taps still select cells',
+        )
+      } else if (locale === 'en') {
+        const start = page.locator('.sidebar .identity-tools button').first()
+        await start.focus()
+        await page.keyboard.press('Enter')
+        const stop = page.getByRole('button', { name: 'Stop recording', exact: true })
+        await stop.waitFor({ state: 'visible' })
+        await stop.focus()
+        await page.keyboard.press('Enter')
+        await page.locator('dialog[open] #stage').waitFor({ timeout: 45_000 })
+        await page.keyboard.press('Escape')
+        await page.locator('dialog').waitFor({ state: 'detached' })
+      }
+      await context.close()
+    }
+  }
 }
 
 const serverOutput = []
@@ -918,13 +1184,25 @@ try {
   await waitForServer(server, serverOutput)
   await assertHttpPolicy()
   browser = await chromium.launch({ channel: 'chrome', headless: true })
-  await assertBrowserPolicy(browser)
-  await assertStableSidebarGeometry(browser)
-  await assertStableContributionSummaryGeometry(browser)
-  await assertInlineStylesheetBlocked(browser)
-  await assertCollectionNavigation(browser)
-  await assertMorphCauses(browser)
+  if (accessibilityScans && !replayOnly) await assertAccessibleRoutes(browser)
+  if (!replayOnly) {
+    await assertKeyboardNavigation(browser)
+    console.log('Keyboard navigation passed (desktop/mobile, en/es/ja).')
+  }
   await assertRecordingReplay(browser)
+  console.log('Recording and replay passed.')
+  if (!accessibilityScans && !replayOnly) {
+    await assertBrowserPolicy(browser)
+    console.log('Browser policy passed.')
+    await assertStableSidebarGeometry(browser)
+    await assertStableContributionSummaryGeometry(browser)
+    await assertInlineStylesheetBlocked(browser)
+    console.log('Layout and stylesheet policy passed.')
+    await assertCollectionNavigation(browser)
+    console.log('Collection navigation passed.')
+    await assertMorphCauses(browser)
+    console.log('Morph causes passed.')
+  }
   console.log('Security regression checks passed.')
 } finally {
   await browser?.close()

@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { T, Var, msg } from 'gt-react'
 import { profile } from '../data/site'
 import {
@@ -89,7 +89,7 @@ interface ContributionGraphProps {
 
 /**
  * GitHub contribution calendar, restyled with the site's accent scale.
- * Purely decorative: renders nothing without data. Memoized — the page
+ * Keyboard- and pointer-explorable; renders nothing without data. Memoized — the page
  * re-renders on every scroll-spy change, and this subtree is by far its
  * largest (~400 nodes).
  */
@@ -98,6 +98,9 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   const formatDailySummary = useIcuFormatter(DAILY_CONTRIBUTION_SUMMARY)
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
   const [tappedDate, setTappedDate] = useState<string | null>(null)
+  const [focusedDate, setFocusedDate] = useState<string | null>(null)
+  const [tabDate, setTabDate] = useState<string | null>(null)
+  const keyboardHelpId = useId()
   const [showDefaultSummary, setShowDefaultSummary] = useState(true)
   const defaultRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastGraphPointerType = useRef<string | null>(null)
@@ -128,7 +131,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     gt('Dec'),
   ]
   const weeks = useMemo(() => (data ? toWeeks(data.contributions) : []), [data])
-  const activeDate = hoveredDate ?? tappedDate
+  const activeDate = focusedDate ?? hoveredDate ?? tappedDate
   const activeDay = useMemo(
     () => data?.contributions.find((day) => day.date === activeDate),
     [activeDate, data],
@@ -181,6 +184,15 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
 
   return (
     <section className="section cg" aria-label={gt('GitHub contribution calendar')}>
+      <p
+        id={keyboardHelpId}
+        className="sr-only"
+        data-_gt-hash={translationHash(
+          'Use arrow keys to explore days; Home and End jump to the first and last day.',
+        )}
+      >
+        {gt('Use arrow keys to explore days; Home and End jump to the first and last day.')}
+      </p>
       <div className="cg-scroll-viewport">
         <div className="cg-scroller" ref={scrollerRef} onScroll={dismissScrollCue}>
           <div className="cg-inner">
@@ -193,6 +205,28 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
             </div>
             <div
               className="cg-grid"
+              onKeyDown={(event) => {
+                const date = contributionDateFor(event.target)
+                const index = data.contributions.findIndex((day) => day.date === date)
+                if (index < 0) return
+                const offsets: Record<string, number> = {
+                  ArrowLeft: -DAYS_PER_WEEK,
+                  ArrowRight: DAYS_PER_WEEK,
+                  ArrowUp: -1,
+                  ArrowDown: 1,
+                }
+                let next = index
+                if (event.key === 'Home') next = 0
+                else if (event.key === 'End') next = data.contributions.length - 1
+                else if (event.key in offsets) next += offsets[event.key]
+                else return
+                event.preventDefault()
+                next = Math.max(0, Math.min(data.contributions.length - 1, next))
+                const nextDate = data.contributions[next].date
+                event.currentTarget
+                  .querySelector<HTMLElement>(`[data-contribution-date="${nextDate}"]`)
+                  ?.focus({ preventScroll: true })
+              }}
               onPointerMove={(event) => {
                 if (event.pointerType !== 'mouse') return
                 cancelDefaultRestore()
@@ -211,7 +245,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
                 const pointerType =
                   (event.nativeEvent as PointerEvent).pointerType || lastGraphPointerType.current
                 lastGraphPointerType.current = null
-                if (!pointerType || pointerType === 'mouse') return
+                if (pointerType === 'mouse' || (!pointerType && event.detail !== 0)) return
                 const date = contributionDateFor(event.target)
                 if (date) setTappedDate((current) => (current === date ? null : date))
               }}
@@ -225,6 +259,32 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
                     day ? (
                       <span
                         key={day.date}
+                        role="button"
+                        tabIndex={
+                          day.date === (tabDate ?? data.contributions.at(-1)?.date) ? 0 : -1
+                        }
+                        aria-label={formatDailySummary({
+                          count: day.count,
+                          date: contributionDateValue(day.date),
+                        })}
+                        aria-describedby={keyboardHelpId}
+                        aria-pressed={tappedDate === day.date}
+                        onFocus={(event) => {
+                          setTabDate(day.date)
+                          if (!event.currentTarget.matches(':focus-visible')) return
+                          setFocusedDate(day.date)
+                          event.currentTarget.scrollIntoView({
+                            block: 'nearest',
+                            inline: 'nearest',
+                            behavior: 'instant',
+                          })
+                        }}
+                        onBlur={() => setFocusedDate(null)}
+                        onKeyDown={(event) => {
+                          if (event.key !== 'Enter' && event.key !== ' ') return
+                          event.preventDefault()
+                          setTappedDate((date) => (date === day.date ? null : day.date))
+                        }}
                         className={`cg-cell cg-l${Math.min(day.level, 4)}${tappedDate === day.date ? ' cg-touch-active' : ''}`}
                         data-contribution-date={day.date}
                         title={`${day.count} ${day.count === 1 ? gt('contribution') : gt('contributions')} · ${day.date}`}

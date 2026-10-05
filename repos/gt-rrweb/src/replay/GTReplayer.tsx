@@ -20,6 +20,7 @@ export type GTReplayerProps = GTReplayerOptions & {
  */
 export function GTReplayer({
   bundle,
+  frameTitle,
   initialLocale,
   switchLocalesAllowed,
   onFrame,
@@ -33,13 +34,14 @@ export function GTReplayer({
     const container = ref.current;
     if (!container) return;
     const handle = createGTReplayer(container, bundle, {
+      frameTitle,
       initialLocale,
       switchLocalesAllowed,
       onFrame,
       debug,
     });
     return () => handle.destroy();
-  }, [bundle, initialLocale, switchLocalesAllowed, onFrame, debug]);
+  }, [bundle, frameTitle, initialLocale, switchLocalesAllowed, onFrame, debug]);
 
   return (
     <div

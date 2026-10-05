@@ -13,6 +13,20 @@ npm run build      # production build (dist/) + typecheck
 npm run start      # serve the production build locally
 ```
 
+## Test
+
+```sh
+pnpm build
+pnpm test:accessibility
+pnpm test:security
+```
+
+Accessibility checks cover English, Spanish, and Japanese on desktop and mobile,
+light/dark themes, expanded cards, keyboard navigation, and the replay dialog.
+The recorded iframe remains script-disabled; its controls and accessible name
+are checked without executing the scanner inside the recording. Automated checks
+complement, rather than replace, manual screen-reader testing.
+
 ## Internationalization
 
 English (default), Spanish, and Japanese, routed by path prefix (`/en`, `/es`,

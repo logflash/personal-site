@@ -7,16 +7,15 @@ import {
   reserveFontMorphSettledTextHolds,
 } from 'gt-rrweb/glyphflux'
 import { hashMessage } from 'gt-i18n/internal'
-import type { DragEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
 import { prepareFontMorph } from '../lib/fontMorph'
-import { parseRecording } from '../lib/recordingDrop'
 import {
   createSkillCardReplayDirector,
   upgradeLegacySkillCardAnimations,
 } from '../lib/skillCardAnimation'
 import loadTranslations from '../loadTranslations'
+import { useTranslate } from '../lib/i18n'
 
 type MorphTranslationTable = Awaited<ReturnType<typeof loadTranslations>>
 type MorphTranslations = Record<string, MorphTranslationTable>
@@ -51,12 +50,11 @@ function resolveMorphText(
 export function ReplayOverlay({
   bundle,
   initialLocale,
-  onClose,
 }: {
   bundle: GTReplayerBundle
   initialLocale?: string
-  onClose: () => void
 }) {
+  const gt = useTranslate()
   const [directorReady, setDirectorReady] = useState(false)
   const [morphTranslations, setMorphTranslations] = useState<MorphTranslations>({})
   const [replayBundle, setReplayBundle] = useState<{
@@ -163,44 +161,17 @@ export function ReplayOverlay({
       html.style.overflow = previous
     }
   }, [])
-  // gt-rrweb's own debug listener (on the player box) performs the hot-swap;
-  // this capture-phase check adds the site's contract on top: an invalid file
-  // dropped on the box or the backdrop reloads the page. Capture runs before
-  // the player's swap, but both only act after reading the file, and only one
-  // of them acts per drop (swap for recordings, reload for everything else).
-  const validateDrop = (event: DragEvent<HTMLDivElement>) => {
-    const file = event.dataTransfer?.files?.[0]
-    if (!file) return
-    event.preventDefault() // a backdrop drop must not navigate to the file
-    void file.text().then(
-      (text) => {
-        if (!parseRecording(text)) window.location.reload()
-      },
-      () => window.location.reload(),
-    )
-  }
-
   return (
-    <div
-      className="replay-overlay"
-      onDragOver={(event) => event.preventDefault()}
-      onDropCapture={validateDrop}
-      // Only genuine backdrop clicks collapse — clicks inside the player box
-      // bubble here with a different target.
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div className="replay-overlay-box" aria-busy={!directorReady}>
-        {directorReady && replayBundle?.source === bundle ? (
-          <GTReplayer
-            bundle={replayBundle.prepared}
-            initialLocale={initialLocale}
-            onFrame={renderReplayFrame}
-            debug
-          />
-        ) : null}
-      </div>
+    <div className="replay-overlay-box" aria-busy={!directorReady}>
+      {directorReady && replayBundle?.source === bundle ? (
+        <GTReplayer
+          frameTitle={gt('Recording replay')}
+          bundle={replayBundle.prepared}
+          initialLocale={initialLocale}
+          onFrame={renderReplayFrame}
+          debug
+        />
+      ) : null}
     </div>
   )
 }

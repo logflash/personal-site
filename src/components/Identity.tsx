@@ -1,12 +1,13 @@
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
 import type { DragEvent, MouseEvent, ReactNode } from 'react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { profile } from '../data/site'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, localeFromPath } from '../lib/localePath'
 import { parseRecording } from '../lib/recordingDrop'
-import { useLocale } from '../lib/i18n'
+import { useLocale, useTranslate } from '../lib/i18n'
+import { translationHash } from '../lib/translationHash'
 import { LazyReplayOverlay } from './LazyReplayOverlay'
 
 /** Hold duration before the avatar gesture starts a localized recording. */
@@ -29,12 +30,27 @@ const PREPARE_DELAY_MS = 150
  */
 export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactNode } = {}) {
   const currentLocale = useLocale()
+  const gt = useTranslate()
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [importError, setImportError] = useState(false)
   const { status, prepare, start } = useRecordingRuntime()
   const [charging, setCharging] = useState(false)
   const [dropReady, setDropReady] = useState(false)
   const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const prepareTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(
+    () => () => {
+      clearTimeout(holdTimer.current)
+      clearTimeout(prepareTimer.current)
+    },
+    [],
+  )
+
+  const startRecording = () => {
+    const locale = localeFromPath(window.location.pathname) ?? currentLocale ?? DEFAULT_LOCALE
+    start([locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)])
+  }
 
   const cancelHold = () => {
     clearTimeout(holdTimer.current)
@@ -48,8 +64,7 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
     prepareTimer.current = setTimeout(prepare, PREPARE_DELAY_MS)
     holdTimer.current = setTimeout(() => {
       setCharging(false)
-      const locale = localeFromPath(window.location.pathname) ?? currentLocale ?? DEFAULT_LOCALE
-      start([locale, ...SUPPORTED_LOCALES.filter((l) => l !== locale)])
+      startRecording()
     }, HOLD_MS)
   }
 
@@ -110,6 +125,33 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
           <circle className="ring-progress" cx="24" cy="24" r="23" pathLength={100} />
         </svg>
       </span>
+      <div className="identity-tools">
+        <button type="button" disabled={status !== 'idle'} onClick={startRecording}>
+          <span data-_gt-hash={translationHash('Start recording')}>{gt('Start recording')}</span>
+        </button>
+        <button type="button" disabled={status !== 'idle'} onClick={() => fileRef.current?.click()}>
+          <span data-_gt-hash={translationHash('Open recording')}>{gt('Open recording')}</span>
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={async (event) => {
+            const file = event.currentTarget.files?.[0]
+            event.currentTarget.value = ''
+            if (!file) return
+            try {
+              const bundle = parseRecording(await file.text())
+              setImportError(!bundle)
+              if (bundle) setReplay(bundle)
+            } catch {
+              setImportError(true)
+            }
+          }}
+        />
+        <span role="status">{importError ? gt('Invalid recording file') : ''}</span>
+      </div>
       {renderWho ? renderWho(who) : who}
       {replay
         ? createPortal(

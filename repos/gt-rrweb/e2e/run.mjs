@@ -85,6 +85,16 @@ try {
 
     check('player mounts a replay iframe', (await replayText(page)).length > 0);
     check(
+      'replay iframe has an accessible default title',
+      (await page.locator('#player iframe').getAttribute('title')) === 'Recorded page',
+    );
+    check(
+      'replay iframe still disables scripts',
+      !(await page.locator('#player iframe').getAttribute('sandbox'))
+        .split(/\s+/)
+        .includes('allow-scripts'),
+    );
+    check(
       'source render shows source text',
       (await replayText(page)).includes(SOURCE_TEXT),
     );
@@ -343,7 +353,11 @@ try {
 
   // ---- scenario 2: initialLocale renders localized from the start -------- //
   {
-    const page = await open(browser, '?locale=es');
+    const page = await open(browser, '?locale=es&title=Grabaci%C3%B3n');
+    check(
+      'host can localize the replay iframe title',
+      (await page.locator('#player iframe').getAttribute('title')) === 'Grabación',
+    );
     const text = await replayText(page);
     check(
       'initialLocale=es renders localized',

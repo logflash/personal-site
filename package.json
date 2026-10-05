@@ -19,6 +19,7 @@
     "start": "node scripts/serve.mjs",
     "audit:security": "corepack pnpm audit --audit-level high",
     "test:security": "node scripts/security-regression.mjs",
+    "test:accessibility": "node scripts/security-regression.mjs --accessibility",
     "test:contributions": "node scripts/test-contribution-session.mjs",
     "test:project-stars": "node scripts/test-project-stars.mjs",
     "translate": "node scripts/sync-mdx-messages.js && gt translate && node scripts/sync-mdx-messages.js && corepack pnpm run sync:glyphflux",
@@ -42,6 +43,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@mdx-js/mdx": "3.1.1",
     "@mdx-js/rollup": "3.1.1",
     "@rrweb/types": "^2.1.1",

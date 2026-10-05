@@ -28,6 +28,7 @@ import fontsCssUrl from '../styles/fonts.css?url'
 import globalCssUrl from '../styles/global.css?url'
 import morphSourcesCssUrl from '../generated/fontMorphSources.css?url'
 import { FONT_MORPH_CAUSE_STORAGE_KEY } from '../lib/fontMorphCause'
+import { useRouteFocus } from '../hooks/useRouteFocus'
 
 type RecordingRuntimeComponent =
   (typeof import('../components/RecordingRuntime'))['RecordingRuntime']
@@ -130,6 +131,7 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: ReactNode }) {
+  useRouteFocus()
   const nonce = useRouter().options.ssr?.nonce
   const { locale, translations, resetContributionCue } = Route.useLoaderData()
   const [replay, setReplay] = useState<RecorderBundle | null>(null)

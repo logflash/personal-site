@@ -67,6 +67,8 @@ export type GTReplayerFrame = {
 };
 
 export type GTReplayerOptions = {
+  /** Accessible name for the replay iframe. Defaults to "Recorded page". */
+  frameTitle?: string;
   /**
    * Locale to render on mount. Defaults to the source locale (locales[0]) — i.e.
    * the recording as captured. Must be one of `bundle.locales` to take effect.
@@ -295,6 +297,8 @@ function createPlayerInstance(
       'img.size-10, svg.size-10 { width: 2.5rem !important; height: 2.5rem !important; }',
     ],
   });
+
+  replayer.iframe.title = options.frameTitle?.trim() || 'Recorded page';
 
   // Disable rrweb's :hover reproduction. On each recorded interaction rrweb adds a
   // `:hover` class up the hovered element's ancestor chain, which activates the app's
