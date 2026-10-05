@@ -304,7 +304,12 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
           onClick={() => {
             dismissScrollCue()
             const scroller = scrollerRef.current
-            scroller?.scrollTo({ left: scroller.scrollWidth, behavior: 'smooth' })
+            scroller?.scrollTo({
+              left: scroller.scrollWidth,
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+            })
           }}
         >
           <svg width="10" height="16" viewBox="0 0 10 16" fill="none" aria-hidden="true">

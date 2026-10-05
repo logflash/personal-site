@@ -4,11 +4,13 @@ import { once } from 'node:events'
 import { readFile } from 'node:fs/promises'
 import { chromium } from 'playwright-core'
 import AxeBuilder from '@axe-core/playwright'
+import { assertBrowserPreferences } from './browser-preferences-regression.mjs'
 
 const port = Number(process.env.SECURITY_TEST_PORT ?? 4327)
 const baseUrl = `http://localhost:${port}`
 const accessibilityScans = process.argv.includes('--accessibility')
 const replayOnly = process.argv.includes('--replay-only')
+const preferencesOnly = process.argv.includes('--preferences-only')
 
 async function assertAccessible(page, label, { sandboxedReplay = false } = {}) {
   // Scan a settled UI, not colors sampled halfway through a theme transition.
@@ -1184,14 +1186,19 @@ try {
   await waitForServer(server, serverOutput)
   await assertHttpPolicy()
   browser = await chromium.launch({ channel: 'chrome', headless: true })
-  if (accessibilityScans && !replayOnly) await assertAccessibleRoutes(browser)
+  if (accessibilityScans && !replayOnly && !preferencesOnly) await assertAccessibleRoutes(browser)
   if (!replayOnly) {
+    await assertBrowserPreferences(browser, { baseUrl, createContext: analyticsContext })
+  }
+  if (!replayOnly && !preferencesOnly) {
     await assertKeyboardNavigation(browser)
     console.log('Keyboard navigation passed (desktop/mobile, en/es/ja).')
   }
-  await assertRecordingReplay(browser)
-  console.log('Recording and replay passed.')
-  if (!accessibilityScans && !replayOnly) {
+  if (!preferencesOnly) {
+    await assertRecordingReplay(browser)
+    console.log('Recording and replay passed.')
+  }
+  if (!accessibilityScans && !replayOnly && !preferencesOnly) {
     await assertBrowserPolicy(browser)
     console.log('Browser policy passed.')
     await assertStableSidebarGeometry(browser)

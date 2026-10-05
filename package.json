@@ -20,6 +20,7 @@
     "audit:security": "corepack pnpm audit --audit-level high",
     "test:security": "node scripts/security-regression.mjs",
     "test:accessibility": "node scripts/security-regression.mjs --accessibility",
+    "test:preferences": "node scripts/security-regression.mjs --preferences-only",
     "test:contributions": "node scripts/test-contribution-session.mjs",
     "test:project-stars": "node scripts/test-project-stars.mjs",
     "translate": "node scripts/sync-mdx-messages.js && gt translate && node scripts/sync-mdx-messages.js && corepack pnpm run sync:glyphflux",

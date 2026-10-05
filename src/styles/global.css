@@ -1,5 +1,6 @@
 /* Design tokens. */
 :root {
+  color-scheme: light;
   --font-morph-duration: 760ms;
 
   --bg: #fcfbf8;
@@ -23,6 +24,7 @@
 }
 
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #111318;
   --fg: #e4e5e9;
   --mut: #a6a9b4;
@@ -1345,13 +1347,6 @@ main {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cg-scroll-hint {
-    animation: none;
-    opacity: 1;
-  }
-}
-
 /* The body-end layout script starts near the recent end with a few weeks
    still available to the right, before revealing the graph. */
 html[data-initial-scroll] .cg-scroller {
@@ -2288,4 +2283,89 @@ dialog.replay-overlay:not([open]) {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
+
+/* Limit preference overrides to site chrome; replay owns its recorded timeline
+   and Glyphflux/skill cards handle their own imperative animations. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body,
+  .sidebar,
+  .mobile-header,
+  .theme-toggle,
+  .not-found-home-link,
+  .hash,
+  .transition-page-heading-action,
+  .avatar-hold .avatar,
+  .avatar-ring,
+  .cg-grid .cg-cell,
+  .cg-grid .cg-cell.cg-touch-active,
+  html:not(.touch) .cg-grid .cg-cell:not(.cg-pad):hover {
+    transition: none;
+  }
+
+  .avatar-hold.charging .avatar {
+    transform: none;
+  }
+
+  .avatar-hold.charging .ring-progress {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .cg-scroll-hint {
+    animation: none;
+    opacity: 1;
+  }
+
+  .cg-grid .cg-cell.cg-touch-active,
+  html:not(.touch) .cg-grid .cg-cell:not(.cg-pad):hover {
+    transform: none;
+    box-shadow: none;
+    outline: 2px solid var(--acc);
+    outline-offset: 1px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root,
+  :root[data-theme='dark'] {
+    --mut: var(--fg);
+    --line: var(--fg);
+  }
+}
+
+@media (forced-colors: active) {
+  :root,
+  :root[data-theme='dark'] {
+    --bg: Canvas;
+    --fg: CanvasText;
+    --mut: CanvasText;
+    --acc: LinkText;
+    --line: ButtonBorder;
+    --hov: Canvas;
+    --side: Canvas;
+  }
+
+  /* Background fills and shadows can disappear in the user's palette. Keep
+     the cells, language markers and selected navigation distinguishable. */
+  .cg-cell:not(.cg-pad),
+  .lang-dot {
+    border: 1px solid CanvasText;
+  }
+
+  .cg-grid .cg-cell.cg-touch-active,
+  html:not(.touch) .cg-grid .cg-cell:not(.cg-pad):hover {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+  }
+
+  .side-nav a[aria-current],
+  .pill-nav a[aria-current] {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
 }

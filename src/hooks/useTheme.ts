@@ -1,39 +1,50 @@
-import { useCallback, useEffect, useState } from 'react'
-
-type Theme = 'light' | 'dark'
-
-const STORAGE_KEY = 'ian-site-theme'
-
-function getInitialTheme(): Theme {
-  if (typeof window === 'undefined') return 'light'
-  try {
-    if (localStorage.getItem(STORAGE_KEY) === 'dark') return 'dark'
-  } catch {
-    // localStorage unavailable (e.g. blocked); fall through to default
-  }
-  return 'light'
-}
+import { useCallback, useEffect } from 'react'
+import { THEME_STORAGE_KEY } from '../lib/theme'
 
 /**
- * Light/dark theme with localStorage persistence. The theme is applied as
- * `data-theme` on <html>, which drives the CSS custom properties in
- * global.css. The root document's boot script applies the saved value before
- * first paint.
+ * Follow the browser until a visitor chooses a theme. The pre-paint script
+ * initializes the same DOM state, so hydration never swaps the theme/icon.
  */
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(getInitialTheme)
-
   useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try {
-      localStorage.setItem(STORAGE_KEY, theme)
-    } catch {
-      // persistence is best-effort
+    const root = document.documentElement
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      root.dataset.theme = root.dataset.themePreference || (media.matches ? 'dark' : 'light')
     }
-  }, [theme])
+    const syncStorage = (event: StorageEvent) => {
+      try {
+        if (event.storageArea !== localStorage) return
+      } catch {
+        return
+      }
+      if (event.key !== null && event.key !== THEME_STORAGE_KEY) return
+      if (event.newValue === 'light' || event.newValue === 'dark') {
+        root.dataset.themePreference = event.newValue
+      } else {
+        delete root.dataset.themePreference
+      }
+      apply()
+    }
+    apply()
+    media.addEventListener('change', apply)
+    window.addEventListener('storage', syncStorage)
+    return () => {
+      media.removeEventListener('change', apply)
+      window.removeEventListener('storage', syncStorage)
+    }
+  }, [])
 
   const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'))
+    const root = document.documentElement
+    const theme = root.dataset.theme === 'dark' ? 'light' : 'dark'
+    root.dataset.themePreference = theme
+    root.dataset.theme = theme
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // Keep the explicit choice for this document even if storage is blocked.
+    }
   }, [])
 
   return { toggleTheme }

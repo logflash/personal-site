@@ -18,6 +18,7 @@ npm run start      # serve the production build locally
 ```sh
 pnpm build
 pnpm test:accessibility
+pnpm test:preferences
 pnpm test:security
 ```
 
@@ -26,6 +27,10 @@ light/dark themes, expanded cards, keyboard navigation, and the replay dialog.
 The recorded iframe remains script-disabled; its controls and accessible name
 are checked without executing the scanner inside the recording. Automated checks
 complement, rather than replace, manual screen-reader testing.
+
+Browser-preference checks cover reduced motion, system/explicit themes, forced
+colors, increased contrast, blocked storage, and 320px reflow. They also run as
+part of the accessibility and security suites.
 
 ## Internationalization
 
