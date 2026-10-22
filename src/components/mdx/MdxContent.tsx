@@ -9,6 +9,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -27,6 +28,9 @@ import { SectionHeading } from '../SectionHeading'
 import { ProjectStarsContext } from '../ProjectStarsContext'
 import { CollapseLabel, DisclosureCloseButton, DisclosureLabel } from '../DisclosureLabel'
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
+import { ProjectExplorer, ProjectGroup } from '../ProjectExplorer'
+import { PublicationTools } from '../PublicationTools'
+import type { publications } from '../../data/publications'
 
 interface SectionContextValue {
   id: string
@@ -360,12 +364,14 @@ export function Stack({ children }: { children: ReactNode }) {
 }
 
 export function PublicationEntry({
+  publicationId,
   name,
   venue,
   description,
   url,
   translatedLabel,
 }: {
+  publicationId?: keyof typeof publications
   name: string
   venue: string
   description: string
@@ -373,8 +379,20 @@ export function PublicationEntry({
   translatedLabel: string
 }) {
   const gt = useMdxGT()
+  const entry = useRef<HTMLDetailsElement>(null)
+  useLayoutEffect(() => {
+    if (!publicationId) return
+    const reveal = () => {
+      if (window.location.hash !== `#${publicationId}` || !entry.current) return
+      entry.current.open = true
+      entry.current.scrollIntoView({ behavior: 'instant', block: 'start' })
+    }
+    reveal()
+    window.addEventListener('hashchange', reveal)
+    return () => window.removeEventListener('hashchange', reveal)
+  }, [publicationId])
   return (
-    <details className="resume-entry publication-entry">
+    <details ref={entry} id={publicationId} className="resume-entry publication-entry">
       <summary className="resume-entry-toggle">
         <span className="resume-entry-overview">
           <strong className="resume-entry-title">{name}</strong>
@@ -391,6 +409,7 @@ export function PublicationEntry({
         <a href={url} {...externalProps(true)}>
           <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span> ↗
         </a>
+        {publicationId && <PublicationTools publicationId={publicationId} />}
         <DisclosureCloseButton />
       </div>
     </details>
@@ -777,6 +796,7 @@ export function Project({
   url: string
   languages: string
   color: string
+  topics?: string
 }) {
   const gt = useMdxGT()
   const projectStars = useContext(ProjectStarsContext)
@@ -877,6 +897,8 @@ export const sharedMdxComponents = {
   Stack,
   Paper,
   Project,
+  ProjectExplorer,
+  ProjectGroup,
   ContactRows,
   ContactRow,
   NotFoundHomeLink,

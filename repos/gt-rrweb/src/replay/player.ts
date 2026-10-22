@@ -241,6 +241,12 @@ function createPlayerInstance(
   const hiddenClicks = detectDoubleClicks(events, isDirectedClick);
   events = compressTimeline(events, hiddenClicks, isDirectedClick);
   const t0 = events[0].timestamp;
+  // Metadata can precede the first DOM snapshot. rrweb pause(0) then has
+  // no document to rebuild, leaving a blank or stale frame after a rewind.
+  const firstSnapshotTime = Math.max(
+    0,
+    (events.find((event) => event.type === EVT.FullSnapshot)?.timestamp ?? t0) - t0,
+  );
   const metaEvt = events.find((e) => e.type === EVT.Meta);
   const metaData = metaEvt ? (metaEvt.data as unknown as MetaData) : null;
   const recW = (metaData && metaData.width) || window.innerWidth;
@@ -378,10 +384,11 @@ function createPlayerInstance(
     replayer.play(0); // start the timeline from 0, in sync with the reveal
     // Warm the hidden scrub engine while idle so the first drag is instant.
     warmTimer = setTimeout(() => {
-      if (destroyed) return;
+      // A user may already have sought before the idle warm-up runs. Never
+      // rewind that live engine behind the scrubber's current position.
+      if (destroyed || engine) return;
       try {
-        ensureEngine();
-        if (engine) engine.pause(0);
+        ensureEngine().pause(firstSnapshotTime + 1);
       } catch {}
     }, 1200);
   }
@@ -932,12 +939,12 @@ function createPlayerInstance(
       replayer.pause();
     } catch {}
     if (translateObserver) translateObserver.disconnect();
-    if (engine) engine.pause(atT);
+    if (engine) engine.pause(Math.max(atT, firstSnapshotTime + 1));
     morphVisibleFromEngine(atT);
   }
   function engineScrubTo(t: number): void {
     ensureEngine();
-    if (engine) engine.pause(t);
+    if (engine) engine.pause(Math.max(t, firstSnapshotTime + 1));
     morphVisibleFromEngine(t);
   }
   // Current time from whichever clock is live: the engine while scrubbing (or paused

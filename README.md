@@ -32,6 +32,38 @@ Browser-preference checks cover reduced motion, system/explicit themes, forced
 colors, increased contrast, blocked storage, and 320px reflow. They also run as
 part of the accessibility and security suites.
 
+### Local experiments
+
+The project list has topic filters; publication details include copyable citations,
+BibTeX, and links that reopen the paper; the homepage's “About this site” disclosure
+contains a Glyphflux type specimen and a gt-rrweb recording button. New copy is
+hand-translated in all three `src/_gt` catalogs. Citation metadata lives in
+`src/data/publications.ts` and retains the publication's original language.
+
+With a preview running on port 5174, run `pnpm test:experiments` to check the new
+controls, clipboard failure handling, desktop/mobile accessibility, and translated
+recording/replay. Set `EXPERIMENT_BASE_URL` to test a different local preview.
+The local gt-rrweb fork also clamps rewinds to the first DOM snapshot and avoids
+resetting an already-active scrub engine during idle warm-up.
+
+`npm run host` serves the preview on the LAN. Citation copying uses the native
+clipboard API where available and a synchronous selection-based fallback on
+HTTP LAN origins. `npm run test:clipboard` exercises Chrome, Edge, Firefox, and
+WebKit with mouse and touch, including actual copy/paste and denied permissions.
+Set `EXPERIMENT_LAN_URL` to include a LAN address. Install Playwright Firefox and
+WebKit first (`node node_modules/playwright-core/cli.js install firefox webkit`);
+Chrome and Edge use their installed channels. Windows WebKit's async clipboard
+does not round-trip through the OS in this test environment, so that case is
+reported as unverified; these tests do not substitute for physical Safari or
+Samsung Internet checks.
+
+With the Vite preview on port 5173, `npm run test:font-endpoints` compares rendered
+endpoint weights in both directions, all three languages, and desktop/mobile
+layouts through the real gt-rrweb director. The shared Glyphflux renderer derives
+weights from endpoint styles and hands the final frame directly to native text.
+`npm run test:contribution-scroll` checks cue dismissal at the right edge across
+the four browsers, including blocked storage and resizing.
+
 ## Internationalization
 
 English (default), Spanish, and Japanese, routed by path prefix (`/en`, `/es`,

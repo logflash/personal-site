@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { T, Var, msg } from 'gt-react'
 import { profile } from '../data/site'
 import {
@@ -105,8 +105,11 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
   const defaultRestoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastGraphPointerType = useRef<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const scrollCueRef = useRef<HTMLButtonElement | null>(null)
 
-  const dismissScrollCue = () => {
+  const dismissScrollCue = useCallback(() => {
+    // Keep dismissal on the recorded element too, not only the document root.
+    if (scrollCueRef.current) scrollCueRef.current.hidden = true
     if (document.documentElement.hasAttribute('data-contribution-scroll-cue-dismissed')) return
     document.documentElement.dataset.contributionScrollCueDismissed = ''
     try {
@@ -114,7 +117,31 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     } catch {
       // The cue still dismisses for this document if storage is unavailable.
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    const scroller = scrollerRef.current
+    const cue = scrollCueRef.current
+    if (!scroller || !cue) return
+    const update = () => {
+      const max = scroller.scrollWidth - scroller.clientWidth
+      const atRightEdge = scroller.scrollLeft >= max - 1
+      cue.hidden =
+        atRightEdge ||
+        document.documentElement.hasAttribute('data-contribution-scroll-cue-dismissed')
+      if (max > 1 && atRightEdge) dismissScrollCue()
+    }
+    // Also handles scrolls before hydration and a resize reaching the edge.
+    update()
+    scroller.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(scroller)
+    if (scroller.firstElementChild) observer.observe(scroller.firstElementChild)
+    return () => {
+      scroller.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [data, dismissScrollCue])
   // Spelled out per month — gt() requires string literals for CLI extraction.
   const monthLabels = [
     gt('Jan'),
@@ -299,6 +326,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
           </div>
         </div>
         <button
+          ref={scrollCueRef}
           className="cg-scroll-hint"
           type="button"
           onClick={() => {

@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ContributionGraph } from '../components/ContributionGraph'
+import { Colophon } from '../components/Colophon'
 import { ContentSection } from '../components/ContentSection'
 import { SiteShell } from '../components/SiteShell'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
@@ -34,6 +35,7 @@ function LocalePage() {
       <ContributionGraph data={contributions} />
       <ContentSection name="homeLinks" />
       <ContentSection name="contact" />
+      <Colophon />
     </SiteShell>
   )
 }

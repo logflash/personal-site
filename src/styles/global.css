@@ -1314,6 +1314,11 @@ main {
   border-color: var(--acc);
 }
 
+.cg-scroll-viewport .cg-scroll-hint[hidden] {
+  display: none;
+  animation: none;
+}
+
 .cg-scroll-hint:focus-visible {
   outline: 2px solid var(--acc);
   outline-offset: 2px;
@@ -2283,6 +2288,226 @@ dialog.replay-overlay:not([open]) {
   border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+}
+
+/* Small, optional ways to explore the work and the site itself. */
+.project-filters,
+.publication-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.project-filters button,
+.publication-actions button,
+.colophon-record {
+  min-height: 44px;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mut);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.project-filters button[aria-pressed='true'] {
+  border-color: var(--acc);
+  background: var(--hov);
+  color: var(--acc);
+}
+
+.project-filters button:hover,
+.colophon-record:hover {
+  background: var(--hov);
+  color: var(--acc);
+}
+
+.publication-actions button:hover {
+  border-color: var(--mut);
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  color: var(--fg);
+}
+
+.project-count {
+  color: var(--mut);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  margin: 12px 0 24px;
+}
+
+.project-group[hidden],
+.project-group [hidden] {
+  display: none;
+}
+
+.project-group + .project-group {
+  margin-top: 28px;
+}
+
+.project-group .stack {
+  gap: 12px;
+}
+
+.publication-entry {
+  scroll-margin-top: 110px;
+}
+
+.publication-tools {
+  margin-top: 20px;
+}
+
+.citation-text {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--mut);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  resize: vertical;
+}
+
+.copy-status {
+  display: block;
+  min-height: 24px;
+  margin-top: 6px;
+  color: var(--mut);
+  font-size: 12px;
+}
+
+.colophon {
+  max-width: 660px;
+  margin-top: 40px;
+  border-top: 1px solid var(--line);
+  color: var(--mut);
+  font-size: 13px;
+}
+
+.colophon > summary {
+  width: fit-content;
+  min-height: 44px;
+  padding: 14px 0;
+  cursor: pointer;
+}
+
+.colophon-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  padding: 10px 0 20px;
+}
+
+.colophon h3 {
+  margin: 0;
+  color: var(--fg);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.colophon p {
+  line-height: 1.7;
+}
+
+.colophon-source {
+  display: block;
+  width: fit-content;
+  padding: 12px 0;
+  color: var(--acc);
+}
+
+.type-specimen {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg);
+  text-align: start;
+  cursor: pointer;
+}
+
+.type-specimen-stage {
+  --font-morph-sans-weight: 400;
+  --font-morph-serif-weight: 600;
+  --font-morph-serif-optical-size: 23;
+  display: block;
+  min-height: 40px;
+  font-size: 23px;
+  line-height: 1.5;
+}
+
+.specimen-sans {
+  font-family: var(--font-sans);
+  font-weight: 400;
+}
+
+.specimen-serif {
+  font-family: var(--font-serif);
+  font-weight: 600;
+}
+
+.type-specimen-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--mut);
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+:root[data-font-morph-active='colophon-specimen']
+  .type-specimen-stage
+  [data-font-morph='colophon-specimen'] {
+  opacity: 0;
+}
+
+.colophon-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--acc);
+}
+
+.record-dot {
+  width: 7px;
+  height: 7px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.colophon button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.project-filters button:focus-visible,
+.publication-actions button:focus-visible,
+.citation-text:focus-visible,
+.colophon :focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+
+.publication-actions button:focus-visible {
+  outline-color: var(--fg);
+}
+
+@media (max-width: 560px) {
+  .colophon-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
 }
 
 /* Limit preference overrides to site chrome; replay owns its recorded timeline

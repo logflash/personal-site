@@ -180,6 +180,10 @@ async function assertHttpPolicy() {
   }
 
   const permissionsPolicy = first.headers.get('permissions-policy') ?? ''
+  assert.ok(
+    permissionsPolicy.includes('clipboard-write=(self)'),
+    'Copy buttons need same-origin clipboard writes',
+  )
   for (const feature of ['camera=()', 'clipboard-read=()', 'microphone=()', 'usb=()']) {
     assert.ok(permissionsPolicy.includes(feature), `Permissions-Policy must disable ${feature}`)
   }

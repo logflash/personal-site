@@ -32,6 +32,10 @@ repos/glyphflux/demo/public/generated/
 !scripts/browser-preferences-regression.mjs
 !scripts/test-contribution-session.mjs
 !scripts/test-project-stars.mjs
+!scripts/test-site-experiments.mjs
+!scripts/test-clipboard.mjs
+!scripts/test-font-endpoints.mjs
+!scripts/test-contribution-scroll.mjs
 !scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json
