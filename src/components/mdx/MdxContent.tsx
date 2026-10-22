@@ -11,7 +11,6 @@ import {
   useId,
   useLayoutEffect,
   useRef,
-  useState,
   type ComponentPropsWithoutRef,
   type ReactElement,
   type ReactNode,
@@ -30,6 +29,7 @@ import { CollapseLabel, DisclosureCloseButton, DisclosureLabel } from '../Disclo
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 import { ProjectExplorer, ProjectGroup } from '../ProjectExplorer'
 import { PublicationTools } from '../PublicationTools'
+import { useRememberedDisclosure, useRememberedState } from '../../hooks/usePageMemory'
 import type { publications } from '../../data/publications'
 
 interface SectionContextValue {
@@ -118,6 +118,7 @@ export function MdxSection({
       <section
         ref={sectionRef}
         id={id}
+        data-reading-anchor={`section:${id}`}
         className={className ? `section ${className}` : 'section'}
         data-coupled-disclosure-wrapped={coupleDisclosureActions === 'wrapped' ? '' : undefined}
       >
@@ -379,7 +380,7 @@ export function PublicationEntry({
   translatedLabel: string
 }) {
   const gt = useMdxGT()
-  const entry = useRef<HTMLDetailsElement>(null)
+  const entry = useRememberedDisclosure(`publication:${publicationId ?? name}`)
   useLayoutEffect(() => {
     if (!publicationId) return
     const reveal = () => {
@@ -392,7 +393,12 @@ export function PublicationEntry({
     return () => window.removeEventListener('hashchange', reveal)
   }, [publicationId])
   return (
-    <details ref={entry} id={publicationId} className="resume-entry publication-entry">
+    <details
+      ref={entry}
+      id={publicationId}
+      data-reading-anchor={`publication:${publicationId ?? name}`}
+      className="resume-entry publication-entry"
+    >
       <summary className="resume-entry-toggle">
         <span className="resume-entry-overview">
           <strong className="resume-entry-title">{name}</strong>
@@ -498,13 +504,15 @@ export function ResumeEntry({
   children: ReactNode
 }) {
   const gt = useMdxGT()
+  const memoryKey = `resume:${title}:${date}`
+  const entry = useRememberedDisclosure(memoryKey)
   const languageChips = languages?.split(' · ').map((language) => ({
     language,
     color: LANGUAGE_COLORS[language] ?? 'var(--mut)',
   }))
 
   return (
-    <details className="resume-entry">
+    <details ref={entry} data-reading-anchor={memoryKey} className="resume-entry">
       <summary className="resume-entry-toggle">
         <span className="resume-entry-logo" aria-hidden="true">
           <img src={logo} alt="" width="48" height="48" loading="lazy" decoding="async" />
@@ -667,7 +675,7 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
   const contentRef = useRef<HTMLDivElement>(null)
   const cleanupRef = useRef<(() => void) | null>(null)
   const transitioningRef = useRef(false)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useRememberedState<boolean>(`skill:${title}`, false)
   const skills = elements(children) as ReactElement<ResumeSkillProps>[]
   const titleHash = translationHash(title)
 
@@ -739,6 +747,7 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
   return (
     <section
       className="resume-skill-card"
+      data-reading-anchor={`skill:${title}`}
       data-gt-skill-card={titleHash}
       data-open={open || undefined}
     >
@@ -810,7 +819,13 @@ export function Project({
   }))
 
   return (
-    <a className="row-link project" href={url} target="_blank" rel="noreferrer">
+    <a
+      className="row-link project"
+      data-reading-anchor={`project:${url}`}
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+    >
       <span className="title-row">
         <span className="item-name" data-_gt-hash={translationHash(translatedName)}>
           {gt(translatedName)}

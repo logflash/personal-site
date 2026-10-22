@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import loadTranslations from '../loadTranslations'
 import { useLocale } from '../lib/i18n'
+import { rememberLanguagePosition } from '../lib/pageMemory'
 import {
   LOCALE_NATIVE_NAMES,
   SUPPORTED_LOCALES,
@@ -79,6 +80,7 @@ export function LocaleSwitcher({ suppressInteraction = false }: { suppressIntera
       onChange={(event) => {
         if (suppressInteraction) return
         const next = event.target.value
+        rememberLanguagePosition(pathnameForLocale(window.location.pathname, next))
         persistLocaleCookie(next)
         window.location.href = `${pathnameForLocale(window.location.pathname, next)}${window.location.search}${window.location.hash}`
       }}

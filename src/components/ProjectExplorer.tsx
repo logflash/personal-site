@@ -3,13 +3,13 @@ import {
   createContext,
   isValidElement,
   useContext,
-  useState,
   type ReactElement,
   type ReactNode,
 } from 'react'
 import { msg } from 'gt-react'
 import { useTranslate } from '../lib/i18n'
 import { translationHash } from '../lib/translationHash'
+import { useRememberedState } from '../hooks/usePageMemory'
 
 const topics = [
   { id: 'all', label: msg('All projects') },
@@ -24,7 +24,7 @@ const matches = (project: ProjectElement, topic: string) =>
 
 export function ProjectExplorer({ children }: { children: ReactNode }) {
   const gt = useTranslate()
-  const [topic, setTopic] = useState('all')
+  const [topic, setTopic] = useRememberedState<string>('project-topic', 'all')
   const groups = Children.toArray(children).filter(isValidElement) as ReactElement<{
     children: ReactNode
   }>[]

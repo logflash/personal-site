@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useLayoutEffect } from 'react'
 
 function replaceHash(target: string) {
-  history.replaceState(null, '', window.location.pathname + window.location.search + target)
+  history.replaceState(
+    history.state,
+    '',
+    window.location.pathname + window.location.search + target,
+  )
   // replaceState doesn't emit hashchange; broadcast so useHash stays in sync.
   window.dispatchEvent(new HashChangeEvent('hashchange'))
 }

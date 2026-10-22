@@ -6,6 +6,7 @@ import { useLocale, useTranslate } from '../lib/i18n'
 import { translationHash } from '../lib/translationHash'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
+import { useRememberedDisclosure } from '../hooks/usePageMemory'
 
 export const colophonMessages = [
   msg('About this site'),
@@ -59,10 +60,11 @@ function TypeSpecimen() {
 }
 
 export function Colophon() {
+  const entry = useRememberedDisclosure('colophon')
   const locale = useLocale()
   const { start, status } = useRecordingRuntime()
   return (
-    <details className="colophon">
+    <details ref={entry} data-reading-anchor="colophon" className="colophon">
       <summary>
         <Copy text="About this site" />
       </summary>
