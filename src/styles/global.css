@@ -134,6 +134,16 @@ a {
   outline-offset: 3px;
 }
 
+/* These keyboard helpers are translated above the screen until focused.
+   Fixed boxes repeat on printed pages, where that negative translation can
+   paint their borders over the preceding page's content at some print scales. */
+@media print {
+  .skip-link,
+  .identity-tools {
+    display: none;
+  }
+}
+
 .layout {
   --sidebar-width: 250px;
 
@@ -513,6 +523,10 @@ main {
   display: none;
 }
 
+.print-contact {
+  display: none;
+}
+
 .mobile-header {
   display: flex;
   align-items: center;
@@ -606,7 +620,7 @@ main {
   margin-bottom: 8px;
 }
 
-.h-row h2,
+.h-row :is(h2, h3),
 .transition-page-title {
   margin: 0;
   font-family: var(--font-serif);
@@ -859,6 +873,13 @@ main {
 .resume-copy > .section {
   max-width: none;
   margin-top: 38px;
+}
+
+.resume-page .h-row h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: normal;
 }
 
 .resume-copy-paragraph {
@@ -1773,6 +1794,8 @@ html[data-initial-scroll] .cg-scroller {
 .copyright-mobile {
   display: none;
   margin-top: 44px;
+  padding-top: 40px;
+  border-top: 1px solid var(--line);
   font-size: 11px;
   color: var(--mut);
 }
@@ -1820,7 +1843,7 @@ html[data-initial-scroll] .cg-scroller {
     margin-bottom: 8px;
   }
 
-  .h-row h2,
+  .h-row :is(h2, h3),
   .transition-page-title {
     font-size: 20px;
   }
@@ -2107,6 +2130,7 @@ html[data-initial-scroll] .cg-scroller {
 
   .copyright-mobile {
     display: block;
+    padding-top: 28px;
   }
 }
 
@@ -2393,8 +2417,18 @@ dialog.replay-overlay:not([open]) {
 .colophon > summary {
   width: fit-content;
   min-height: 44px;
-  padding: 14px 0;
+  padding: 40px 0 14px;
   cursor: pointer;
+}
+
+.colophon:not([open]) + .copyright-mobile {
+  margin-top: 0;
+}
+
+@media (max-width: 880px) {
+  .colophon > summary {
+    padding-top: 28px;
+  }
 }
 
 .colophon-grid {
@@ -2592,5 +2626,159 @@ dialog.replay-overlay:not([open]) {
   .pill-nav a[aria-current] {
     text-decoration: underline;
     text-underline-offset: 4px;
+  }
+}
+
+/* Keep the safety gap inside the main content: a print dialog can override
+   @page margins. Clone the padding on every fragment so continuation pages
+   also protect the text, while the header and dividers can reach the edges. */
+@media print {
+  .layout {
+    display: block;
+    min-height: 0;
+  }
+
+  /* Use the compact identity header at every print scale, leaving the full
+     page width for content rather than reserving a desktop sidebar column. */
+  .sidebar {
+    display: none;
+  }
+
+  .mobile-top {
+    display: block;
+  }
+
+  .mobile-header .locale-switcher,
+  .mobile-header .theme-toggle,
+  .pill-nav {
+    display: none;
+  }
+
+  .print-contact {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 11px;
+    line-height: 1.4;
+    text-align: right;
+  }
+
+  .print-contact a {
+    color: var(--acc);
+  }
+
+  main {
+    padding: 12mm;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+
+  .section,
+  .quick-links,
+  .resume-copy,
+  .colophon {
+    max-width: none;
+  }
+
+  .contact,
+  .colophon,
+  .copyright-mobile {
+    margin-inline: -12mm;
+    padding-inline: 12mm;
+  }
+
+  .copyright-mobile {
+    display: block;
+    margin-top: 24px;
+    break-inside: avoid;
+  }
+
+  .colophon:not([open]) > summary {
+    padding-bottom: 40px;
+  }
+
+  @media (max-width: 880px) {
+    .colophon:not([open]) > summary {
+      padding-bottom: 28px;
+    }
+  }
+
+  .resume-page {
+    min-height: 0;
+  }
+
+  /* Reveal all details for print without mutating remembered screen state. */
+  .resume-page details::details-content {
+    content-visibility: visible;
+  }
+
+  .resume-page .resume-skill-card-content {
+    height: auto;
+    overflow: visible;
+    visibility: visible;
+  }
+
+  .resume-page .resume-skill-card {
+    break-inside: avoid;
+  }
+
+  .resume-page .resume-skill-card-dots {
+    display: none;
+  }
+
+  /* The PDF download and interactive controls add no value on paper. */
+  .resume-page .resume-copy > .stack:has(> .pub),
+  .resume-page .transition-page-heading-action,
+  .resume-page .heading-control,
+  .resume-page .hash,
+  .resume-page .disclosure-label,
+  .resume-page .disclosure-close {
+    display: none;
+  }
+
+  .resume-page .resume-copy > .section:first-of-type {
+    margin-top: 24px;
+  }
+
+  .resume-page .resume-entry-toggle {
+    padding-block: 10px;
+    break-after: avoid;
+  }
+
+  .resume-page .resume-entry-facts {
+    grid-template-areas:
+      'title date'
+      'fact fact';
+  }
+
+  .resume-page .resume-entry-facts-with-gpa {
+    grid-template-areas:
+      'title date'
+      'fact fact'
+      '. gpa';
+  }
+
+  .resume-page .resume-entry-fact {
+    padding-right: 0;
+  }
+
+  .h-row,
+  .transition-page-heading,
+  .project-group > h3 {
+    break-after: avoid;
+  }
+
+  .cg,
+  .quick-links > a,
+  .project,
+  .contact-row,
+  .resume-entry-toggle {
+    break-inside: avoid;
+  }
+
+  p,
+  li {
+    orphans: 3;
+    widows: 3;
   }
 }

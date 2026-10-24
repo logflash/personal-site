@@ -211,7 +211,7 @@ export function ResumeCopy({ children }: { children: ReactNode }) {
   return <div className="resume-copy">{children}</div>
 }
 
-export function ResumeSectionHeading({ children }: ComponentPropsWithoutRef<'h2'>) {
+export function ResumeSectionHeading({ children }: ComponentPropsWithoutRef<'h3'>) {
   const section = useContext(SectionContext)
   const gt = useMdxGT()
   if (!section) throw new Error('Resume headings must be inside MdxSection')
@@ -219,6 +219,7 @@ export function ResumeSectionHeading({ children }: ComponentPropsWithoutRef<'h2'
 
   return (
     <SectionHeading
+      level={3}
       id={section.id}
       title={gt(source)}
       tight={section.tight}
@@ -921,7 +922,7 @@ export const sharedMdxComponents = {
 
 export const resumeMdxComponents = {
   ...sharedMdxComponents,
-  h2: ResumeSectionHeading,
+  h3: ResumeSectionHeading,
   li: ResumeListItem,
   p: ResumeParagraph,
   ResumeEntry,

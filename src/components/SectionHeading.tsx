@@ -10,6 +10,7 @@ interface SectionHeadingProps {
   translationHash?: string
   /** Research/Projects use a tighter bottom margin than About/Contact. */
   tight?: boolean
+  level?: 2 | 3
 }
 
 /**
@@ -18,7 +19,14 @@ interface SectionHeadingProps {
  * scrolls to the section, and a chevron appears once the page is
  * scrolled, jumping back to the top.
  */
-export function SectionHeading({ id, title, translationHash, tight }: SectionHeadingProps) {
+export function SectionHeading({
+  id,
+  title,
+  translationHash,
+  tight,
+  level = 2,
+}: SectionHeadingProps) {
+  const Heading = level === 3 ? 'h3' : 'h2'
   const gt = useTranslate()
   const scrolled = useScrolled()
   const backToTop = useBackToTop()
@@ -34,11 +42,11 @@ export function SectionHeading({ id, title, translationHash, tight }: SectionHea
       >
         #
       </Link>
-      <h2 {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}>
+      <Heading {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}>
         <Link className="h-link" to="." hash={id} activeOptions={{ includeHash: true }}>
           {title}
         </Link>
-      </h2>
+      </Heading>
       {scrolled && (
         <button
           type="button"

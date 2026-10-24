@@ -7,6 +7,7 @@ import { Identity } from './Identity'
 import { LocaleSwitcher } from './LocaleSwitcher'
 import { NavLinks } from './NavLinks'
 import { ThemeToggle } from './ThemeToggle'
+import { SITE_URL } from '../lib/seo'
 
 interface MobileTopBarProps {
   onToggleTheme: () => void
@@ -48,6 +49,12 @@ export function MobileTopBar({ onToggleTheme, suppressLocaleInteraction }: Mobil
           />
         </div>
         <div className="spacer" />
+        {page === 'resume' && (
+          <div className="print-contact">
+            <span>ian [at] ianlh [dot] com</span>
+            <a href={SITE_URL}>{new URL(SITE_URL).hostname}</a>
+          </div>
+        )}
         <LocaleSwitcher suppressInteraction={suppressLocaleInteraction} />
         <ThemeToggle onToggle={onToggleTheme} />
       </header>
