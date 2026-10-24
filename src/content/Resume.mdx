@@ -7,11 +7,23 @@
 
 <ResumeCopy>
 
+<ResumePdfOnly>
+
+### Summary
+
+- Ph.D. student at MIT, with a focus on training and applying foundation AI models for medical applications
+- Versatile engineer with a Princeton graduate degree, industry experience at NVIDIA, and research in AI and robotics
+- Deep expertise in machine learning, robotic systems, computer architecture, signal processing, and embedded programming
+- Proven ability to rapidly prototype and deliver high-quality, robust software and firmware solutions
+- Recognized for adaptability, technical breadth, and cross-domain problem-solving across academic and industry settings
+
+</ResumePdfOnly>
+
 <Stack>
   <Paper
     translatedName="Ian's Resume"
     description="Open the PDF version of my resume."
-    url="/IanResume_v14.3.pdf"
+    url="/IanResume.pdf"
   />
 </Stack>
 
@@ -69,7 +81,7 @@ _Outreach:_
 
 _Honors & Awards:_
 
-- **Class of 1939 Award** [2024] — honored for the single highest academic standing among 1300+ members of Princeton's Class of '25
+- **[Class of 1939 Award](https://www.linkedin.com/posts/princeton-ece_we-are-super-proud-of-ece-senior-ian-henriques-activity-7237556405912678400-yiQT/)** [2024] — honored for the single highest academic standing among 1300+ members of Princeton's Class of '25
 - **James Hayes-Edgar Palmer Prize** [2025] — recognized for excellent scholarship, leadership, and creativity in engineering work
 - **G David Forney Jr Prize** [2025] — awarded for an outstanding record in communication science, systems, and signals coursework
 - **2x Shapiro Award for Outstanding Academic Achievement** [2022, 2023]; **Manfred Pyka Memorial Physics Prize** [2022]
@@ -241,12 +253,47 @@ _Research:_
 
 </MdxSection>
 
+<ResumePdfOnly>
+
+<ResumeProjects title="Open-Source Software Projects">
+  <ResumeProject languages="Python" date="Oct 2025–Present">
+    Extending a framework for [Diffusion Planning](https://github.com/logflash/rpmml-project) to
+    allow arbitrary timestep skips
+  </ResumeProject>
+  <ResumeProject languages="Python" date="Mar–May 2025">
+    Replicated a recent paper on [Flow-Based Max-Ent Reinforcement
+    Learning](https://github.com/logflash/meow-replication)
+  </ResumeProject>
+  <ResumeProject languages="Go, Svelte.js, Python" date="Jul 2023–Apr 2024">
+    Created and maintained the [Pacbot Robotics Competition's
+    infrastructure](https://github.com/Pacbot-Competition/Pacbot-2)
+  </ResumeProject>
+  <ResumeProject languages="React.js" date="Jul–Sep 2023">
+    Developed the [Princeton University Robotics Club
+    website](https://github.com/princeton-robotics-club/PURC-Website) from scratch
+  </ResumeProject>
+  <ResumeProject languages="C++" date="Apr–May 2023">
+    Adapted the [MPPT algorithm](https://github.com/logflash/Embedded-Solar-MPPT) for a home-made
+    breadboard solar charger
+  </ResumeProject>
+  <ResumeProject languages="Python" date="Aug 2019–May 2020">
+    Designed a [variant of the A\* algorithm](https://github.com/logflash/UAV-Swarm-A-Star) for more
+    efficient UAV collision avoidance
+  </ResumeProject>
+</ResumeProjects>
+
+</ResumePdfOnly>
+
 <MdxSection id="skills">
 
 ### Skills
 
 <ResumeSkillCard title="Programming Languages">
-  <ResumeSkill label="Python" language />
+  <ResumeSkill
+    label="Python"
+    language
+    pdfDetail="Pandas, NumPy, PyTorch, TensorFlow, JAX, MuJoCo, Gym"
+  />
   <ResumeSkill label="C" language />
   <ResumeSkill label="C++" language />
   <ResumeSkill label="Bash" language />

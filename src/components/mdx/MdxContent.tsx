@@ -211,6 +211,12 @@ export function ResumeCopy({ children }: { children: ReactNode }) {
   return <div className="resume-copy">{children}</div>
 }
 
+// PDF-only content is authored alongside the shared résumé, but is never
+// mounted into the website, accessibility tree, or gt-rrweb recordings.
+function ResumePdfOnly() {
+  return null
+}
+
 export function ResumeSectionHeading({ children }: ComponentPropsWithoutRef<'h3'>) {
   const section = useContext(SectionContext)
   const gt = useMdxGT()
@@ -566,6 +572,8 @@ export function ResumeEntry({
 interface ResumeSkillProps {
   label: string
   language?: boolean
+  // Consumed by the PDF parser; deliberately omitted from the website DOM.
+  pdfDetail?: string
 }
 
 export function ResumeSkill({ label, language = false }: ResumeSkillProps) {
@@ -929,6 +937,9 @@ export const resumeMdxComponents = {
   ResumeSkill,
   ResumeSkillCard,
   ResumeCopy,
+  ResumePdfOnly,
+  ResumeProjects: ResumePdfOnly,
+  ResumeProject: ResumePdfOnly,
 }
 
 export const pageMdxComponents = {

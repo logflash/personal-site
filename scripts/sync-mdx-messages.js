@@ -82,6 +82,9 @@ function collectTextLeaves(node, messages) {
 }
 
 function collect(node, messages, transitions, sourcePath) {
+  // The English PDF has extra sections which never appear on the website.
+  // Do not feed hidden copy into the site's translation or glyph catalogs.
+  if (node.name === 'ResumePdfOnly') return
   if (node.type === 'heading') {
     const message = plainText(node, sourcePath)
     if (message?.trim()) messages.add(message)

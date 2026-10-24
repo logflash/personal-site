@@ -13,6 +13,22 @@ npm run build      # production build (dist/) + typecheck
 npm run start      # serve the production build locally
 ```
 
+## Resume
+
+Edit wording in `src/content/Resume.mdx` and PDF layout in `resume/*.typ`.
+The website and PDF share the MDX source; `ResumePdfOnly` and `pdfDetail` keep
+PDF-only content off the website.
+
+```sh
+pnpm resume:build  # generate public/IanResume.pdf and output/pdf/IanResume.pdf
+pnpm resume:check  # reject wrapped final lines occupying 20% or less of their width
+pnpm resume:watch  # rebuild when the MDX changes
+```
+
+For Tinymist, run the watcher and pin the preview of `resume/main.typ` before
+editing MDX. Production builds generate and check the PDF before Vite; the check
+uses deterministic text geometry and blocks deployment on failure.
+
 ## Test
 
 ```sh

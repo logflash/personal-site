@@ -1,5 +1,8 @@
 node_modules/
 dist/
+public/IanResume.pdf
+resume/generated/
+output/pdf/
 *.local
 .DS_Store
 .pnpm-store
