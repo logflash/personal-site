@@ -20,6 +20,7 @@ import { externalProps } from '../../lib/links'
 import { useCoupledDisclosureActions } from '../../hooks/useCoupledDisclosureActions'
 import { useFontMorphNavigation } from '../../hooks/useFontMorphNavigation'
 import { useMdxGT } from '../../lib/mdxTranslation'
+import { useLocale } from '../../lib/i18n'
 import { emitSkillCardAnimation, SKILL_CARD_ANIMATION_MS } from '../../lib/skillCardAnimation'
 import { translationHash } from '../../lib/translationHash'
 import { githubRepositoryKey } from '../../lib/projectRepositories'
@@ -435,18 +436,22 @@ export function Paper({
   venue,
   description,
   url,
+  localizedResume = false,
 }: {
   name?: string
   translatedName?: string
   venue?: string
   description: string
   url: string
+  localizedResume?: boolean
 }) {
   const gt = useMdxGT()
+  const locale = useLocale()
+  const href = localizedResume && locale !== 'en' ? url.replace(/\.pdf$/, `_${locale}.pdf`) : url
   const displayName = translatedName ?? name
   if (!displayName) throw new Error('Paper requires name or translatedName')
   return (
-    <a className="row-link pub" href={url} target="_blank" rel="noreferrer">
+    <a className="row-link pub" href={href} target="_blank" rel="noreferrer">
       <PaperIcon />
       <span className="pub-body">
         <span className="title-row">

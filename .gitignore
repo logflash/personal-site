@@ -1,6 +1,8 @@
 node_modules/
 dist/
+tmp/
 public/IanResume.pdf
+public/IanResume_*.pdf
 resume/generated/
 output/pdf/
 *.local

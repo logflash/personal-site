@@ -89,8 +89,7 @@ export function parseResume(source) {
             title: attributes(child).title,
             skills: child.children.map((skill) => {
               if (skill.name !== 'ResumeSkill') throw new Error('Expected ResumeSkill')
-              const { label, pdfDetail } = attributes(skill)
-              return pdfDetail ? `${label} (${pdfDetail})` : label
+              return attributes(skill)
             }),
           }
         }
@@ -151,7 +150,12 @@ export function expectedContent(data) {
       }
       if (entry.date) dates.push(entry.date)
       if (entry.body) walkBody(entry.body)
-      if (entry.skills) text.push(...entry.skills)
+      if (entry.skills)
+        text.push(
+          ...entry.skills.map(({ label, pdfDetail }) =>
+            pdfDetail ? `${label} (${pdfDetail})` : label,
+          ),
+        )
     }
   }
   return { text, dates, urls }

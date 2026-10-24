@@ -12,7 +12,7 @@
     "resume:check": "node resume/check.js",
     "resume:watch": "node resume/build.js --watch",
     "resume:sync": "node resume/build.js --sync-only",
-    "test:resume": "node --test resume/content.test.js resume/check.test.js",
+    "test:resume": "node --test resume/content.test.js resume/check.test.js resume/i18n.test.js",
     "sync:glyphflux": "corepack pnpm --filter glyphflux build && corepack pnpm run glyphflux build",
     "sync:vendored": "corepack pnpm run sync:glyphflux && corepack pnpm --filter gt-rrweb build",
     "predev": "node scripts/sync-mdx-messages.js && corepack pnpm run sync:vendored && node resume/build.js",

@@ -18,10 +18,12 @@
   }
 }).join()
 
+#let checked-inline(nodes, reference: false) = checked-paragraph(inline(nodes, reference: reference))
+
 #let blocks(nodes, nested: false) = {
   for (index, node) in nodes.enumerate() {
     if node.kind == "paragraph" {
-      checked-paragraph(inline(node.children, reference: nested))
+      checked-inline(node.children, reference: nested)
     } else if node.kind == "list" {
       if index > 0 and nodes.at(index - 1).kind == "paragraph" { v(4.548pt) }
       let items = node.items.map(item => blocks(item, nested: true))
@@ -61,7 +63,9 @@
               item.len() == 1 and item.first().kind == "paragraph" and
               item.first().children.len() == 1 and item.first().children.first().kind == "strong")
           }
-          let fact = print-text(entry.fact)
+          let fact = if compact { print-text(entry.fact) } else {
+            checked-inline(((kind: "text", value: entry.fact),))
+          }
           if compact {
             let honors = entry.body.first().items.map(item => inline(item.first().children))
             fact = [#fact – #honors.join([, ])]
@@ -70,10 +74,16 @@
             print-text(entry.at("gpa", default: "")), logo: logo)
           if not compact { entry-body(entry.body) }
         } else if section.kind == "experience" {
-          role(print-text(entry.title), print-text(entry.fact), print-text(entry.date))
+          role(checked-inline(((kind: "text", value: entry.title + " – " + entry.fact),)),
+            print-text(entry.date))
           entry-body(entry.body)
         } else if section.kind == "skills" {
-          skill(print-copy(entry.title), print-text(entry.skills.join(", ")))
+          let labels = entry.skills.map(item => item.label +
+            if "pdfDetail" in item { " (" + item.pdfDetail + ")" } else { "" })
+          skill(checked-inline((
+            (kind: "strong", children: ((kind: "text", value: entry.title + ":"),)),
+            (kind: "text", value: " " + labels.join(", ")),
+          )))
         }
       }
     }

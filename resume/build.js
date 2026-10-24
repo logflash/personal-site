@@ -6,12 +6,16 @@ import { fileURLToPath } from 'node:url'
 import { NodeCompiler } from '@myriaddreamin/typst-ts-node-compiler'
 import { expectedContent, parseResume } from './content.js'
 import { resumeInputHash } from './inputs.js'
+import { loadResumeTranslator, resumeLocales, resumePaths, translateResume } from './i18n.js'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const sourcePath = join(root, 'src/content/Resume.mdx')
-const generatedPath = join(root, 'resume/generated/resume.json')
-const pdfPaths = ['public/IanResume.pdf', 'output/pdf/IanResume.pdf']
-const fontNames = ['AvenirNextLTPro-Light.ttf', 'AvenirNextLTPro-LightItalic.ttf', 'CourierNew.ttf']
+const fontNames = [
+  'AvenirNextLTPro-Light.ttf',
+  'AvenirNextLTPro-LightItalic.ttf',
+  'CourierNew.ttf',
+  'NotoSansJP-Light.ttf',
+]
 
 async function writeChanged(path, content) {
   const previous = await readFile(path).catch(() => null)
@@ -28,57 +32,102 @@ async function build() {
     sha256: createHash('sha256').update(source).digest('hex'),
     ...parseResume(source),
   }
-  await writeChanged(generatedPath, JSON.stringify(data, null, 2) + '\n')
+  const localized = await Promise.all(
+    resumeLocales.map(async (locale) => ({
+      locale,
+      ...translateResume(data, await loadResumeTranslator(locale)),
+    })),
+  )
+  for (const translated of localized) {
+    const paths = resumePaths(translated.locale)
+    await writeChanged(
+      join(root, 'resume/generated', paths.data),
+      JSON.stringify(translated, null, 2) + '\n',
+    )
+  }
   if (process.argv.includes('--sync-only')) {
-    console.log('Synced MDX résumé content for Tinymist')
+    console.log(`Synced GT résumé content for Tinymist (${resumeLocales.join(', ')})`)
     return
   }
-  // Explicit font blobs make this independent of the host OS's installed fonts.
+  // Explicit fonts keep all locales independent of the host OS's font cache.
   const fontBlobs = await Promise.all(
     fontNames.map((name) => readFile(join(root, 'resume/fonts', name))),
   )
   const compiler = NodeCompiler.create({ workspace: root, fontArgs: [{ fontBlobs }] })
-  const result = compiler.compile({ mainFilePath: join(root, 'resume/main.typ') })
-  if (result.hasError()) {
-    result.printDiagnostics()
-    throw new Error('Résumé compilation failed')
+  for (const translated of localized) {
+    const { locale } = translated
+    const paths = resumePaths(locale)
+    const result = compiler.compile({
+      mainFilePath: join(root, 'resume/main.typ'),
+      inputs: { locale },
+    })
+    if (result.hasError()) {
+      result.printDiagnostics()
+      throw new Error(`Résumé compilation failed (${locale})`)
+    }
+    const warnings = result.takeWarnings()
+    if (warnings)
+      throw new Error(`${locale}: ${JSON.stringify(warnings.shortDiagnostics, null, 2)}`)
+    const pdf = compiler.pdf(result.result)
+    const paragraphs = compiler.query(result.result, {
+      selector: '<resume-paragraph>',
+      field: 'value',
+    })
+    await writeChanged(
+      join(root, 'output/pdf', paths.layout),
+      JSON.stringify(
+        {
+          locale,
+          inputSha256: await resumeInputHash(locale),
+          pdfSha256: createHash('sha256').update(pdf).digest('hex'),
+          paragraphs,
+        },
+        null,
+        2,
+      ) + '\n',
+    )
+    await Promise.all(
+      ['public', 'output/pdf'].map((directory) =>
+        writeChanged(join(root, directory, paths.pdf), pdf),
+      ),
+    )
+    await writeChanged(
+      join(root, 'output/pdf', paths.content),
+      JSON.stringify(expectedContent(translated), null, 2) + '\n',
+    )
+    console.log(`Built ${paths.pdf} from GT (${pdf.length} bytes)`)
   }
-  const warnings = result.takeWarnings()
-  if (warnings) throw new Error(JSON.stringify(warnings.shortDiagnostics, null, 2))
-  const pdf = compiler.pdf(result.result)
-  const paragraphs = compiler.query(result.result, {
-    selector: '<resume-paragraph>',
-    field: 'value',
-  })
-  await writeChanged(
-    join(root, 'output/pdf/resume-layout.json'),
-    JSON.stringify(
-      {
-        inputSha256: await resumeInputHash(),
-        pdfSha256: createHash('sha256').update(pdf).digest('hex'),
-        paragraphs,
-      },
-      null,
-      2,
-    ) + '\n',
-  )
-  await Promise.all(pdfPaths.map((path) => writeChanged(join(root, path), pdf)))
-  await writeChanged(
-    join(root, 'output/pdf/resume-content.json'),
-    JSON.stringify(expectedContent(data), null, 2) + '\n',
-  )
-  console.log(`Built résumé from MDX (${pdf.length} bytes)`)
 }
 
 await build()
 if (process.argv.includes('--watch')) {
   let timer
+  let running = false
+  let pending = false
+  async function rebuild() {
+    if (running) {
+      pending = true
+      return
+    }
+    running = true
+    do {
+      pending = false
+      await build().catch((error) => console.error(error))
+    } while (pending)
+    running = false
+  }
   const schedule = () => {
     clearTimeout(timer)
-    timer = setTimeout(() => build().catch((error) => console.error(error)), 100)
+    timer = setTimeout(rebuild, 100)
   }
   watch(dirname(sourcePath), (_event, filename) => {
     if (filename?.toString() === 'Resume.mdx') schedule()
   })
-  console.log('Watching Resume.mdx; pin resume/main.typ in Tinymist')
+  watch(join(root, 'src/_gt'), (_event, filename) => {
+    if (resumeLocales.some((locale) => filename?.toString() === `${locale}.json`)) schedule()
+  })
+  watch(join(root, 'resume'), (_event, filename) => {
+    if (filename?.toString().endsWith('.typ')) schedule()
+  })
+  console.log('Watching résumé MDX, GT catalogs and Typst layouts; pin resume/main.typ in Tinymist')
 }

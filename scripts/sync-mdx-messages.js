@@ -7,6 +7,8 @@ import { hashMessage } from 'gt-i18n/internal'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { parseResume } from '../resume/content.js'
+import { resumeMessages } from '../resume/i18n.js'
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 const CONTENT_DIR = join(ROOT, 'src', 'content')
@@ -82,8 +84,8 @@ function collectTextLeaves(node, messages) {
 }
 
 function collect(node, messages, transitions, sourcePath) {
-  // The English PDF has extra sections which never appear on the website.
-  // Do not feed hidden copy into the site's translation or glyph catalogs.
+  // PDF-only copy is collected through the same structured parser as the PDF
+  // build below, including normalized Markdown soft line breaks.
   if (node.name === 'ResumePdfOnly') return
   if (node.type === 'heading') {
     const message = plainText(node, sourcePath)
@@ -125,6 +127,9 @@ for (const name of sourceFiles) {
   const sourcePath = join(CONTENT_DIR, name)
   const source = await readFile(sourcePath, 'utf8')
   collect(processor.parse(source), messages, transitions, relative(ROOT, sourcePath))
+  if (name === 'Resume.mdx') {
+    for (const message of resumeMessages(parseResume(source))) messages.add(message)
+  }
 }
 
 for (const [transition, endpoints] of transitions) {

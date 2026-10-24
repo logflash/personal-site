@@ -20,14 +20,21 @@ The website and PDF share the MDX source; `ResumePdfOnly` and `pdfDetail` keep
 PDF-only content off the website.
 
 ```sh
-pnpm resume:build  # generate public/IanResume.pdf and output/pdf/IanResume.pdf
-pnpm resume:check  # reject wrapped final lines occupying 20% or less of their width
+pnpm resume:build  # generate English, Spanish and Japanese PDFs from GT catalogs
+pnpm resume:check  # verify all PDFs; enforce the <=20% orphan rule for English only
 pnpm resume:watch  # rebuild when the MDX changes
 ```
 
 For Tinymist, run the watcher and pin the preview of `resume/main.typ` before
 editing MDX. Production builds generate and check the PDF before Vite; the check
 uses deterministic text geometry and blocks deployment on failure.
+Spanish and Japanese use normal wrapping without the orphan constraint.
+The download follows the page language: `IanResume.pdf`, `IanResume_es.pdf`, or
+`IanResume_ja.pdf`, generated in `public/` and `output/pdf/`. Translations live in
+the existing `src/_gt` JSON catalogs; missing entries fail the build. Avenir is
+retained for Latin text, with Noto Sans JP Light for Japanese. The watcher also
+rebuilds on catalog and Typst changes. Tinymist defaults to English; set the Typst
+input `locale=es` or `locale=ja` to preview another language.
 
 ## Test
 

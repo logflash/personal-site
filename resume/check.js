@@ -3,6 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import { resumeInputHash } from './inputs.js'
+import { resumeLocales, resumePaths } from './i18n.js'
 
 const root = new URL('../', import.meta.url)
 export const orphanThreshold = 0.2
@@ -47,16 +48,18 @@ export function findOrphan(lines, availableWidth) {
   return ratio <= orphanThreshold + 1e-9 ? { text: last.text, ratio } : null
 }
 
-export async function checkResume() {
-  const bytes = await readFile(new URL('output/pdf/IanResume.pdf', root))
-  const layout = JSON.parse(await readFile(new URL('output/pdf/resume-layout.json', root), 'utf8'))
+export async function checkResume(locale = 'en') {
+  const enforceOrphans = locale === 'en'
+  const paths = resumePaths(locale)
+  const bytes = await readFile(new URL(`output/pdf/${paths.pdf}`, root))
+  const layout = JSON.parse(await readFile(new URL(`output/pdf/${paths.layout}`, root), 'utf8'))
   if (layout.pdfSha256 !== createHash('sha256').update(bytes).digest('hex')) {
     throw new Error('PDF and layout measurements differ. Run pnpm resume:build first.')
   }
-  if (layout.inputSha256 !== (await resumeInputHash())) {
+  if (layout.inputSha256 !== (await resumeInputHash(locale))) {
     throw new Error('Résumé content or template changed. Run pnpm resume:build first.')
   }
-  if (!bytes.equals(await readFile(new URL('public/IanResume.pdf', root)))) {
+  if (!bytes.equals(await readFile(new URL(`public/${paths.pdf}`, root)))) {
     throw new Error('Website PDF differs from the checked output. Run pnpm resume:build first.')
   }
   if (!layout.paragraphs?.length) throw new Error('PDF has no paragraph measurements')
@@ -78,7 +81,7 @@ export async function checkResume() {
         if (!lines.length)
           throw new Error(`Unmeasurable paragraph on page ${number} at ${area.y.toFixed(1)}pt`)
         if (lines.length > 1) wrapped++
-        const orphan = findOrphan(lines, area.width)
+        const orphan = enforceOrphans ? findOrphan(lines, area.width) : null
         if (orphan)
           failures.push({
             page: number,
@@ -91,13 +94,22 @@ export async function checkResume() {
     await task.destroy()
   }
   await writeFile(
-    new URL('output/pdf/resume-orphans.json', root),
-    JSON.stringify({ threshold: orphanThreshold, wrapped, failures }, null, 2) + '\n',
+    new URL(`output/pdf/${paths.report}`, root),
+    JSON.stringify(
+      {
+        orphanCheck: enforceOrphans,
+        threshold: enforceOrphans ? orphanThreshold : null,
+        wrapped,
+        failures,
+      },
+      null,
+      2,
+    ) + '\n',
   )
   if (failures.length) {
     for (const failure of failures) {
       console.error(
-        `Page ${failure.page}: orphan "${failure.text}" uses ${(failure.ratio * 100).toFixed(1)}% of its line (limit: 20%).\n  ${failure.paragraph}`,
+        `${locale}, page ${failure.page}: orphan "${failure.text}" uses ${(failure.ratio * 100).toFixed(1)}% of its line (limit: 20%).\n  ${failure.paragraph}`,
       )
     }
     throw new Error(
@@ -105,17 +117,20 @@ export async function checkResume() {
     )
   }
   console.log(
-    `Résumé check passed: ${layout.paragraphs.length} paragraphs, ${wrapped} wrapped; no spillover lines at or below 20%.`,
+    enforceOrphans
+      ? `${locale}: résumé check passed: ${layout.paragraphs.length} paragraphs, ${wrapped} wrapped; no spillover lines at or below 20%.`
+      : `${locale}: PDF integrity checks passed; translated text uses normal wrapping (orphan rule disabled).`,
   )
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  checkResume().catch((error) => {
-    console.error(
-      error.code === 'ENOENT'
-        ? 'Résumé output is missing. Run pnpm resume:build first.'
-        : error.message,
-    )
-    process.exitCode = 1
-  })
+  for (const locale of resumeLocales)
+    await checkResume(locale).catch((error) => {
+      console.error(
+        error.code === 'ENOENT'
+          ? 'Résumé output is missing. Run pnpm resume:build first.'
+          : `${locale}: ${error.message}`,
+      )
+      process.exitCode = 1
+    })
 }

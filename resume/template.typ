@@ -1,14 +1,14 @@
 // Typography measured from IanResume_v14.3.pdf. Content is authored in MDX;
 // recurring layout lives here. No registry packages or absolute placement.
-#let resume(body) = {
-  set document(title: "Ian Henriques – Resume", author: "Ian Henriques")
+#let resume(body, locale: "en", title: "Resume") = {
+  set document(title: "Ian Henriques – " + title, author: "Ian Henriques")
   set page("us-letter", margin: (left: 32.4pt, right: 32.4pt, top: 38.27pt, bottom: 36pt))
-  set text(font: "Avenir Next LT Pro", weight: 300, size: 9pt,
-    lang: "en", hyphenate: false, kerning: false, ligatures: false,
+  set text(font: ("Avenir Next LT Pro", "Noto Sans JP"), weight: 300, size: 9pt,
+    lang: locale, fallback: false, hyphenate: false, kerning: false, ligatures: false,
     top-edge: "cap-height", bottom-edge: "baseline")
-  set par(leading: 4.548pt, spacing: 0pt, justify: false, linebreaks: "simple")
+  set par(leading: if locale == "ja" { 4pt } else { 4.548pt }, spacing: 0pt, justify: false, linebreaks: "simple")
   set block(spacing: 0pt)
-  set list(indent: 4.56pt, body-indent: 8.94pt, spacing: 4.908pt,
+  set list(indent: 4.56pt, body-indent: 8.94pt, spacing: if locale == "ja" { 4pt } else { 4.908pt },
     marker: ([•], [○]))
   // Word synthesized bold by stroking the Light face (0.257pt at 9pt).
   // Preserve those metrics instead of substituting the wider Regular face.
@@ -59,9 +59,9 @@
   v(4.548pt)
 }
 
-#let role(title, focus, date) = {
+#let role(body, date) = {
   block(above: 4.9pt, sticky: true,
-    dated(strong([#title – #focus]), emph(strong(date))))
+    dated(strong(body), emph(strong(date))))
   v(4.908pt)
 }
 
@@ -76,7 +76,7 @@
   // Tiny print-only tracking adjustment for paragraphs that miss a single
   // line by at most 1%. Keep the font size, wording and margins unchanged.
   let natural-width = measure(body).width
-  let fitted = if natural-width > size.width and natural-width <= size.width * 1.01 {
+  let fitted = if text.lang == "en" and natural-width > size.width and natural-width <= size.width * 1.01 {
     text(tracking: -0.005em, body)
   } else { body }
   let paragraph = par(fitted)
@@ -98,15 +98,16 @@
   list(..items.pos())
 }
 
-#let projects(rows, title: "Open-Source Software Projects") = {
+#let projects(rows, title: "Open-Source Software Projects") = context {
   block(above: 4.9pt, sticky: true, strong(title))
   v(4.908pt)
-  // Each project is one semantic list item; its columns align text naturally.
-  for row in rows {
-    list(grid(columns: (1fr, 90pt, 92pt), column-gutter: 2pt,
-      row.at(0), emph(row.at(1)), align(right, emph(strong(row.at(2))))))
-    v(4.908pt)
-  }
+  // Keep multilingual dates on one line and allocate each project's full
+  // wrapped height before starting the next row.
+  let date-width = calc.max(92pt, ..rows.map(row => measure(emph(strong(row.at(2)))).width))
+  grid(columns: (1fr, 90pt, date-width), column-gutter: 2pt,
+    row-gutter: 4.908pt, align: (left + top, left + top, right + top),
+    ..rows.map(row => (list(row.at(0)), emph(row.at(1)), emph(strong(row.at(2))))).flatten())
+  v(4.908pt)
 }
 
-#let skill(name, body) = block(above: 9.3pt, checked-paragraph([#strong(name + ":") #body]))
+#let skill(body) = block(above: 9.3pt, body)
