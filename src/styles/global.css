@@ -50,7 +50,8 @@ html {
 
 /* The boot script adds this before CSS is evaluated so a refreshed deep link
    starts at its target instead of visibly animating there from the top. */
-html[data-initial-hash] {
+html[data-initial-hash],
+html[data-initial-reading] {
   scroll-behavior: auto;
 }
 
@@ -58,6 +59,13 @@ html[data-initial-hash] {
    initial anchor has been positioned, so the top is never a visible frame. */
 html[data-initial-hash] body {
   visibility: hidden;
+}
+
+/* Keep the translated document in layout while its remembered UI state and
+   font metrics settle. Opacity also covers children with explicit visibility. */
+html[data-initial-reading] body {
+  opacity: 0;
+  pointer-events: none;
 }
 
 body {

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { useTheme } from '../hooks/useTheme'
@@ -8,6 +8,7 @@ import { profile } from '../data/site'
 import { SitePageContext } from './SitePageContext'
 import { useTranslate } from '../lib/i18n'
 import { translationHash } from '../lib/translationHash'
+import { READING_LAYOUT_READY_EVENT } from '../lib/pageMemory'
 
 export function SiteShell({
   children,
@@ -18,6 +19,14 @@ export function SiteShell({
   mainClassName?: string
   page?: string
 }) {
+  const mainRef = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    // The document shell may hydrate before its route. Signal only after the
+    // route's children have restored their disclosures/filter state; a frame
+    // later, their layout-effect state updates have committed too.
+    if (mainRef.current) mainRef.current.dataset.readingReady = ''
+    document.dispatchEvent(new Event(READING_LAYOUT_READY_EVENT))
+  }, [])
   const gt = useTranslate()
   const { toggleTheme } = useTheme()
   const { status: recordingStatus } = useRecordingRuntime()
@@ -46,7 +55,7 @@ export function SiteShell({
             onToggleTheme={toggleTheme}
             suppressLocaleInteraction={suppressLocaleInteraction}
           />
-          <main id="main-content" tabIndex={-1} className={mainClassName}>
+          <main ref={mainRef} id="main-content" tabIndex={-1} className={mainClassName}>
             {children}
             <footer className="copyright-mobile">
               © {profile.copyrightYear} {profile.name}

@@ -31,6 +31,7 @@ import { FONT_MORPH_CAUSE_STORAGE_KEY } from '../lib/fontMorphCause'
 import { useRouteFocus } from '../hooks/useRouteFocus'
 import { usePageMemory } from '../hooks/usePageMemory'
 import { THEME_BOOT_SCRIPT } from '../lib/theme'
+import { READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
 
 type RecordingRuntimeComponent =
   (typeof import('../components/RecordingRuntime'))['RecordingRuntime']
@@ -183,7 +184,10 @@ function RootDocument({ children }: { children: ReactNode }) {
       <head>
         <script nonce={nonce}>{TRUSTED_TYPES_BOOT_SCRIPT}</script>
         <script nonce={nonce}>
-          {contributionCueBootScript(resetContributionCue) + DISPLAY_BOOT_SCRIPT}
+          {contributionCueBootScript(resetContributionCue) +
+            DISPLAY_BOOT_SCRIPT +
+            ';' +
+            READING_RESTORE_BOOT_SCRIPT}
         </script>
         <script nonce={nonce} type="application/ld+json">
           {JSON.stringify(personStructuredData(locale))}

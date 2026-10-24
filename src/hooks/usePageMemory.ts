@@ -9,6 +9,7 @@ import {
   rememberValue,
   restoreValues,
   RESTORE_VALUES_EVENT,
+  READING_LAYOUT_READY_EVENT,
   type ReadingSnapshot,
 } from '../lib/pageMemory'
 
@@ -91,7 +92,9 @@ export function usePageMemory() {
         const graph = document.querySelector<HTMLElement>('.cg-scroller')
         if (graph && position?.graphX !== undefined) graph.scrollLeft = position.graphX
         let y = position?.y ?? 0
-        if (position?.anchor && position.offset !== undefined && position.y > 0) {
+        if (position?.atBottom) {
+          y = document.documentElement.scrollHeight - window.innerHeight
+        } else if (position?.anchor && position.offset !== undefined && position.y > 0) {
           const anchor = [
             ...document.querySelectorAll<HTMLElement>('main [data-reading-anchor]'),
           ].find((element) => element.dataset.readingAnchor === position.anchor)
@@ -111,11 +114,26 @@ export function usePageMemory() {
         } else {
           window.scrollTo({ top: y, behavior: 'instant' })
         }
+        // Scroll and reveal in the same frame: the translated top/closed-card
+        // layout must never be painted before the saved reading position.
+        document.documentElement.removeAttribute('data-initial-reading')
         restoring = false
       }
       cancelAnimationFrame(frame)
-      // Router scrolling and disclosure hydration complete before measuring.
-      frame = requestAnimationFrame(apply)
+      // Child layout effects can update React state (skills/project filters).
+      // Wait for that commit and the fonts it uses before measuring a locale
+      // switch. visibility/opacity must not remove the page from layout.
+      frame = requestAnimationFrame(() => {
+        if (disposed || run !== generation) return
+        if (document.documentElement.hasAttribute('data-initial-reading')) {
+          if (!document.querySelector('main[data-reading-ready]')) return
+          // Flush layout before reading fonts.ready, including newly open cards.
+          document.documentElement.getBoundingClientRect()
+          void document.fonts.ready.then(() => {
+            if (!disposed && run === generation) frame = requestAnimationFrame(apply)
+          })
+        } else apply()
+      })
     }
 
     const before = router.subscribe('onBeforeNavigate', ({ toLocation, pathChanged }) => {
@@ -140,9 +158,14 @@ export function usePageMemory() {
     const onHidden = () => {
       if (document.visibilityState === 'hidden') save()
     }
+    const onLayoutReady = () => {
+      if (document.documentElement.hasAttribute('data-initial-reading'))
+        restore(pending, location.hash.slice(1))
+    }
     document.addEventListener('scrollend', onScroll, true)
     window.addEventListener('pagehide', save)
     document.addEventListener('visibilitychange', onHidden)
+    document.addEventListener(READING_LAYOUT_READY_EVENT, onLayoutReady)
     // Capture before native links or the router change the active history entry.
     document.addEventListener('click', save, true)
     delete memory.language
@@ -157,6 +180,7 @@ export function usePageMemory() {
       document.removeEventListener('scrollend', onScroll, true)
       window.removeEventListener('pagehide', save)
       document.removeEventListener('visibilitychange', onHidden)
+      document.removeEventListener(READING_LAYOUT_READY_EVENT, onLayoutReady)
       document.removeEventListener('click', save, true)
       history.scrollRestoration = previousRestoration
     }

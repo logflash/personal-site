@@ -21,6 +21,7 @@ export function useClearHashAtTop() {
     let ticking = false
     const update = () => {
       ticking = false
+      if (document.documentElement.hasAttribute('data-initial-reading')) return
       if (window.scrollY > 0 || window.location.hash === '') return
       replaceHash('')
     }
