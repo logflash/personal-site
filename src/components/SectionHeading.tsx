@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useBackToTop } from '../hooks/useHashRoute'
 import { useScrolled } from '../hooks/useScrolled'
 import { useTranslate } from '../lib/i18n'
@@ -24,13 +25,19 @@ export function SectionHeading({ id, title, translationHash, tight }: SectionHea
 
   return (
     <div className={tight ? 'h-row tight' : 'h-row'}>
-      <a className="hash" href={`#${id}`} aria-label={title}>
+      <Link
+        className="hash"
+        to="."
+        hash={id}
+        activeOptions={{ includeHash: true }}
+        aria-label={title}
+      >
         #
-      </a>
+      </Link>
       <h2 {...(translationHash ? { 'data-_gt-hash': translationHash } : {})}>
-        <a className="h-link" href={`#${id}`}>
+        <Link className="h-link" to="." hash={id} activeOptions={{ includeHash: true }}>
           {title}
-        </a>
+        </Link>
       </h2>
       {scrolled && (
         <button

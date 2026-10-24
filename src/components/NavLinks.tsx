@@ -108,24 +108,28 @@ export function NavLinks({ items, surface = 'sidebar' }: NavLinksProps) {
         }
 
         return pageItems ? (
-          <a
+          <Link
             key={id}
-            href={`#${id}`}
+            to="."
+            hash={id}
+            activeOptions={{ includeHash: true }}
             aria-current={id === page ? 'page' : undefined}
             onClick={id === page ? goHome : undefined}
             {...sharedProps}
           >
             {content}
-          </a>
+          </Link>
         ) : (
-          <a
+          <Link
             key={id}
-            href={id === 'home' ? '/' : `#${id}`}
+            to="."
+            hash={id === 'home' ? undefined : id}
+            activeOptions={{ includeHash: true }}
             onClick={id === 'home' ? goHome : undefined}
             {...sharedProps}
           >
             {content}
-          </a>
+          </Link>
         )
       })}
     </>

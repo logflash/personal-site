@@ -126,9 +126,12 @@ export function usePageMemory() {
       if (pathChanged || pending) restoreValues(pending)
       restoring = true
     })
-    const rendered = router.subscribe('onRendered', ({ toLocation }) => {
+    const rendered = router.subscribe('onRendered', ({ toLocation, hashChanged }) => {
       currentPath = toLocation.pathname
       currentEntry = toLocation.state.__TSR_key ?? currentPath
+      // Router links use pushState, which does not emit hashchange. Keep the
+      // existing section highlight and hash-driven disclosures synchronized.
+      if (hashChanged) window.dispatchEvent(new HashChangeEvent('hashchange'))
       restore(pending, toLocation.hash)
     })
     const onScroll = () => {

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Link } from '@tanstack/react-router'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { useTheme } from '../hooks/useTheme'
 import { MobileTopBar } from './MobileTopBar'
@@ -26,14 +27,16 @@ export function SiteShell({
   return (
     <SitePageContext.Provider value={page}>
       <div className="layout">
-        <a
+        <Link
           className="skip-link"
           data-_gt-hash={translationHash('Skip to content')}
-          href="#main-content"
-          onClick={() => document.getElementById('main-content')?.focus()}
+          to="."
+          hash="main-content"
+          activeOptions={{ includeHash: true }}
+          onClick={() => document.getElementById('main-content')?.focus({ preventScroll: true })}
         >
           {gt('Skip to content')}
-        </a>
+        </Link>
         <Sidebar
           onToggleTheme={toggleTheme}
           suppressLocaleInteraction={suppressLocaleInteraction}
