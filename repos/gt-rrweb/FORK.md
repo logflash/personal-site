@@ -7,15 +7,14 @@
 - Commit: `ad4f69ed7847a055ea555a102f4e597b7a138d5d`
 - `packages/rrweb` tree: `f8a44c1d425da0a993a6783b01cdb237681052ab`
 
-Run `node scripts/vendor-gt-rrweb.mjs --check` from the personal-site root to clone
-that exact revision, verify both Git object IDs, apply every ordered source patch with
-`git apply --check`, and compare the result with this directory. Pass `--source` with
-an existing checkout to perform the same verification without a network request.
+Local changes are maintained directly in this directory and tracked by the
+personal-site repository. There is no separate patch series or regeneration step.
+Run the workspace typecheck, unit tests, and browser tests listed in `README.md`
+to verify changes.
 
 ## Source-level changes
 
-The source patch series replaces the former package-manager patch against generated
-`dist` files. It carries these generic replay and harvesting behaviors:
+The fork carries these generic replay and harvesting behaviors:
 
 - associate separately-added rrweb text mutations with their nearest hash owner,
   including child-before-parent mutation batches;

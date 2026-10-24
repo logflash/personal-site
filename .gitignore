@@ -43,6 +43,5 @@ repos/glyphflux/demo/public/generated/
 !scripts/test-contribution-scroll.mjs
 !scripts/test-page-memory.mjs
 !scripts/test-print.mjs
-!scripts/vendor-gt-rrweb.mjs
 gt-recording-*.json
 gt-replay-*.json

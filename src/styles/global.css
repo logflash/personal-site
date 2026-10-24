@@ -1572,28 +1572,6 @@ html[data-initial-scroll] .cg-scroller {
   margin-bottom: 0;
 }
 
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 22px;
-  font-size: 13.5px;
-}
-
-.timeline-row {
-  display: flex;
-  gap: 14px;
-}
-
-.timeline-row .when {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: var(--mut);
-  width: 110px;
-  padding-top: 2px;
-  flex: none;
-}
-
 /* ---- Research + Projects lists ---- */
 
 .stack {
@@ -2038,21 +2016,6 @@ html[data-initial-scroll] .cg-scroller {
   .intro {
     font-size: 13.5px;
     line-height: 1.7;
-  }
-
-  .timeline {
-    gap: 7px;
-    margin-top: 16px;
-    font-size: 13px;
-  }
-
-  .timeline-row {
-    gap: 12px;
-  }
-
-  .timeline-row .when {
-    font-size: 11px;
-    width: 60px;
   }
 
   .stack {

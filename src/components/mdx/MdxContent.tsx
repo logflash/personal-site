@@ -312,34 +312,6 @@ export function TransitionLink({
   )
 }
 
-export function Timeline({ children }: { children: ReactNode }) {
-  return <div className="timeline">{elements(children)}</div>
-}
-
-export function TimelineEntry({
-  when,
-  translatedWhen,
-  description,
-}: {
-  when?: string
-  translatedWhen?: string
-  description: string
-}) {
-  const gt = useMdxGT()
-  const whenSource = translatedWhen ?? when ?? ''
-  return (
-    <div className="timeline-row">
-      <span
-        className="when"
-        {...(translatedWhen ? { 'data-_gt-hash': translationHash(whenSource) } : {})}
-      >
-        {translatedWhen ? gt(translatedWhen) : whenSource}
-      </span>
-      <span data-_gt-hash={translationHash(description)}>{gt(description)}</span>
-    </div>
-  )
-}
-
 function PaperIcon() {
   return (
     <svg
@@ -921,8 +893,6 @@ export const sharedMdxComponents = {
   QuickLink,
   TransitionHeading,
   TransitionLink,
-  Timeline,
-  TimelineEntry,
   Stack,
   Paper,
   Project,

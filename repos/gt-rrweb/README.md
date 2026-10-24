@@ -9,9 +9,8 @@ official `generaltranslation/gt` tag at commit
 `f8a44c1d425da0a993a6783b01cdb237681052ab`.
 
 The fork keeps the original recorder, harvest, replay, unit-test, and browser-test
-source. Local replay fixes are applied from the ordered source patch series by
-`scripts/vendor-gt-rrweb.mjs`; the personal site resolves this TypeScript source
-directly for hot reload.
+source. Local replay fixes are maintained directly in this directory; the personal
+site resolves this TypeScript source directly for hot reload.
 
 ## Verification
 

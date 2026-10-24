@@ -17,12 +17,7 @@ const OUTPUT = join(GENERATED_DIR, 'mdxMessages.ts')
 const HASH_OUTPUT = join(GENERATED_DIR, 'translationHashes.ts')
 const MORPH_CSS_OUTPUT = join(GENERATED_DIR, 'fontMorphSources.css')
 const SOURCE_CATALOG = join(ROOT, 'src', '_gt', 'en.json')
-const TRANSLATED_ATTRIBUTES = new Set([
-  'description',
-  'translatedLabel',
-  'translatedName',
-  'translatedWhen',
-])
+const TRANSLATED_ATTRIBUTES = new Set(['description', 'translatedLabel', 'translatedName'])
 const COMPONENT_TRANSLATED_ATTRIBUTES = {
   TransitionHeading: new Set(['returnLabel']),
   ResumeEntry: new Set(['date', 'fact', 'gpa', 'title']),
