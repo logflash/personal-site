@@ -8,6 +8,7 @@ import type { RecordingRequest, RecordingRuntimeStatus } from '../hooks/useRecor
 import loadTranslations from '../loadTranslations'
 import { FONT_MORPH_EVENT_TAG, FONT_MORPH_RECORD_EVENT } from '../lib/fontMorph'
 import { SKILL_CARD_RECORD_EVENT } from '../lib/skillCardAnimation'
+import { useTranslate } from '../lib/i18n'
 
 // gt-rrweb harvest: maps the recorded hashes onto each locale's published
 // translations via the app's own loader; hashMessage extends coverage to
@@ -25,8 +26,6 @@ const MOBILE_VIEWPORT = '(max-width: 880px)'
 const DESKTOP_ASPECT = 16 / 9
 const MOBILE_ASPECT = 3 / 4
 const MOBILE_FRAME = { aspect: MOBILE_ASPECT } as const
-const DESKTOP_LABELS = { rec: 'REC · 16:9' }
-const MOBILE_LABELS = { rec: 'REC · 3:4' }
 
 // While recording, global.css scales the whole site (.layout) down into the
 // capture frame. The aspect is supplied by ResponsiveRecorder and remains
@@ -56,6 +55,7 @@ function CaptureScale({ aspect }: { aspect: number }) {
 /** Uses the same breakpoint as the site's mobile layout and locks that choice
  * while recording so the overlay, pointer bounds, and virtual viewport agree. */
 function ResponsiveRecorder({ onComplete }: { onComplete: (bundle: RecorderBundle) => void }) {
+  const gt = useTranslate()
   const { status } = useRecorder()
   const [mobile, setMobile] = useState(() => window.matchMedia(MOBILE_VIEWPORT).matches)
 
@@ -78,7 +78,7 @@ function ResponsiveRecorder({ onComplete }: { onComplete: (bundle: RecorderBundl
         frame={mobile ? MOBILE_FRAME : '16:9'}
         expose="gtRecorder"
         harvest={harvest}
-        labels={mobile ? MOBILE_LABELS : DESKTOP_LABELS}
+        labels={{ rec: mobile ? 'REC · 3:4' : 'REC · 16:9', stop: gt('Stop recording') }}
         onComplete={onComplete}
       />
       <CaptureScale aspect={aspect} />

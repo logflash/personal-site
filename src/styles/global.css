@@ -123,8 +123,7 @@ a {
   max-width: calc(100vw - 16px);
 }
 
-.identity-tools button,
-.replay-close {
+.identity-tools button {
   min-height: 44px;
   padding: 8px 12px;
   border: 1px solid var(--acc);
@@ -2271,9 +2270,28 @@ dialog.replay-overlay:not([open]) {
 
 .replay-close {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
   z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgb(255 255 255 / 75%);
+  cursor: pointer;
+}
+
+.replay-close:hover {
+  background: rgb(255 255 255 / 8%);
+  color: white;
+}
+
+.replay-close:focus-visible {
+  outline-color: currentColor;
 }
 
 /* The vw/vh terms fit the box to the window (16:9 stage + player chrome);
