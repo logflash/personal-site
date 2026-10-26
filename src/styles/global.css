@@ -620,7 +620,14 @@ main {
 
 .h-row {
   position: relative;
+  display: grid;
+  align-items: baseline;
   margin: 0 0 16px;
+}
+
+.h-row > :is(h2, h3, .hash) {
+  /* Share the first baseline even when a locale uses fallback font metrics. */
+  grid-area: 1 / 1;
 }
 
 .h-row.tight {
@@ -637,9 +644,8 @@ main {
 }
 
 .hash {
-  position: absolute;
-  right: 100%;
-  margin-right: 8px;
+  justify-self: start;
+  transform: translateX(calc(-100% - 8px));
   font-family: var(--font-serif);
   font-size: 23px;
   font-weight: 600; /* the only serif weight the page loads */
@@ -882,7 +888,8 @@ main {
   margin-top: 38px;
 }
 
-.resume-page .h-row h3 {
+.resume-page .h-row h3,
+.resume-page .h-row:has(h3) .hash {
   font-family: var(--font-sans);
   font-size: 16px;
   font-weight: 600;
@@ -2629,7 +2636,8 @@ dialog.replay-overlay:not([open]) {
 
   /* Use the compact identity header at every print scale, leaving the full
      page width for content rather than reserving a desktop sidebar column. */
-  .sidebar {
+  .sidebar,
+  .hash {
     display: none;
   }
 
@@ -2719,7 +2727,6 @@ dialog.replay-overlay:not([open]) {
   .resume-page .resume-copy > .stack:has(> .pub),
   .resume-page .transition-page-heading-action,
   .resume-page .heading-control,
-  .resume-page .hash,
   .resume-page .disclosure-label,
   .resume-page .disclosure-close {
     display: none;
