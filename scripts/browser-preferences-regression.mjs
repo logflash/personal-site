@@ -1,4 +1,63 @@
 import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+
+export async function assertReducedMotionRecording(browser, { baseUrl, createContext }) {
+  const context = await createContext(browser, {
+    reducedMotion: 'reduce',
+    viewport: { width: 1440, height: 1000 },
+  })
+  try {
+    const page = await context.newPage()
+    await page.goto(`${baseUrl}/en`, { waitUntil: 'networkidle' })
+    await page.locator('.colophon > summary').click()
+    await page.locator('.colophon-record').click()
+    const stop = page.getByRole('button', { name: 'Stop recording', exact: true })
+    await stop.waitFor({ timeout: 30_000 })
+    await page.locator('.type-specimen').click()
+    await page.locator('.quick-links [data-font-morph="resume-title"]').click()
+    await page.waitForURL(`${baseUrl}/en/resume`)
+    await page.locator('.resume-skill-card-toggle').first().click()
+    await stop.click()
+    await page.locator('#stage').waitFor({ state: 'visible', timeout: 45_000 })
+
+    // Download the replay's prepared bundle: checking only the original capture
+    // would miss the legacy upgrader reintroducing deliberately skipped motion.
+    const downloading = page.waitForEvent('download')
+    await page.locator('#downloadJson').click()
+    const download = await downloading
+    const bundle = JSON.parse(await readFile(await download.path(), 'utf8'))
+    assert.equal(
+      bundle.events.filter(
+        (event) => event.type === 5 && ['font-morph', 'gt-animation'].includes(event.data?.tag),
+      ).length,
+      0,
+      'replay must not invent animations that reduced motion skipped',
+    )
+    for (const locale of ['en', 'es', 'ja']) {
+      await page.locator(`#flags button[data-loc="${locale}"]`).click()
+      await page.locator('#track').evaluate((element) => {
+        const box = element.getBoundingClientRect()
+        for (const type of ['pointerdown', 'pointerup']) {
+          element.dispatchEvent(
+            new PointerEvent(type, {
+              bubbles: true,
+              pointerId: 7,
+              clientX: box.right + 1,
+              clientY: box.top + box.height / 2,
+              buttons: type === 'pointerdown' ? 1 : 0,
+            }),
+          )
+        }
+      })
+      const card = page.frameLocator('#player iframe').locator('.resume-skill-card-toggle').first()
+      await card.waitFor({ state: 'attached' })
+      assert.equal(await card.getAttribute('aria-expanded'), 'true')
+    }
+    console.log('Reduced-motion recording and translated replay passed.')
+  } finally {
+    await context.close()
+  }
+}
 
 export async function assertBrowserPreferences(browser, { baseUrl, createContext }) {
   for (const mobile of [false, true]) {
@@ -68,6 +127,13 @@ export async function assertBrowserPreferences(browser, { baseUrl, createContext
           window.__preferenceMorphEvents = 0
           window.addEventListener('font-morph:record', () => window.__preferenceMorphEvents++)
         })
+        await page.locator('.colophon > summary').click()
+        for (const endpoint of ['.specimen-serif', '.specimen-sans']) {
+          await page.locator('.type-specimen').click()
+          assert.equal(await page.locator(endpoint).count(), 1)
+          assert.equal(await page.locator('html').getAttribute('data-font-morph-active'), null)
+          assert.equal(await page.evaluate(() => window.__preferenceMorphEvents), 0)
+        }
         await page
           .locator(`${mobile ? '.pill-nav' : '.side-nav'} [data-page-link="resume"]`)
           .click()
@@ -103,6 +169,8 @@ export async function assertBrowserPreferences(browser, { baseUrl, createContext
       await context.close()
     }
   }
+
+  await assertReducedMotionRecording(browser, { baseUrl, createContext })
 
   const context = await createContext(browser, { colorScheme: 'dark', reducedMotion: 'reduce' })
   try {

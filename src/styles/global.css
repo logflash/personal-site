@@ -198,6 +198,66 @@ main {
   display: none;
 }
 
+/* Opt-in local 404 experiment: ?preview=404 in the development server. */
+.not-found-experiment .not-found-path {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  color: var(--mut);
+}
+
+.not-found-specimen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin: 28px 0 40px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.not-found-specimen:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 8px;
+  border-radius: 2px;
+}
+
+.not-found-specimen-stage {
+  --font-morph-sans-weight: 400;
+  --font-morph-serif-weight: 600;
+  --font-morph-serif-optical-size: 23;
+
+  display: flex;
+  align-items: center;
+  min-width: 2.2em;
+  height: 1.15em;
+  font-size: clamp(88px, 12vw, 144px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.not-found-serif {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-variation-settings: 'opsz' 23;
+}
+
+.not-found-sans {
+  font-family: var(--font-sans);
+  font-size: 0.89em;
+  font-weight: 400;
+}
+
+.not-found-specimen-caption {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--mut);
+}
+
 .not-found .body-text {
   max-width: 500px;
   margin-bottom: 24px;

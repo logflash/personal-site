@@ -53,7 +53,11 @@ function titleHash(node: SerializedNode): string | undefined {
 
 function collectCardKeys(node: SerializedNode | undefined, output: Map<number, string>) {
   if (!node) return
-  if (typeof node.id === 'number' && classList(node).includes('resume-skill-card')) {
+  if (
+    typeof node.id === 'number' &&
+    classList(node).includes('resume-skill-card') &&
+    node.attributes?.['data-gt-skill-animation'] !== 'explicit'
+  ) {
     const direct = node.attributes?.['data-gt-skill-card']
     const key = typeof direct === 'string' ? direct : titleHash(node)
     if (key) output.set(node.id, key)
@@ -100,6 +104,9 @@ export function emitSkillCardAnimation(key: string, open: boolean) {
  * Recordings captured before the semantic event existed still contain the card's
  * data-open mutation. Add an equivalent event immediately before that mutation so
  * the deterministic timeline can reserve and reconstruct the animation.
+ * Modern cards identify their explicit-event protocol in the snapshot: absence
+ * of an event means an intentional instant change (e.g. reduced motion), so it
+ * must not be reconstructed as a legacy animation.
  */
 export function upgradeLegacySkillCardAnimations(events: eventWithTime[]): eventWithTime[] {
   const cardKeys = new Map<number, string>()

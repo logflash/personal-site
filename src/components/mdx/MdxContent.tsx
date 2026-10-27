@@ -735,6 +735,7 @@ export function ResumeSkillCard({ title, children }: { title: string; children: 
       className="resume-skill-card"
       data-reading-anchor={`skill:${title}`}
       data-gt-skill-card={titleHash}
+      data-gt-skill-animation="explicit"
       data-open={open || undefined}
     >
       <button
