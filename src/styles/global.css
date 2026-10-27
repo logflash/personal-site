@@ -2499,6 +2499,10 @@ dialog.replay-overlay:not([open]) {
   .colophon > summary {
     padding-top: 28px;
   }
+
+  .colophon:not([open]) > summary {
+    padding-bottom: 28px;
+  }
 }
 
 .colophon-grid {
