@@ -3,18 +3,18 @@ import { flushSync } from 'react-dom'
 import { createFontMorphProgressController, type FontMorphProgressController } from 'glyphflux'
 import '../lib/fontMorph'
 import { useTranslate } from '../lib/i18n'
-import { translationHash } from '../lib/translationHash'
 
 /** Keep the decorative numerals in one renderer, including their resting frames. */
 export function NotFoundSpecimen() {
   const gt = useTranslate()
   const [serif, setSerif] = useState(true)
-  const [busy, setBusy] = useState(false)
   const [ready, setReady] = useState(false)
   const sansRef = useRef<HTMLSpanElement>(null)
   const serifRef = useRef<HTMLSpanElement>(null)
   const controllerRef = useRef<FontMorphProgressController | null>(null)
   const progressRef = useRef(1)
+  const phaseRef = useRef(1)
+  const targetRef = useRef(1)
   const frameRef = useRef(0)
 
   useEffect(() => {
@@ -61,25 +61,28 @@ export function NotFoundSpecimen() {
   }, [])
 
   const change = () => {
-    if (busy) return
-    const target = serif ? 0 : 1
+    cancelAnimationFrame(frameRef.current)
+    const target = targetRef.current === 1 ? 0 : 1
+    targetRef.current = target
     const controller = controllerRef.current
-    setSerif(!serif)
+    setSerif(target === 1)
     if (!controller || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      phaseRef.current = target
       progressRef.current = target
       controller?.setProgress(target)
       return
     }
-    setBusy(true)
-    const source = progressRef.current
+    // Reverse the same eased timeline from its last painted frame. Restarting
+    // the easing curve would introduce a pause on every click or tap.
+    const source = phaseRef.current
+    const direction = target === 1 ? 1 : -1
     const startedAt = performance.now()
     const animate = (now: number) => {
-      const time = Math.min(1, (now - startedAt) / 760)
-      const eased = time * time * (3 - 2 * time)
-      progressRef.current = source + (target - source) * eased
+      const phase = Math.max(0, Math.min(1, source + (direction * (now - startedAt)) / 760))
+      phaseRef.current = phase
+      progressRef.current = phase * phase * (3 - 2 * phase)
       controller.setProgress(progressRef.current)
-      if (time < 1) frameRef.current = requestAnimationFrame(animate)
-      else setBusy(false)
+      if (phase !== target) frameRef.current = requestAnimationFrame(animate)
     }
     frameRef.current = requestAnimationFrame(animate)
   }
@@ -91,7 +94,6 @@ export function NotFoundSpecimen() {
       data-ready={ready || undefined}
       data-typeface={serif ? 'serif' : 'sans'}
       onClick={change}
-      disabled={busy}
       aria-label={gt('Change typeface')}
     >
       <span className="not-found-specimen-stage" aria-hidden="true">
@@ -101,10 +103,6 @@ export function NotFoundSpecimen() {
         <span ref={serifRef} className="not-found-serif">
           404
         </span>
-      </span>
-      <span className="not-found-specimen-caption">
-        <span data-_gt-hash={translationHash('Change typeface')}>{gt('Change typeface')}</span>
-        <span aria-hidden="true">↔</span>
       </span>
     </button>
   )

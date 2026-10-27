@@ -204,13 +204,14 @@ main {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
   margin: 28px 0 40px;
   padding: 0;
   border: 0;
   background: none;
   color: var(--fg);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .not-found-specimen:focus-visible {
@@ -269,14 +270,6 @@ main {
   .not-found-specimen[data-ready][data-typeface='sans'] .not-found-sans {
     opacity: 1;
   }
-}
-
-.not-found-specimen-caption {
-  display: flex;
-  gap: 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--mut);
 }
 
 .not-found .body-text {
