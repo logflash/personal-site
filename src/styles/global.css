@@ -224,8 +224,9 @@ main {
   --font-morph-serif-weight: 600;
   --font-morph-serif-optical-size: 23;
 
-  display: flex;
+  display: grid;
   align-items: center;
+  justify-items: start;
   min-width: 2.2em;
   height: 1.15em;
   font-size: clamp(88px, 12vw, 144px);
@@ -244,6 +245,30 @@ main {
   font-family: var(--font-sans);
   font-size: 0.89em;
   font-weight: 400;
+}
+
+.not-found-specimen-stage > span {
+  grid-area: 1 / 1;
+  font-synthesis: none;
+  font-kerning: normal;
+  font-variant-ligatures: none;
+}
+
+.not-found-specimen[data-ready] .not-found-specimen-stage > span,
+.not-found-specimen[data-typeface='serif'] .not-found-sans,
+.not-found-specimen[data-typeface='sans'] .not-found-serif {
+  opacity: 0;
+}
+
+@media print {
+  .not-found-artwork {
+    display: none !important;
+  }
+
+  .not-found-specimen[data-ready][data-typeface='serif'] .not-found-serif,
+  .not-found-specimen[data-ready][data-typeface='sans'] .not-found-sans {
+    opacity: 1;
+  }
 }
 
 .not-found-specimen-caption {
