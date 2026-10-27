@@ -4,8 +4,8 @@ import { beginFontMorph, prepareFontMorph } from '../lib/fontMorph'
 import { useTranslate } from '../lib/i18n'
 import { translationHash } from '../lib/translationHash'
 
-/** Local, opt-in typography experiment; see NotFoundPage's preview gate. */
-export function NotFoundExperiment() {
+/** Interactive 404 typography, with an immediate switch for reduced motion. */
+export function NotFoundSpecimen() {
   const gt = useTranslate()
   const [serif, setSerif] = useState(true)
   const [busy, setBusy] = useState(false)

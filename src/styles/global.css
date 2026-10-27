@@ -186,8 +186,10 @@ main {
 .not-found-path {
   max-width: 100%;
   margin-bottom: 20px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
   overflow: hidden;
-  color: var(--fg);
+  color: var(--mut);
   font-family: var(--font-mono);
   font-size: 11.5px;
   text-overflow: ellipsis;
@@ -196,13 +198,6 @@ main {
 
 .not-found .hash {
   display: none;
-}
-
-/* Opt-in local 404 experiment: ?preview=404 in the development server. */
-.not-found-experiment .not-found-path {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
-  color: var(--mut);
 }
 
 .not-found-specimen {
@@ -245,6 +240,7 @@ main {
 }
 
 .not-found-sans {
+  color: #a3a3a3;
   font-family: var(--font-sans);
   font-size: 0.89em;
   font-weight: 400;
