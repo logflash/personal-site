@@ -577,25 +577,105 @@ main {
   gap: 8px;
 }
 
-/* The locale switcher is a native <select>; match it to the site chrome. */
-.side-footer select,
-.mobile-header select {
+/* Authored option rows avoid browser/OS-specific native menu alignment. */
+.locale-switcher {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: calc(7ch + 18px);
+  max-width: 104px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.locale-switcher-trigger,
+.locale-switcher-native {
   appearance: none;
+  width: 100%;
+  min-height: inherit;
   background: none;
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--mut);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font: inherit;
   padding: 4px 8px;
-  max-width: 104px;
   text-overflow: ellipsis;
+  text-align: center;
   cursor: pointer;
 }
 
-.mobile-header select {
-  flex: none;
+.locale-switcher-native {
+  display: none;
+  text-align-last: center;
+}
+
+.locale-switcher-native option {
+  text-align: center;
+  text-align-last: center;
+}
+
+.mobile-header .locale-switcher {
   max-width: 88px;
+}
+
+.locale-switcher-options {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: calc(100% + 4px);
+  min-width: 100%;
+  width: max-content;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+}
+
+.mobile-header .locale-switcher-options {
+  top: calc(100% + 4px);
+  bottom: auto;
+}
+
+/* A narrow layout can also be a zoomed desktop window. Reserve the browser's
+   picker for primary touch input, rather than choosing it by viewport width. */
+@media (pointer: coarse) and (hover: none) {
+  .locale-switcher-native {
+    display: block;
+  }
+
+  .locale-switcher-trigger,
+  .locale-switcher-options {
+    display: none;
+  }
+}
+
+.locale-switcher-option {
+  display: block;
+  padding: 7px 8px;
+  border-radius: 3px;
+  color: var(--mut);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.locale-switcher-option[aria-current] {
+  color: var(--fg);
+  background: var(--side);
+}
+
+.locale-switcher-option:hover,
+.locale-switcher-option:focus-visible {
+  color: var(--fg);
+  background: var(--hov);
+}
+
+.locale-switcher-trigger:focus-visible,
+.locale-switcher-native:focus-visible,
+.locale-switcher-option:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
 }
 
 /* ---- Mobile top bar + pill nav ---- */
@@ -2257,7 +2337,7 @@ html[data-initial-scroll] .cg-scroller {
     gap: 8px;
   }
 
-  .mobile-header select {
+  .mobile-header .locale-switcher {
     max-width: 80px;
   }
 }

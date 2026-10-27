@@ -123,9 +123,12 @@ try {
         scriptReadyAt = Date.now() + 700
         fontsReadyAt = Date.now() + 1200
         // Do not let Playwright scroll the mobile selector into view first.
-        await page.locator('.locale-switcher:visible').evaluate((select, locale) => {
-          select.value = locale
-          select.dispatchEvent(new Event('change', { bubbles: true }))
+        await page.locator('.locale-switcher:visible').evaluate((switcher, locale) => {
+          const native = switcher.querySelector('select')
+          if (getComputedStyle(native).display !== 'none') {
+            native.value = locale
+            native.dispatchEvent(new Event('change', { bubbles: true }))
+          } else switcher.querySelector(`[data-locale="${locale}"]`).click()
         }, next)
         await page.waitForURL(`${base}/${next}/resume${position === 'bottom' ? '#experience' : ''}`)
         await settled(page)

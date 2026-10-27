@@ -201,7 +201,13 @@ try {
       await entries.nth(2).locator('summary').click()
       await readAt(page, selector)
       const nextLocale = { en: 'es', es: 'ja', ja: 'en' }[locale]
-      await page.locator('.locale-switcher:visible').selectOption(nextLocale)
+      await page.locator('.locale-switcher:visible').evaluate((switcher, next) => {
+        const native = switcher.querySelector('select')
+        if (getComputedStyle(native).display !== 'none') {
+          native.value = next
+          native.dispatchEvent(new Event('change', { bubbles: true }))
+        } else switcher.querySelector(`[data-locale="${next}"]`).click()
+      }, nextLocale)
       await page.waitForURL(`${base}/${nextLocale}/resume`)
       await settled(page)
       assert.equal(
@@ -233,7 +239,10 @@ try {
     }
   }
   if (!process.argv.includes('--hash-only')) {
-    const context = await browser.newContext({ viewport: { width: 390, height: 850 } })
+    const context = await browser.newContext({
+      viewport: { width: 390, height: 850 },
+      hasTouch: true,
+    })
     const page = await context.newPage()
     page.setDefaultTimeout(15000)
     page.on('pageerror', (error) => errors.push(error.message))
@@ -247,7 +256,7 @@ try {
     const graphX = await graph.evaluate((element) => element.scrollLeft)
     await navigate(page, '/en/projects')
     await page.locator('.project-filters button').nth(3).click()
-    await page.locator('.locale-switcher:visible').selectOption('ja')
+    await page.locator('.locale-switcher-native:visible').selectOption('ja')
     await page.waitForURL(`${base}/ja/projects`)
     await settled(page)
     assert.equal(
