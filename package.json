@@ -33,6 +33,7 @@
     "test:font-endpoints": "node scripts/test-font-endpoints.mjs",
     "test:contribution-scroll": "node scripts/test-contribution-scroll.mjs",
     "test:page-memory": "node scripts/test-page-memory.mjs",
+    "test:back-to-top": "node scripts/test-back-to-top.mjs",
     "test:locale-restoration": "node scripts/test-locale-restoration.mjs",
     "test:locale-switcher": "node scripts/test-locale-switcher.mjs",
     "test:print": "node scripts/test-print.mjs",

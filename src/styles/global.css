@@ -225,6 +225,8 @@ main {
   --font-morph-serif-weight: 600;
   --font-morph-serif-optical-size: 23;
 
+  position: relative;
+  isolation: isolate;
   display: grid;
   align-items: center;
   justify-items: start;
@@ -233,6 +235,24 @@ main {
   font-size: clamp(88px, 12vw, 144px);
   line-height: 1;
   letter-spacing: -0.04em;
+}
+
+/* Glyphflux owns the outline; this illustration owns its local placement.
+   Override the controller's viewport coordinates so page scrolling, elastic
+   overscroll, and recording transforms move the artwork with its text box. */
+.not-found-specimen-stage > .not-found-artwork {
+  position: absolute !important;
+  inset: 50% auto auto 0 !important;
+  z-index: 0 !important;
+  width: calc(
+    var(--not-found-sans-width) + (var(--not-found-serif-width) - var(--not-found-sans-width)) *
+      var(--not-found-progress)
+  ) !important;
+  height: calc(
+    var(--not-found-sans-height) + (var(--not-found-serif-height) - var(--not-found-sans-height)) *
+      var(--not-found-progress)
+  ) !important;
+  transform: translateY(-50%) !important;
 }
 
 .not-found-serif {

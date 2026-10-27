@@ -71,6 +71,7 @@ export function usePageMemory() {
     let disposed = false
     let generation = 0
     let pending = initialSnapshot()
+    let sameEntry = false
     const previousRestoration = history.scrollRestoration
     history.scrollRestoration = 'manual'
 
@@ -136,20 +137,34 @@ export function usePageMemory() {
       })
     }
 
-    const before = router.subscribe('onBeforeNavigate', ({ toLocation, pathChanged }) => {
-      save()
-      pending = memory.entries[toLocation.state.__TSR_key ?? '']
-      // Explicit hash links preserve the current page's disclosures.
-      // A newly pushed page starts fresh; history entries restore their own state.
-      if (pathChanged || pending) restoreValues(pending)
-      restoring = true
-    })
+    const before = router.subscribe(
+      'onBeforeNavigate',
+      ({ toLocation, pathChanged, hashChanged }) => {
+        save()
+        // Clearing the hash replaces the current entry. It is not Back/Forward:
+        // restoring its saved position would cancel an in-flight scroll to top.
+        sameEntry =
+          !pathChanged &&
+          hashChanged &&
+          !toLocation.hash &&
+          toLocation.state.__TSR_key === currentEntry
+        pending = memory.entries[toLocation.state.__TSR_key ?? '']
+        // Explicit hash links preserve the current page's disclosures.
+        // A newly pushed page starts fresh; history entries restore their own state.
+        if (!sameEntry && (pathChanged || pending)) restoreValues(pending)
+        restoring = true
+      },
+    )
     const rendered = router.subscribe('onRendered', ({ toLocation, hashChanged }) => {
       currentPath = toLocation.pathname
       currentEntry = toLocation.state.__TSR_key ?? currentPath
       // Router links use pushState, which does not emit hashchange. Keep the
       // existing section highlight and hash-driven disclosures synchronized.
       if (hashChanged) window.dispatchEvent(new HashChangeEvent('hashchange'))
+      if (sameEntry) {
+        restoring = false
+        return
+      }
       restore(pending, toLocation.hash)
     })
     const onScroll = () => {

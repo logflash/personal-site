@@ -11,6 +11,56 @@ const browser = await chromium.launch({
 async function assertNotFoundMorph(page, locale, width) {
   await page.goto(`${baseUrl}/${locale}/missing-page`, { waitUntil: 'networkidle' })
   await page.locator('.not-found-specimen[data-ready]').waitFor()
+  await page.setViewportSize({ width, height: 400 })
+  const placement = await page.evaluate(() => {
+    const layer = document.querySelector('.not-found-artwork')
+    const stage = document.querySelector('.not-found-specimen-stage')
+    const target = document.querySelector('.not-found-serif')
+    const content = document.querySelector('.content')
+    const measure = () => {
+      const actual = layer.getBoundingClientRect()
+      const expected = target.getBoundingClientRect()
+      return {
+        x: actual.x - expected.x,
+        y: actual.y - expected.y,
+        width: actual.width - expected.width,
+        height: actual.height - expected.height,
+      }
+    }
+    const initial = measure()
+    // Exercise movement without yielding to scroll handlers or animation
+    // callbacks: compositor-driven overscroll must carry the artwork itself.
+    content.style.transform = 'translateY(24px)'
+    const translated = measure()
+    content.style.transform = 'translateY(-24px) scale(0.8)'
+    const scaled = measure()
+    content.style.removeProperty('transform')
+    scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
+    const scrolled = measure()
+    const scroll = scrollY
+    scrollTo({ top: 0, behavior: 'instant' })
+    return {
+      local: layer.parentElement === stage,
+      position: getComputedStyle(layer).position,
+      initial,
+      translated,
+      scaled,
+      scrolled,
+      scroll,
+    }
+  })
+  assert.equal(placement.local, true, 'the artwork belongs to the page, not a viewport overlay')
+  assert.equal(placement.position, 'absolute')
+  assert.ok(placement.scroll > 0, 'exercise the actual scroll boundary')
+  for (const mode of ['initial', 'translated', 'scaled', 'scrolled']) {
+    for (const offset of Object.values(placement[mode])) {
+      assert.ok(
+        Math.abs(offset) < 0.1,
+        `${locale} ${width}px ${mode}: artwork detached by ${offset}px`,
+      )
+    }
+  }
+  await page.setViewportSize({ width, height: 1000 })
   await page.addScriptTag({ path: 'node_modules/@rrweb/record/umd/record.js' })
   await page.evaluate(() => {
     window.__notFoundEvents = []
@@ -181,6 +231,18 @@ async function assertNotFoundMorph(page, locale, width) {
       ].map((node) => node.getAttribute('d')),
     )
     assert.deepEqual(replayPaths, paths, 'rrweb must retain the exact settled serif outline')
+    await replay.waitForFunction(() => {
+      const doc = document.querySelector('iframe')?.contentDocument
+      const layer = doc?.querySelector('.not-found-artwork')
+      const target = doc?.querySelector('.not-found-serif')
+      if (!layer || !target || !doc.fonts.check('16px "Source Serif 4"')) return false
+      const actual = layer.getBoundingClientRect()
+      const expected = target.getBoundingClientRect()
+      return (
+        layer.parentElement.classList.contains('not-found-specimen-stage') &&
+        ['x', 'y', 'width', 'height'].every((key) => Math.abs(actual[key] - expected[key]) < 0.1)
+      )
+    })
   } finally {
     await replay.close()
   }

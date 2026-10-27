@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect } from 'react'
+import { pageScroller } from '../lib/pageScroll'
 
 function replaceHash(target: string) {
+  if (window.location.hash === target) return
   history.replaceState(
     history.state,
     '',
@@ -22,7 +24,7 @@ export function useClearHashAtTop() {
     const update = () => {
       ticking = false
       if (document.documentElement.hasAttribute('data-initial-reading')) return
-      if (window.scrollY > 0 || window.location.hash === '') return
+      if (pageScroller().scrollTop > 0 || window.location.hash === '') return
       replaceHash('')
     }
     const onScroll = () => {
@@ -31,8 +33,10 @@ export function useClearHashAtTop() {
         requestAnimationFrame(update)
       }
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    window.addEventListener('scroll', onScroll, { passive: true, capture: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+    }
   }, [])
 }
 
@@ -57,10 +61,7 @@ export function useDeepLinkScroll() {
 /** Returns a callback that scrolls to the top and clears any #section hash. */
 export function useBackToTop() {
   return useCallback(() => {
-    window.scrollTo({ top: 0 })
-    // While recording (gt-rrweb capture), the document column scrolls inside
-    // the fixed frame instead of the window; reset it too.
-    document.querySelector('.content')?.scrollTo({ top: 0 })
+    pageScroller().scrollTo({ top: 0 })
     replaceHash('')
   }, [])
 }

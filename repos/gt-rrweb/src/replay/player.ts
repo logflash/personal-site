@@ -939,13 +939,19 @@ function createPlayerInstance(
       replayer.pause();
     } catch {}
     if (translateObserver) translateObserver.disconnect();
-    if (engine) engine.pause(Math.max(atT, firstSnapshotTime + 1));
+    seekEngineTo(atT);
     morphVisibleFromEngine(atT);
   }
   function engineScrubTo(t: number): void {
-    ensureEngine();
-    if (engine) engine.pause(Math.max(t, firstSnapshotTime + 1));
+    seekEngineTo(t);
     morphVisibleFromEngine(t);
+  }
+  function seekEngineTo(t: number): void {
+    // rrweb's synchronous seek excludes events exactly at the requested time.
+    // Include the final mutation when scrubbing to the end (e.g. removing a
+    // back-to-top control after the last recorded scroll reaches zero).
+    const end = events[events.length - 1].timestamp - t0;
+    ensureEngine().pause(Math.max(t, firstSnapshotTime + 1) + (t >= end ? 1 : 0));
   }
   // Current time from whichever clock is live: the engine while scrubbing (or paused
   // after a scrub), else the visible replayer (normal forward playback).

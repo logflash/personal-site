@@ -42,6 +42,7 @@ repos/glyphflux/demo/public/generated/
 !scripts/test-font-endpoints.mjs
 !scripts/test-contribution-scroll.mjs
 !scripts/test-page-memory.mjs
+!scripts/test-back-to-top.mjs
 !scripts/test-locale-restoration.mjs
 !scripts/test-locale-switcher.mjs
 !scripts/test-print.mjs

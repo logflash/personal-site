@@ -9,6 +9,7 @@ export function NotFoundSpecimen() {
   const gt = useTranslate()
   const [serif, setSerif] = useState(true)
   const [ready, setReady] = useState(false)
+  const stageRef = useRef<HTMLSpanElement>(null)
   const sansRef = useRef<HTMLSpanElement>(null)
   const serifRef = useRef<HTMLSpanElement>(null)
   const controllerRef = useRef<FontMorphProgressController | null>(null)
@@ -20,15 +21,30 @@ export function NotFoundSpecimen() {
   useEffect(() => {
     const source = sansRef.current
     const target = serifRef.current
-    if (!source || !target) return
+    const stage = stageRef.current
+    if (!source || !target || !stage) return
     let disposed = false
-    const refresh = () => controllerRef.current?.refresh()
+    const refresh = () => {
+      // Use local CSS dimensions, including fractional pixels. Viewport bounds
+      // would apply the recording layout's scale a second time.
+      for (const [role, endpoint] of [
+        ['sans', source],
+        ['serif', target],
+      ] as const) {
+        const style = getComputedStyle(endpoint)
+        stage.style.setProperty(`--not-found-${role}-width`, style.width)
+        stage.style.setProperty(`--not-found-${role}-height`, style.height)
+      }
+      controllerRef.current?.refresh()
+    }
     const observer = new MutationObserver(refresh)
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme'],
     })
-    window.addEventListener('scroll', refresh, true)
+    const resizeObserver = new ResizeObserver(refresh)
+    resizeObserver.observe(source)
+    resizeObserver.observe(target)
     void createFontMorphProgressController({ source, target, initialProgress: progressRef.current })
       .then((controller) => {
         if (disposed) {
@@ -40,10 +56,13 @@ export function NotFoundSpecimen() {
         // mutations directly, including the exact resting frame.
         controller.element.classList.remove('rr-block')
         controller.element.classList.add('not-found-artwork')
-        controller.element.parentElement?.classList.remove('rr-block')
-        // A resting illustration belongs below sticky navigation and dialogs.
-        controller.element.style.zIndex = '0'
-        if (controller.element.parentElement) controller.element.parentElement.style.zIndex = '0'
+        // Keep the artwork in the same scroll/compositing layer as the page.
+        // Elastic overscroll can move it without emitting a JS scroll event.
+        const overlay = controller.element.parentElement
+        stage.append(controller.element)
+        overlay?.remove()
+        refresh()
+        stage.style.setProperty('--not-found-progress', String(progressRef.current))
         controller.setProgress(progressRef.current)
         flushSync(() => setReady(true))
       })
@@ -54,7 +73,7 @@ export function NotFoundSpecimen() {
       disposed = true
       cancelAnimationFrame(frameRef.current)
       observer.disconnect()
-      window.removeEventListener('scroll', refresh, true)
+      resizeObserver.disconnect()
       controllerRef.current?.destroy()
       controllerRef.current = null
     }
@@ -69,6 +88,7 @@ export function NotFoundSpecimen() {
     if (!controller || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       phaseRef.current = target
       progressRef.current = target
+      stageRef.current?.style.setProperty('--not-found-progress', String(target))
       controller?.setProgress(target)
       return
     }
@@ -81,6 +101,7 @@ export function NotFoundSpecimen() {
       const phase = Math.max(0, Math.min(1, source + (direction * (now - startedAt)) / 760))
       phaseRef.current = phase
       progressRef.current = phase * phase * (3 - 2 * phase)
+      stageRef.current?.style.setProperty('--not-found-progress', String(progressRef.current))
       controller.setProgress(progressRef.current)
       if (phase !== target) frameRef.current = requestAnimationFrame(animate)
     }
@@ -96,7 +117,7 @@ export function NotFoundSpecimen() {
       onClick={change}
       aria-label={gt('Change typeface')}
     >
-      <span className="not-found-specimen-stage" aria-hidden="true">
+      <span ref={stageRef} className="not-found-specimen-stage" aria-hidden="true">
         <span ref={sansRef} className="not-found-sans">
           404
         </span>
