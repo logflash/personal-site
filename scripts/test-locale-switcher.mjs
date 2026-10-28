@@ -11,6 +11,86 @@ for (const name of names) {
     ...(['chrome', 'msedge'].includes(name) ? { channel: name } : {}),
   })
   try {
+    // Exercise mobile platforms with desktop-like hover/fine-pointer media
+    // queries: a stylus or attached mouse must not replace their native picker.
+    // These are platform simulations, not a real Samsung Internet binary.
+    const windowsUA =
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36'
+    const macUA =
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15'
+    for (const scenario of [
+      {
+        label: 'Samsung Internet with hover input',
+        ua: 'Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36',
+        touchPoints: 5,
+        native: true,
+      },
+      {
+        label: 'Android tablet with mouse',
+        ua: 'Mozilla/5.0 (Linux; Android 14; Tablet) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36',
+        touchPoints: 5,
+        native: true,
+      },
+      {
+        label: 'Android desktop-mode client hints',
+        ua: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36',
+        platform: 'Android',
+        touchPoints: 5,
+        native: true,
+      },
+      {
+        label: 'iPhone with pointer input',
+        ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',
+        touchPoints: 5,
+        native: true,
+      },
+      { label: 'iPad desktop identity', ua: macUA, touchPoints: 5, native: true },
+      { label: 'compact Mac desktop', ua: macUA, touchPoints: 0, native: false },
+      { label: 'compact Windows desktop', ua: windowsUA, touchPoints: 0, native: false },
+      { label: 'Windows touch laptop with mouse', ua: windowsUA, touchPoints: 10, native: false },
+    ]) {
+      const context = await browser.newContext({
+        viewport: { width: 390, height: 850 },
+        userAgent: scenario.ua,
+        hasTouch: false,
+      })
+      await context.addInitScript(({ touchPoints, platform }) => {
+        Object.defineProperty(navigator, 'maxTouchPoints', { get: () => touchPoints })
+        if (platform) {
+          Object.defineProperty(navigator, 'userAgentData', {
+            get: () => ({ platform, mobile: false }),
+          })
+        }
+      }, scenario)
+      const page = await context.newPage()
+      const errors = []
+      page.on('pageerror', (error) => errors.push(error.message))
+      await page.goto(`${base}/en`, { waitUntil: 'networkidle' })
+      assert.equal(await page.evaluate(() => matchMedia('(hover: hover)').matches), true)
+      assert.equal(await page.evaluate(() => matchMedia('(pointer: fine)').matches), true)
+      assert.equal(await page.locator('.locale-switcher-native:visible').count(), +scenario.native)
+      assert.equal(
+        await page.locator('.locale-switcher-trigger:visible').count(),
+        +!scenario.native,
+      )
+      if (scenario.native) {
+        await page.locator('.locale-switcher-native:visible').click()
+        await page.keyboard.press('Escape')
+        assert.equal(await page.locator('.locale-switcher-options:visible').count(), 0)
+        await page.locator('.locale-switcher-native:visible').selectOption('ja')
+      } else {
+        // A first finger interaction on a hybrid laptop must not switch it to
+        // an OS picker; .touch is used only to avoid sticky hover decorations.
+        await page.evaluate(() => window.dispatchEvent(new Event('touchstart')))
+        await page.locator('.locale-switcher-trigger:visible').click()
+        await page.locator('.locale-switcher-option:visible[data-locale="ja"]').click()
+      }
+      await page.waitForURL(`${base}/ja`)
+      await page.waitForLoadState('networkidle')
+      assert.deepEqual(errors, [], `${scenario.label}: no hydration errors`)
+      console.log(`${name}: ${scenario.label} uses ${scenario.native ? 'native' : 'custom'} picker`)
+      await context.close()
+    }
     for (const { width, hasTouch } of [
       { width: 390, hasTouch: true },
       { width: 390, hasTouch: false },

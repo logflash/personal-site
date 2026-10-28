@@ -16,6 +16,10 @@ function loadPreparedOutlines(text: string) {
       return (await response.json()) as FontMorphPreparedManifest
     })
     preparedManifestRequests.set(locale, pending)
+    // A full-document locale switch can cancel the prefetch before a morph
+    // awaits it. Handle that rejection immediately and permit a later retry;
+    // callers still receive the original promise and its failure normally.
+    void pending.catch(() => preparedManifestRequests.delete(locale))
   }
   return pending
 }

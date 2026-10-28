@@ -10,6 +10,7 @@ export interface NavItem {
 
 export const profile = {
   name: 'Ian Henriques',
+  pronunciation: '/ˈiːən hɛnˈriːkɛs/',
   handle: '@logflash',
   githubUser: 'logflash',
   copyrightYear: 2026,

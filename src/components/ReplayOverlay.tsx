@@ -8,6 +8,7 @@ import {
 } from 'gt-rrweb/glyphflux'
 import { hashMessage } from 'gt-i18n/internal'
 import { useEffect, useMemo, useState } from 'react'
+import { alignReplayPronunciation } from '../lib/namePronunciation'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
 import { prepareFontMorph } from '../lib/fontMorph'
 import {
@@ -73,6 +74,7 @@ export function ReplayOverlay({
     () => (frame: GTReplayerFrame) => {
       const directive = renderFontMorph(frame)
       renderSkillCards(frame)
+      if (frame.document) alignReplayPronunciation(frame.document, frame.locale)
       return directive
     },
     [renderFontMorph, renderSkillCards],

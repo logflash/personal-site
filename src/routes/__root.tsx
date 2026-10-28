@@ -31,6 +31,7 @@ import { FONT_MORPH_CAUSE_STORAGE_KEY } from '../lib/fontMorphCause'
 import { useRouteFocus } from '../hooks/useRouteFocus'
 import { usePageMemory } from '../hooks/usePageMemory'
 import { THEME_BOOT_SCRIPT } from '../lib/theme'
+import { LOCALE_PICKER_BOOT_SCRIPT } from '../lib/localePicker'
 import { READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
 
 type RecordingRuntimeComponent =
@@ -40,7 +41,7 @@ type RecordingRuntimeComponent =
 // load must be instant; normal hash navigation becomes smooth after hydration.
 // Touch mode stays latched because some phone browsers report hover capability
 // even though finger taps leave :hover styles stuck on screen.
-const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{const parts=location.pathname.split('/').filter(Boolean);let section=['resume','publications','projects'].includes(parts[1])?parts[1]:parts.length===1?'home':'not-found';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
+const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};${LOCALE_PICKER_BOOT_SCRIPT};addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{const parts=location.pathname.split('/').filter(Boolean);let section=['resume','publications','projects'].includes(parts[1])?parts[1]:parts.length===1?'home':'not-found';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
 
 // Runs synchronously after the server-rendered sections have been parsed but
 // before the client bundle or first visible paint. It positions both scroll

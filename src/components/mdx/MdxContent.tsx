@@ -30,6 +30,7 @@ import { CollapseLabel, DisclosureCloseButton, DisclosureLabel } from '../Disclo
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 import { ProjectExplorer, ProjectGroup } from '../ProjectExplorer'
 import { PublicationTools } from '../PublicationTools'
+import { NamePronunciation } from '../NamePronunciation'
 import { useRememberedDisclosure, useRememberedState } from '../../hooks/usePageMemory'
 import type { publications } from '../../data/publications'
 
@@ -157,6 +158,23 @@ export function MdxParagraph({ children }: ComponentPropsWithoutRef<'p'>) {
       data-_gt-hash={translationHash(source)}
     >
       {gt(source)}
+    </p>
+  )
+}
+
+function NameIntroduction({
+  translatedName,
+  translatedLabel,
+}: {
+  translatedName: string
+  translatedLabel: string
+}) {
+  const gt = useMdxGT()
+  return (
+    <p className="intro">
+      <span data-_gt-hash={translationHash(translatedName)}>{gt(translatedName)}</span>{' '}
+      <NamePronunciation />
+      <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span>
     </p>
   )
 }
@@ -887,6 +905,7 @@ export function ContactRow({
 }
 
 export const sharedMdxComponents = {
+  NameIntroduction,
   h2: MdxHeading,
   p: MdxParagraph,
   MdxSection,
