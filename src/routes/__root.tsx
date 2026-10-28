@@ -32,7 +32,7 @@ import { useRouteFocus } from '../hooks/useRouteFocus'
 import { usePageMemory } from '../hooks/usePageMemory'
 import { THEME_BOOT_SCRIPT } from '../lib/theme'
 import { LOCALE_PICKER_BOOT_SCRIPT } from '../lib/localePicker'
-import { READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
+import { PAGE_MEMORY_KEY, READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
 
 type RecordingRuntimeComponent =
   (typeof import('../components/RecordingRuntime'))['RecordingRuntime']
@@ -47,7 +47,27 @@ const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};${LOCALE_PICKER_BOOT_SCRIPT};a
 // before the client bundle or first visible paint. It positions both scroll
 // axes that have non-default starting points. If a future route stops
 // rendering its anchor on the server, useDeepLinkScroll remains the fallback.
-const INITIAL_LAYOUT_SCRIPT = `try{document.querySelectorAll('.cg-scroller').forEach((scroller)=>{const max=Math.max(0,scroller.scrollWidth-scroller.clientWidth);scroller.scrollLeft=Math.max(0,max-${INITIAL_RIGHT_REVEAL_PX})})}finally{document.documentElement.removeAttribute('data-initial-scroll')}if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
+// Reloads reuse only the graph offset from the existing history snapshot.
+// Read it here, while the graph is still hidden, rather than after hydration.
+// This also works when the client bundle is slow or fails to load entirely.
+const INITIAL_LAYOUT_SCRIPT = `(()=>{
+  let graphX;
+  try {
+    if(performance.getEntriesByType('navigation')[0]?.type==='reload') {
+      const memory=JSON.parse(sessionStorage.getItem('${PAGE_MEMORY_KEY}')||'null');
+      graphX=memory?.entries?.[history.state?.__TSR_key??location.pathname]?.position?.graphX;
+    }
+  } catch {}
+  try {
+    document.querySelectorAll('.cg-scroller').forEach((scroller)=>{
+      const max=Math.max(0,scroller.scrollWidth-scroller.clientWidth);
+      scroller.scrollLeft=Number.isFinite(graphX)?Math.max(0,Math.min(max,graphX)):Math.max(0,max-${INITIAL_RIGHT_REVEAL_PX});
+      if(max>1&&scroller.scrollLeft>=max-1) document.documentElement.dataset.contributionScrollCueDismissed='';
+    });
+  } finally {
+    document.documentElement.removeAttribute('data-initial-scroll');
+  }
+})();if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
 
 const contributionCueShouldReset = createIsomorphicFn()
   .server(() => requestBypassesCache(getRequest()))
