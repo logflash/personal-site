@@ -26,6 +26,20 @@ const securityMiddleware = createMiddleware().server(async ({ request, next }) =
     })
   }
 
+  // Keep the unlisted shortcut out of page markup and the client route manifest.
+  const pathname = new URL(request.url).pathname
+  if (pathname === '/zoom' || pathname === '/zoom/') {
+    return new Response(null, {
+      status: 307,
+      headers: {
+        ...securityHeaders,
+        Location: 'https://mit.zoom.us/j/9746406124',
+        'X-Robots-Tag': 'noindex, nofollow',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
   const headers = getResponseHeaders()
   for (const [name, value] of Object.entries(securityHeaders)) headers.set(name, value)
   setResponseHeaders(headers)
