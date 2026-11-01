@@ -52,6 +52,10 @@ async function checkLabels(page, locale) {
     `${locale}: every accessible label retains the GT formatting`,
   )
   const before = await page.evaluate(() => window.dateFormatConstructions)
+  assert.ok(
+    before <= 2,
+    `${locale}: hydration constructed ${before} date formatters; calendar labels should come from SSR`,
+  )
   await page
     .locator('.cg-cell[data-contribution-date]')
     .last()

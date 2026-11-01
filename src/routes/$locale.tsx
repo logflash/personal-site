@@ -4,7 +4,7 @@ import { Colophon } from '../components/Colophon'
 import { ContentSection } from '../components/ContentSection'
 import { SiteShell } from '../components/SiteShell'
 import { useClearHashAtTop, useDeepLinkScroll } from '../hooks/useHashRoute'
-import { fetchGitHubStats } from '../lib/githubStats'
+import { fetchHomeGitHubStats } from '../lib/githubStats'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES } from '../lib/localePath'
 import { localeHead } from '../lib/seo'
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute('/$locale')({
       throw redirect({ to: '/$locale', params: { locale: DEFAULT_LOCALE } })
     }
   },
-  loader: () => fetchGitHubStats(),
+  loader: ({ params }) => fetchHomeGitHubStats({ data: params.locale }),
   head: ({ params }) => localeHead(params.locale),
   component: LocalePage,
 })
@@ -25,14 +25,14 @@ export const Route = createFileRoute('/$locale')({
 // anchors) plus a reset when the viewport returns to the top; nav
 // highlights on all viewports follow the hash.
 function LocalePage() {
-  const { contributions } = Route.useLoaderData()
+  const { contributions, dailySummaries } = Route.useLoaderData()
   useClearHashAtTop()
   useDeepLinkScroll()
 
   return (
     <SiteShell>
       <ContentSection name="home" />
-      <ContributionGraph data={contributions} />
+      <ContributionGraph data={contributions} dailySummaries={dailySummaries} />
       <ContentSection name="homeLinks" />
       <ContentSection name="contact" />
       <Colophon />

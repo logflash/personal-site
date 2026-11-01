@@ -6,15 +6,14 @@ import {
   CONTRIBUTION_WEEK_PITCH_PX,
 } from '../lib/contributionGraphLayout'
 import type { ContributionDay, ContributionsResponse } from '../lib/contributions'
-import { IcuTranslation, StructuredTranslation, useIcuFormatter, useTranslate } from '../lib/i18n'
+import { IcuTranslation, StructuredTranslation, useTranslate } from '../lib/i18n'
+import { contributionDateValue, DAILY_CONTRIBUTION_SUMMARY } from '../lib/contributionLabels'
 import { translationHash } from '../lib/translationHash'
 
 const DAYS_PER_WEEK = 7
 const MIN_LABEL_GAP_WEEKS = 3
 const DEFAULT_SUMMARY_RESTORE_MS = 1000
 const CONTRIBUTION_SUMMARY_HASH = '4a68cb0d1371a99a'
-const DAILY_CONTRIBUTION_SUMMARY =
-  '{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}'
 
 function contributionDateFor(target: EventTarget | null): string | undefined {
   const cell = (target as Element | null)?.closest<HTMLElement>('.cg-cell:not(.cg-pad)')
@@ -39,11 +38,6 @@ export const DailyContributionSummaryTranslationSource = msg(
   '{count, plural, one {# contribution} other {# contributions}} · {date, date, ::MMMMd}',
 )
 export const ContributionScrollTranslationSource = msg('Scroll to see more months')
-
-function contributionDateValue(date: string): number {
-  const [year, month, day] = date.split('-').map(Number)
-  return new Date(year, month - 1, day).getTime()
-}
 
 /** Column-major weeks, padded so each column starts on Sunday. */
 function toWeeks(days: ContributionDay[]): (ContributionDay | null)[][] {
@@ -85,6 +79,7 @@ function toMonthLabels(
 interface ContributionGraphProps {
   /** Fetched in the route loader (SSR) — null when the API was unreachable. */
   data: ContributionsResponse | null
+  dailySummaries: Record<string, string>
 }
 
 /**
@@ -93,9 +88,11 @@ interface ContributionGraphProps {
  * re-renders on every scroll-spy change, and this subtree is by far its
  * largest (~400 nodes).
  */
-export const ContributionGraph = memo(function ContributionGraph({ data }: ContributionGraphProps) {
+export const ContributionGraph = memo(function ContributionGraph({
+  data,
+  dailySummaries,
+}: ContributionGraphProps) {
   const gt = useTranslate()
-  const formatDailySummary = useIcuFormatter(DAILY_CONTRIBUTION_SUMMARY)
   const [hoveredDate, setHoveredDate] = useState<string | null>(null)
   const [tappedDate, setTappedDate] = useState<string | null>(null)
   const [focusedDate, setFocusedDate] = useState<string | null>(null)
@@ -163,21 +160,13 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     () => data?.contributions.find((day) => day.date === activeDate),
     [activeDate, data],
   )
-  const { dailySummaries, longestDailySummary } = useMemo(() => {
-    const dailySummaries = new Map<string, string>()
+  const longestDailySummary = useMemo(() => {
     let longestDailySummary = ''
-    // Share the localized labels between accessibility and the reserved summary
-    // width. Hover/focus updates must not reformat the entire calendar.
-    for (const day of data?.contributions ?? []) {
-      const summary = formatDailySummary({
-        count: day.count,
-        date: contributionDateValue(day.date),
-      })
-      dailySummaries.set(day.date, summary)
+    for (const summary of Object.values(dailySummaries)) {
       if (summary.length > longestDailySummary.length) longestDailySummary = summary
     }
-    return { dailySummaries, longestDailySummary }
-  }, [data, formatDailySummary])
+    return longestDailySummary
+  }, [dailySummaries])
 
   const cancelDefaultRestore = () => {
     if (defaultRestoreTimer.current === null) return
@@ -294,7 +283,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
                         tabIndex={
                           day.date === (tabDate ?? data.contributions.at(-1)?.date) ? 0 : -1
                         }
-                        aria-label={dailySummaries.get(day.date)}
+                        aria-label={dailySummaries[day.date]}
                         aria-describedby={keyboardHelpId}
                         aria-pressed={tappedDate === day.date}
                         onFocus={(event) => {
