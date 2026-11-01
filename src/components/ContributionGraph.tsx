@@ -163,16 +163,20 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
     () => data?.contributions.find((day) => day.date === activeDate),
     [activeDate, data],
   )
-  const longestDailySummary = useMemo(() => {
-    if (!data) return ''
-
-    return data.contributions.reduce((longest, day) => {
+  const { dailySummaries, longestDailySummary } = useMemo(() => {
+    const dailySummaries = new Map<string, string>()
+    let longestDailySummary = ''
+    // Share the localized labels between accessibility and the reserved summary
+    // width. Hover/focus updates must not reformat the entire calendar.
+    for (const day of data?.contributions ?? []) {
       const summary = formatDailySummary({
         count: day.count,
         date: contributionDateValue(day.date),
       })
-      return summary.length > longest.length ? summary : longest
-    }, '')
+      dailySummaries.set(day.date, summary)
+      if (summary.length > longestDailySummary.length) longestDailySummary = summary
+    }
+    return { dailySummaries, longestDailySummary }
   }, [data, formatDailySummary])
 
   const cancelDefaultRestore = () => {
@@ -290,10 +294,7 @@ export const ContributionGraph = memo(function ContributionGraph({ data }: Contr
                         tabIndex={
                           day.date === (tabDate ?? data.contributions.at(-1)?.date) ? 0 : -1
                         }
-                        aria-label={formatDailySummary({
-                          count: day.count,
-                          date: contributionDateValue(day.date),
-                        })}
+                        aria-label={dailySummaries.get(day.date)}
                         aria-describedby={keyboardHelpId}
                         aria-pressed={tappedDate === day.date}
                         onFocus={(event) => {

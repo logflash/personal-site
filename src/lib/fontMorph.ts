@@ -1,11 +1,11 @@
-import type { FontMorphPreparedManifest } from 'glyphflux'
+import type { FontMorphPreparedLoadRequest, FontMorphPreparedManifest } from 'glyphflux'
 import { configureFontMorph } from 'glyphflux'
 import FontMorphOutlineWorker from '../../repos/glyphflux/src/outline.worker.ts?worker'
 import { glyphfluxLocaleByText } from '../generated/glyphfluxData'
 
 const preparedManifestRequests = new Map<string, Promise<FontMorphPreparedManifest>>()
 
-function loadPreparedOutlines(text: string) {
+function loadPreparedOutlines(text: string, request?: FontMorphPreparedLoadRequest) {
   const locale = glyphfluxLocaleByText[text]
   if (!locale) return undefined
   let pending = preparedManifestRequests.get(locale)
@@ -21,7 +21,20 @@ function loadPreparedOutlines(text: string) {
     // callers still receive the original promise and its failure normally.
     void pending.catch(() => preparedManifestRequests.delete(locale))
   }
-  return pending
+  // The download is shared, but only the requested font pair needs decoding.
+  // Other weights/sizes remain available for a resize or a different endpoint.
+  return pending.then((manifest): FontMorphPreparedManifest => {
+    if (!request) return manifest
+    const matches = ([key]: [string, unknown]) => key === request.key || key === request.reverseKey
+    const outlines = Object.fromEntries(Object.entries(manifest.outlines).filter(matches))
+    return manifest.version === 2
+      ? {
+          version: 2,
+          outlines,
+          sdfMorphs: Object.fromEntries(Object.entries(manifest.sdfMorphs).filter(matches)),
+        }
+      : { version: 1, outlines }
+  })
 }
 
 configureFontMorph({
