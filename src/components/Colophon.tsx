@@ -30,6 +30,12 @@ function TypeSpecimen() {
   const [busy, setBusy] = useState(false)
   const change = async () => {
     if (busy) return
+    // Reduced motion needs only the native endpoint, so it must not wait for
+    // an unused animation pair to be fetched or decoded on the first tap.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setSerif((value) => !value)
+      return
+    }
     setBusy(true)
     try {
       await prepareFontMorph('colophon-specimen')

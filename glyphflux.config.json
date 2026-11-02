@@ -49,8 +49,6 @@
     "supersampling": 4
   },
   "output": {
-    "manifests": "public/glyphflux/[locale].json",
-    "runtimeModule": "src/generated/glyphfluxData.ts",
-    "runtimeExport": "glyphfluxLocaleByText"
+    "manifests": "tmp/glyphflux/[locale].json"
   }
 }

@@ -42,7 +42,7 @@ function useResolvedFontMorphNavigation(resolveKey: KeyResolver, remember?: () =
   }, [resolveKey])
 
   useEffect(() => {
-    // Decode the build-generated, locale-sized correspondence manifest as soon
+    // Decode the build-generated correspondence for this font pair as soon
     // as the initial page is interactive. Unknown text is prepared in a worker;
     // neither path can add OpenType parsing to the main-thread click path.
     if ('requestIdleCallback' in window) {

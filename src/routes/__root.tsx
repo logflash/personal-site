@@ -33,6 +33,7 @@ import { usePageMemory } from '../hooks/usePageMemory'
 import { THEME_BOOT_SCRIPT } from '../lib/theme'
 import { LOCALE_PICKER_BOOT_SCRIPT } from '../lib/localePicker'
 import { PAGE_MEMORY_KEY, READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
+import { glyphfluxManifestUrlsByLocale } from '../generated/glyphfluxManifests'
 
 type RecordingRuntimeComponent =
   (typeof import('../components/RecordingRuntime'))['RecordingRuntime']
@@ -123,21 +124,16 @@ export const Route = createRootRoute({
             crossOrigin: 'anonymous' as const,
           }))
         : []),
-      // The locale-sized manifest replaces runtime OpenType parsing and KUTE
-      // correspondence. Fetch it with the document so the first transition is
-      // ready even when a user taps before the post-hydration idle callback.
-      ...(loaderData?.locale
-        ? [
-            {
-              rel: 'preload',
-              as: 'fetch',
-              type: 'application/json',
-              href: `/glyphflux/${loaderData.locale}.json`,
-              crossOrigin: 'anonymous' as const,
-              fetchPriority: 'low',
-            },
-          ]
-        : []),
+      // Keep all pairs eager, but avoid a single large response. The runtime
+      // reuses these preloads and parses only the pair needed for a transition.
+      ...(glyphfluxManifestUrlsByLocale[loaderData?.locale ?? ''] ?? []).map((href) => ({
+        rel: 'preload',
+        as: 'fetch',
+        type: 'application/json',
+        href,
+        crossOrigin: 'anonymous' as const,
+        fetchPriority: 'low',
+      })),
       // Dev only: linked stylesheets keep CSS editing live; production
       // inlines the CSS below to remove the only render-blocking requests.
       ...(import.meta.env.DEV
