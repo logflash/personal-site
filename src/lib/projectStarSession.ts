@@ -3,6 +3,31 @@ import { PROJECT_REPOSITORIES, type ProjectStarCounts } from './projectRepositor
 const MAX_COOKIE_LENGTH = 2048
 const MAX_STAR_COUNT = 1_000_000_000
 
+/** The shared cache can retain successful owners even if another owner fails.
+ * Session cookies below still require a complete snapshot. */
+export function decodeProjectStarSnapshot(value: string | null): ProjectStarCounts | null {
+  if (!value || value.length > MAX_COOKIE_LENGTH) return null
+  try {
+    const parsed: unknown = JSON.parse(value)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    const entries = Object.entries(parsed)
+    if (
+      !entries.length ||
+      entries.some(
+        ([key, count]) =>
+          !PROJECT_REPOSITORIES.includes(key as (typeof PROJECT_REPOSITORIES)[number]) ||
+          !Number.isSafeInteger(count) ||
+          count < 0 ||
+          count > MAX_STAR_COUNT,
+      )
+    )
+      return null
+    return parsed as ProjectStarCounts
+  } catch {
+    return null
+  }
+}
+
 export function hasAllProjectStars(stars: ProjectStarCounts): boolean {
   return PROJECT_REPOSITORIES.every(
     (repository) =>

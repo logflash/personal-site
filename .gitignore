@@ -37,6 +37,7 @@ repos/glyphflux/demo/public/generated/
 !scripts/browser-preferences-regression.mjs
 !scripts/test-contribution-session.mjs
 !scripts/test-project-stars.mjs
+!scripts/test-github-stats-cache.mjs
 !scripts/test-site-experiments.mjs
 !scripts/test-clipboard.mjs
 !scripts/test-font-endpoints.mjs

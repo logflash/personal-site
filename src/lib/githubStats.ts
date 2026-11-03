@@ -1,15 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 import { formatMessage } from '@generaltranslation/format'
 import { getCookie, getRequest, setCookie } from '@tanstack/react-start/server'
-import {
-  decodeContributionSession,
-  encodeContributionSession,
-  shouldRefreshContributions,
-} from './contributionSession'
-import { CONTRIBUTION_SESSION_COOKIE, loadContributions } from './contributions'
+import { decodeContributionSession, encodeContributionSession } from './contributionSession'
+import { CONTRIBUTION_SESSION_COOKIE } from './contributions'
 import { decodeGitHubStatsSession, encodeGitHubStatsSession } from './githubStatsSession'
-import { decodeProjectStarSession, encodeProjectStarSession } from './projectStarSession'
-import { PROJECT_STARS_SESSION_COOKIE, loadProjectStars } from './projectStars'
+import {
+  decodeProjectStarSession,
+  decodeProjectStarSnapshot,
+  encodeProjectStarSession,
+} from './projectStarSession'
+import { PROJECT_STARS_SESSION_COOKIE } from './projectStars'
 import loadTranslations from '../loadTranslations'
 import { contributionDateValue, DAILY_CONTRIBUTION_SUMMARY } from './contributionLabels'
 import { SUPPORTED_LOCALES } from './localePath'
@@ -20,24 +20,24 @@ const SESSION_COOKIE = 'github-stats-v1'
 /** Keep both sets of public GitHub data in the initial SSR response. */
 export const fetchGitHubStats = createServerFn({ method: 'GET' }).handler(async () => {
   const request = getRequest()
-  const refresh = shouldRefreshContributions(request)
+  const { readSharedContributions, readSharedProjectStars } =
+    await import('./sharedGitHubStats.server')
   const savedCookie = getCookie(SESSION_COOKIE)
   const saved = decodeGitHubStatsSession(savedCookie)
-  const [contributions, projectStars] = await Promise.all([
-    loadContributions(
-      saved.contributions ?? decodeContributionSession(getCookie(CONTRIBUTION_SESSION_COOKIE)),
-      refresh,
+  const contributionFallback =
+    saved.contributions ?? decodeContributionSession(getCookie(CONTRIBUTION_SESSION_COOKIE))
+  const starFallback =
+    saved.projectStars ?? decodeProjectStarSession(getCookie(PROJECT_STARS_SESSION_COOKIE))
+  const [contributionCookie, starSnapshot] = await Promise.all([
+    readSharedContributions(
+      contributionFallback ? encodeContributionSession(contributionFallback) : null,
     ),
-    loadProjectStars(
-      saved.projectStars ?? decodeProjectStarSession(getCookie(PROJECT_STARS_SESSION_COOKIE)),
-      refresh,
-    ),
+    readSharedProjectStars(starFallback ? JSON.stringify(starFallback) : null),
   ])
-
+  const projectStars = decodeProjectStarSnapshot(starSnapshot) ?? {}
   const encoded = encodeGitHubStatsSession(
-    contributions.cookie ??
-      (contributions.data ? encodeContributionSession(contributions.data) : null),
-    projectStars.cookie ?? encodeProjectStarSession(projectStars.data),
+    contributionCookie,
+    encodeProjectStarSession(projectStars),
   )
   if (encoded && encoded !== savedCookie) {
     setCookie(SESSION_COOKIE, encoded, {
@@ -48,7 +48,10 @@ export const fetchGitHubStats = createServerFn({ method: 'GET' }).handler(async 
     })
   }
 
-  return { contributions: contributions.data, projectStars: projectStars.data }
+  return {
+    contributions: decodeContributionSession(contributionCookie ?? undefined),
+    projectStars,
+  }
 })
 
 /** Reuse SSR's localized calendar labels during hydration instead of formatting
