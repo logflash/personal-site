@@ -29,6 +29,7 @@
     "test:preferences": "node scripts/security-regression.mjs --preferences-only",
     "test:contributions": "node scripts/test-contribution-session.mjs",
     "test:project-stars": "node scripts/test-project-stars.mjs",
+    "test:headshot": "node scripts/test-headshot-gestures.mjs",
     "test:github-cache": "node scripts/test-github-stats-cache.mjs",
     "test:experiments": "node scripts/test-site-experiments.mjs",
     "test:clipboard": "node scripts/test-clipboard.mjs",

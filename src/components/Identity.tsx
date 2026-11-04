@@ -1,5 +1,5 @@
 import type { GTReplayerBundle } from 'gt-rrweb/replay'
-import type { DragEvent, MouseEvent, ReactNode } from 'react'
+import type { DragEvent, MouseEvent, PointerEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { profile } from '../data/site'
@@ -14,6 +14,19 @@ import { LazyReplayOverlay } from './LazyReplayOverlay'
 const HOLD_MS = 1000
 /** Ignore ordinary taps before loading the comparatively heavy recorder runtime. */
 const PREPARE_DELAY_MS = 150
+/** Three quick touch taps open the full-resolution portrait. */
+const TAP_INTERVAL_MS = 450
+const TAP_DURATION_MS = 300
+
+function openHeadshot() {
+  // noopener/noreferrer make window.open return null, preventing a focus
+  // request. Detach the blank tab's opener before navigating instead.
+  const tab = window.open('about:blank', '_blank')
+  if (!tab) return
+  tab.opener = null
+  tab.focus()
+  tab.location.replace('/headshot.png')
+}
 
 /**
  * Avatar + name + handle, laid out by the parent container.
@@ -39,6 +52,8 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
   const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const prepareTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const touchStartedAt = useRef<number | null>(null)
+  const taps = useRef({ count: 0, lastAt: 0 })
   useEffect(
     () => () => {
       clearTimeout(holdTimer.current)
@@ -56,24 +71,58 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
     clearTimeout(holdTimer.current)
     clearTimeout(prepareTimer.current)
     setCharging(false)
+    touchStartedAt.current = null
   }
 
-  const beginHold = () => {
+  const beginHold = (event: PointerEvent) => {
+    // Modified clicks open the original portrait without preparing a recording.
+    if (event.button !== 0 || event.ctrlKey || event.metaKey) return
     if (status !== 'idle') return
+    if (!event.isPrimary) {
+      cancelHold()
+      taps.current.count = 0
+      return
+    }
+    touchStartedAt.current = event.pointerType === 'touch' ? event.timeStamp : null
     setCharging(true)
     prepareTimer.current = setTimeout(prepare, PREPARE_DELAY_MS)
     holdTimer.current = setTimeout(() => {
       setCharging(false)
+      touchStartedAt.current = null
+      taps.current.count = 0
       startRecording()
     }, HOLD_MS)
   }
 
-  // On mobile the avatar sits inside the identity's back-to-top link. The
-  // avatar itself exclusively owns the recording gesture: a tap or completed
-  // hold must never activate that surrounding link.
+  const finishPress = (event: PointerEvent) => {
+    const startedAt = touchStartedAt.current
+    cancelHold()
+    if (event.pointerType !== 'touch' || startedAt === null) return
+    if (event.timeStamp - startedAt > TAP_DURATION_MS) {
+      taps.current.count = 0
+      return
+    }
+    const count =
+      event.timeStamp - taps.current.lastAt <= TAP_INTERVAL_MS ? taps.current.count + 1 : 1
+    taps.current = { count, lastAt: event.timeStamp }
+    if (count === 3) {
+      taps.current.count = 0
+      openHeadshot()
+    }
+  }
+
+  // Keep avatar gestures separate from the identity's back-to-top behavior.
   const suppressAvatarActivation = (event: MouseEvent) => {
     event.preventDefault()
     event.stopPropagation()
+  }
+
+  const onAvatarClick = (event: MouseEvent) => {
+    suppressAvatarActivation(event)
+    cancelHold()
+    if (event.button === 0 && (event.ctrlKey || event.metaKey)) {
+      openHeadshot()
+    }
   }
 
   // Drop a recording JSON on the avatar to replay it; anything else refreshes.
@@ -107,11 +156,14 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
       <span
         className={avatarClass}
         onPointerDown={beginHold}
-        onPointerUp={cancelHold}
+        onPointerUp={finishPress}
         onPointerLeave={cancelHold}
-        onPointerCancel={cancelHold}
+        onPointerCancel={() => {
+          cancelHold()
+          taps.current.count = 0
+        }}
         onContextMenu={suppressAvatarActivation}
-        onClickCapture={suppressAvatarActivation}
+        onClickCapture={onAvatarClick}
         onDragOver={(event) => {
           event.preventDefault()
           setDropReady(true)
