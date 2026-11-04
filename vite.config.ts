@@ -34,7 +34,25 @@ for (const [assetPath, dataUrl] of firstPaintAssets) {
 export default defineConfig({
   // MDX stays a build-time concern: its output passes through the same React
   // and TanStack Start SSR pipeline as the handwritten TSX components.
-  plugins: [tanstackStart(), mdx(), viteReact()],
+  plugins: [
+    {
+      name: 'unlisted-photo-headers',
+      configureServer(server) {
+        // Vercel applies these to the static image in production. Mirror them
+        // locally because public assets bypass the application middleware.
+        server.middlewares.use((req, res, next) => {
+          if (new URL(req.url ?? '/', 'http://localhost').pathname === '/headshot.png') {
+            res.setHeader('X-Robots-Tag', 'noindex, nofollow')
+            res.setHeader('Content-Disposition', 'inline; filename="headshot.png"')
+          }
+          next()
+        })
+      },
+    },
+    tanstackStart(),
+    mdx(),
+    viteReact(),
+  ],
   define: {
     __INLINE_CSS__: JSON.stringify(inlineCss),
   },

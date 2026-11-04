@@ -28,6 +28,18 @@ const securityMiddleware = createMiddleware().server(async ({ request, next }) =
 
   // Keep the unlisted shortcut out of page markup and the client route manifest.
   const pathname = new URL(request.url).pathname
+  if (pathname === '/photo' || pathname === '/photo/') {
+    return new Response(null, {
+      status: 307,
+      headers: {
+        ...securityHeaders,
+        Location: '/headshot.png',
+        'X-Robots-Tag': 'noindex, nofollow',
+        'Cache-Control': 'no-store',
+      },
+    })
+  }
+
   if (pathname === '/zoom' || pathname === '/zoom/') {
     return new Response(null, {
       status: 307,

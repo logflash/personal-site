@@ -6,6 +6,13 @@
   "outputDirectory": "dist/client",
   "headers": [
     {
+      "source": "/headshot.png",
+      "headers": [
+        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
+        { "key": "Content-Disposition", "value": "inline; filename=\"headshot.png\"" }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
