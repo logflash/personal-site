@@ -14,7 +14,7 @@ import { LazyReplayOverlay } from './LazyReplayOverlay'
 const HOLD_MS = 1000
 /** Ignore ordinary taps before loading the comparatively heavy recorder runtime. */
 const PREPARE_DELAY_MS = 150
-/** Three quick touch taps open the full-resolution portrait. */
+/** Three quick clicks or taps open the full-resolution portrait. */
 const TAP_INTERVAL_MS = 450
 const TAP_DURATION_MS = 300
 
@@ -52,7 +52,7 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
   const [replay, setReplay] = useState<GTReplayerBundle | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const prepareTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  const touchStartedAt = useRef<number | null>(null)
+  const pressStartedAt = useRef<number | null>(null)
   const taps = useRef({ count: 0, lastAt: 0 })
   useEffect(
     () => () => {
@@ -71,34 +71,38 @@ export function Identity({ renderWho }: { renderWho?: (who: ReactNode) => ReactN
     clearTimeout(holdTimer.current)
     clearTimeout(prepareTimer.current)
     setCharging(false)
-    touchStartedAt.current = null
+    pressStartedAt.current = null
   }
 
   const beginHold = (event: PointerEvent) => {
     // Modified clicks open the original portrait without preparing a recording.
-    if (event.button !== 0 || event.ctrlKey || event.metaKey) return
+    if (event.button !== 0 || event.ctrlKey || event.metaKey) {
+      cancelHold()
+      taps.current.count = 0
+      return
+    }
     if (status !== 'idle') return
     if (!event.isPrimary) {
       cancelHold()
       taps.current.count = 0
       return
     }
-    touchStartedAt.current = event.pointerType === 'touch' ? event.timeStamp : null
+    pressStartedAt.current = event.timeStamp
     setCharging(true)
     prepareTimer.current = setTimeout(prepare, PREPARE_DELAY_MS)
     holdTimer.current = setTimeout(() => {
       setCharging(false)
-      touchStartedAt.current = null
+      pressStartedAt.current = null
       taps.current.count = 0
       startRecording()
     }, HOLD_MS)
   }
 
   const finishPress = (event: PointerEvent) => {
-    const startedAt = touchStartedAt.current
+    const startedAt = pressStartedAt.current
     cancelHold()
-    if (event.pointerType !== 'touch' || startedAt === null) return
-    if (event.timeStamp - startedAt > TAP_DURATION_MS) {
+    if (startedAt === null) return
+    if (event.ctrlKey || event.metaKey || event.timeStamp - startedAt > TAP_DURATION_MS) {
       taps.current.count = 0
       return
     }

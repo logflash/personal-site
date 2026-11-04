@@ -77,7 +77,14 @@ for (const [name, engine, options] of [
           await page.waitForTimeout(500)
         } else {
           await avatar().click()
-          assert.equal(context.pages().length, 1, 'ordinary click is unchanged')
+          await avatar().click()
+          assert.equal(context.pages().length, 1, 'one or two clicks must not open the headshot')
+          await open(() => avatar().click())
+          await avatar().click()
+          await page.waitForTimeout(500)
+          await avatar().click()
+          await avatar().click()
+          assert.equal(context.pages().length, 1, 'a pause resets the click sequence')
           for (const modifier of ['Control', 'Meta']) {
             await open(() => avatar().click({ modifiers: [modifier] }))
           }
@@ -87,6 +94,7 @@ for (const [name, engine, options] of [
       assert.deepEqual(recorderRequests, [], 'photo gestures must not load the recorder')
       if (!touch) {
         await page.setViewportSize({ width: 390, height: 844 })
+        await open(() => avatar().click({ clickCount: 3 }))
         await open(() => avatar().click({ modifiers: ['Control'], delay: 1100 }))
         assert.deepEqual(recorderRequests, [], 'holding Ctrl+click must not prepare recording')
       }
