@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useRouter } from '@tanstack/react-router'
+import { syncScrollControls } from '../lib/pageScroll'
 import {
   captureSnapshot,
   initialSnapshot,
@@ -85,6 +86,12 @@ export function usePageMemory() {
     }
 
     const restore = (snapshot: ReadingSnapshot | undefined, hash: string) => {
+      // Initial fragments are positioned from SSR, before its first visible
+      // frame. Do not repeat that work when hydration or onRendered runs.
+      if (!snapshot && document.documentElement.dataset.initialHashTarget === `#${hash}`) {
+        restoring = false
+        return
+      }
       const position = snapshot?.position
       const run = ++generation
       restoring = true
@@ -117,6 +124,7 @@ export function usePageMemory() {
         }
         // Scroll and reveal in the same frame: the translated top/closed-card
         // layout must never be painted before the saved reading position.
+        syncScrollControls()
         document.documentElement.removeAttribute('data-initial-reading')
         restoring = false
       }
@@ -141,6 +149,7 @@ export function usePageMemory() {
       'onBeforeNavigate',
       ({ toLocation, pathChanged, hashChanged }) => {
         save()
+        delete document.documentElement.dataset.initialHashTarget
         // Clearing the hash replaces the current entry. It is not Back/Forward:
         // restoring its saved position would cancel an in-flight scroll to top.
         sameEntry =

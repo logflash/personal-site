@@ -26,7 +26,7 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : Object
       await page.waitForTimeout(400)
       assert.equal(await page.evaluate(() => scrollY), 0)
       assert.equal(await page.evaluate(() => history.length), historyLength)
-      assert.equal(await page.locator('.back-to-top').count(), 0)
+      assert.equal(await page.locator('.back-to-top:visible').count(), 0)
 
       await page.goto(`${base}/${locale}/missing-page`, { waitUntil: 'networkidle' })
       await page.locator('.not-found-specimen[data-ready]').waitFor()
@@ -57,7 +57,7 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : Object
     await page.locator('#contact .back-to-top').click()
     await page.waitForFunction(() => document.querySelector('.content').scrollTop === 0)
     assert.equal(await page.evaluate(() => location.hash), '')
-    await page.waitForFunction(() => !document.querySelector('.back-to-top'))
+    await page.waitForFunction(() => !document.body.hasAttribute('data-page-scrolled'))
     await page.waitForTimeout(400)
     assert.equal(await page.locator('.content').evaluate((element) => element.scrollTop), 0)
     await page.getByRole('button', { name: 'Stop recording', exact: true }).click()
@@ -87,7 +87,10 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : Object
     })
     await page.waitForFunction(() => {
       const doc = document.querySelector('#stage iframe')?.contentDocument
-      return doc?.querySelector('.content')?.scrollTop === 0 && !doc.querySelector('.back-to-top')
+      return (
+        doc?.querySelector('.content')?.scrollTop === 0 &&
+        !doc.body.hasAttribute('data-page-scrolled')
+      )
     })
     assert.deepEqual(errors, [])
     console.log(

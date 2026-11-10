@@ -126,7 +126,7 @@ serves the same build locally via `scripts/serve.mjs`.
 - `src/data/site.ts` — shared identity and navigation data
 - `src/components/` — page chrome plus the parameterized MDX section renderer
 - `src/hooks/` — `useTheme` (light/dark, persisted to localStorage), `useHashRoute`
-  (click-driven hash routing; scrolling to the top clears it), `useScrolled`
+  (click-driven hash routing; scrolling to the top clears it)
 - `src/lib/seo.ts` — per-locale head tags; `src/lib/localePath.ts` — locale helpers
 - `src/styles/global.css` — design tokens and responsive rules; the sidebar
   collapses to the mobile top bar below 880px

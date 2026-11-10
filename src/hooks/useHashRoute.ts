@@ -23,7 +23,11 @@ export function useClearHashAtTop() {
     let ticking = false
     const update = () => {
       ticking = false
-      if (document.documentElement.hasAttribute('data-initial-reading')) return
+      if (
+        document.documentElement.hasAttribute('data-initial-reading') ||
+        document.documentElement.hasAttribute('data-initial-hash')
+      )
+        return
       if (pageScroller().scrollTop > 0 || window.location.hash === '') return
       replaceHash('')
     }
@@ -48,6 +52,9 @@ export function useClearHashAtTop() {
 export function useDeepLinkScroll() {
   useLayoutEffect(() => {
     if (!window.location.hash) return
+    // The parser-time script owns initial fragment loads, including its font
+    // wait. Hydration must not jump again after that document is revealed.
+    if (document.documentElement.dataset.initialHashTarget === location.hash) return
     // '#home' means the top of the page — a fresh load is already there,
     // so scrolling to the section's offset would only shift the view down.
     if (window.location.hash !== '#home') {

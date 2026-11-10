@@ -123,6 +123,13 @@ try {
         scriptReadyAt = Date.now() + 700
         fontsReadyAt = Date.now() + 1200
         // Do not let Playwright scroll the mobile selector into view first.
+        // Open the custom menu before choosing: it captures the live fragment
+        // when opened, just as it does for a real pointer/keyboard interaction.
+        await page.locator('.locale-switcher:visible').evaluate((switcher) => {
+          const native = switcher.querySelector('select')
+          if (getComputedStyle(native).display === 'none')
+            switcher.querySelector('.locale-switcher-trigger').click()
+        })
         await page.locator('.locale-switcher:visible').evaluate((switcher, locale) => {
           const native = switcher.querySelector('select')
           if (getComputedStyle(native).display !== 'none') {

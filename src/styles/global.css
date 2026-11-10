@@ -58,7 +58,8 @@ html[data-initial-reading] {
 /* The body-end boot script reveals the server-rendered page only after the
    initial anchor has been positioned, so the top is never a visible frame. */
 html[data-initial-hash] body {
-  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Keep the translated document in layout while its remembered UI state and
@@ -2265,7 +2266,7 @@ html[data-initial-scroll] .cg-scroller {
     font-size: 11px;
   }
 
-  .back-to-top {
+  :where(body[data-page-scrolled]) .back-to-top {
     display: flex;
   }
 

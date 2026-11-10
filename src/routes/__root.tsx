@@ -33,6 +33,7 @@ import { usePageMemory } from '../hooks/usePageMemory'
 import { THEME_BOOT_SCRIPT } from '../lib/theme'
 import { LOCALE_PICKER_BOOT_SCRIPT } from '../lib/localePicker'
 import { PAGE_MEMORY_KEY, READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
+import { SCROLL_STATE_BOOT_SCRIPT } from '../lib/pageScroll'
 import { glyphfluxManifestUrlsByLocale } from '../generated/glyphfluxManifests'
 
 type RecordingRuntimeComponent =
@@ -42,12 +43,12 @@ type RecordingRuntimeComponent =
 // load must be instant; normal hash navigation becomes smooth after hydration.
 // Touch mode stays latched because some phone browsers report hover capability
 // even though finger taps leave :hover styles stuck on screen.
-const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};${LOCALE_PICKER_BOOT_SCRIPT};addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{const parts=location.pathname.split('/').filter(Boolean);let section=['resume','publications','projects'].includes(parts[1])?parts[1]:parts.length===1?'home':'not-found';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash=''}`
+const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};${LOCALE_PICKER_BOOT_SCRIPT};${SCROLL_STATE_BOOT_SCRIPT};addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{const parts=location.pathname.split('/').filter(Boolean);let section=['resume','publications','projects'].includes(parts[1])?parts[1]:parts.length===1?'home':'not-found';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash='';document.documentElement.dataset.initialHashTarget=location.hash;history.scrollRestoration='manual';setTimeout(()=>document.documentElement.removeAttribute('data-initial-hash'),5000)}`
 
 // Runs synchronously after the server-rendered sections have been parsed but
 // before the client bundle or first visible paint. It positions both scroll
-// axes that have non-default starting points. If a future route stops
-// rendering its anchor on the server, useDeepLinkScroll remains the fallback.
+// axes that have non-default starting points. Fragment loads wait for the
+// actual font metrics and open any enclosing disclosures before revealing.
 // Reloads reuse only the graph offset from the existing history snapshot.
 // Read it here, while the graph is still hidden, rather than after hydration.
 // This also works when the client bundle is slow or fails to load entirely.
@@ -68,7 +69,35 @@ const INITIAL_LAYOUT_SCRIPT = `(()=>{
   } finally {
     document.documentElement.removeAttribute('data-initial-scroll');
   }
-})();if(document.documentElement.hasAttribute('data-initial-hash')){try{if(location.hash==='#home'){document.documentElement.removeAttribute('data-initial-hash')}else{const target=document.getElementById(decodeURIComponent(location.hash.slice(1)));if(target){target.scrollIntoView({behavior:'instant'});document.documentElement.removeAttribute('data-initial-hash')}}}catch(e){document.documentElement.removeAttribute('data-initial-hash')}}`
+})();(()=>{
+  const root=document.documentElement;
+  if(!root.hasAttribute('data-initial-hash')) return;
+  const hash=location.hash;
+  const reveal=()=>root.removeAttribute('data-initial-hash');
+  // Locale restoration owns its remembered position, which may differ from
+  // the URL's section. Never race it with a second asynchronous anchor jump.
+  if(root.hasAttribute('data-initial-reading')) { reveal(); return; }
+  let target;
+  try { target=document.getElementById(decodeURIComponent(hash.slice(1))); }
+  catch { reveal(); return; }
+  if(!target&&hash!=='#home') { reveal(); return; }
+  for(let node=target;node;node=node.parentElement) {
+    if(node instanceof HTMLDetailsElement) node.open=true;
+  }
+  const position=()=>{
+    if(hash==='#home') scrollTo({top:0,behavior:'instant'});
+    else target.scrollIntoView({behavior:'instant'});
+    dispatchEvent(new Event('site:scroll-positioned'));
+  };
+  // Establish controls before measuring final font layout. Both passes are
+  // hidden; hydration is not needed to make this server-rendered page usable.
+  position();
+  root.getBoundingClientRect();
+  document.fonts.ready.then(()=>requestAnimationFrame(()=>{
+    if(location.hash===hash&&root.dataset.initialHashTarget===hash) position();
+    reveal();
+  }));
+})()`
 
 const contributionCueShouldReset = createIsomorphicFn()
   .server(() => requestBypassesCache(getRequest()))
@@ -212,7 +241,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         {import.meta.env.DEV ? null : <style nonce={nonce}>{__INLINE_CSS__}</style>}
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <TranslationProvider locale={locale} translations={translations}>
           <RecordingRuntimeContext.Provider value={recorderControls}>
             {children}

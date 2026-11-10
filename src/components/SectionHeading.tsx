@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router'
 import { useBackToTop } from '../hooks/useHashRoute'
-import { useScrolled } from '../hooks/useScrolled'
 import { useTranslate } from '../lib/i18n'
 
 interface SectionHeadingProps {
@@ -28,7 +27,6 @@ export function SectionHeading({
 }: SectionHeadingProps) {
   const Heading = level === 3 ? 'h3' : 'h2'
   const gt = useTranslate()
-  const scrolled = useScrolled()
   const backToTop = useBackToTop()
 
   return (
@@ -47,25 +45,23 @@ export function SectionHeading({
           {title}
         </Link>
       </Heading>
-      {scrolled && (
-        <button
-          type="button"
-          className="heading-control back-to-top"
-          title={gt('Back to top')}
-          aria-label={gt('Back to top')}
-          onClick={backToTop}
-        >
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-            <path
-              d="M2.5 7.5 6 4l3.5 3.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-      )}
+      <button
+        type="button"
+        className="heading-control back-to-top"
+        title={gt('Back to top')}
+        aria-label={gt('Back to top')}
+        onClick={backToTop}
+      >
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+          <path
+            d="M2.5 7.5 6 4l3.5 3.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
     </div>
   )
 }
