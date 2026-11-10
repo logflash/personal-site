@@ -1055,6 +1055,22 @@ main {
   content: '↗';
 }
 
+.publication-entry-authors {
+  margin-block: 2px;
+  color: var(--mut);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.publication-entry-authors > span {
+  display: inline-block;
+}
+
+.publication-entry-authors strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
 .publication-entry-meta {
   display: flex;
   align-items: center;

@@ -32,7 +32,8 @@ import { ProjectExplorer, ProjectGroup } from '../ProjectExplorer'
 import { PublicationTools } from '../PublicationTools'
 import { NamePronunciation } from '../NamePronunciation'
 import { useRememberedDisclosure, useRememberedState } from '../../hooks/usePageMemory'
-import type { publications } from '../../data/publications'
+import { publications } from '../../data/publications'
+import { profile } from '../../data/site'
 
 interface SectionContextValue {
   id: string
@@ -400,6 +401,19 @@ export function PublicationEntry({
       <summary className="resume-entry-toggle">
         <span className="resume-entry-overview">
           <strong className="resume-entry-title">{name}</strong>
+          {publicationId && (
+            <span className="publication-entry-authors">
+              {publications[publicationId].authorPreview.map((author, index, authors) => (
+                <Fragment key={author}>
+                  <span>
+                    {author === profile.name ? <strong>{author}</strong> : author}
+                    {index < authors.length - 1 ? ',' : ''}
+                  </span>
+                  {index < authors.length - 1 ? ' ' : ''}
+                </Fragment>
+              ))}
+            </span>
+          )}
           <span className="publication-entry-meta">
             {venue}
             <DisclosureLabel />
