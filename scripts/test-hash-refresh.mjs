@@ -21,7 +21,9 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
         window.__hashFrames = []
         const sample = () => {
           const body = document.body
-          const target = document.getElementById(decodeURIComponent(location.hash.slice(1)))
+          const target = location.hash
+            ? document.getElementById(decodeURIComponent(location.hash.slice(1)))
+            : document.querySelector('.resume-page')
           if (body && target && window.__hashFrames.length < 600) {
             const style = getComputedStyle(body)
             if (style.visibility === 'visible' && Number(style.opacity) > 0) {
@@ -33,6 +35,9 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
                   (node) => getComputedStyle(node).display !== 'none',
                 ).length,
                 open: target instanceof HTMLDetailsElement ? target.open : null,
+                missingLogos: [...document.querySelectorAll('.resume-entry-logo img')]
+                  .filter((image) => !image.complete || image.naturalWidth === 0)
+                  .map((image) => image.getAttribute('src')),
               })
             }
           }
@@ -48,9 +53,17 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
       await page.route('**/*', async (route) => {
         const type = route.request().resourceType()
         if (type === 'script' && blockScripts) return route.abort()
-        if (type === 'font' || type === 'script') {
+        if (
+          type === 'font' ||
+          type === 'script' ||
+          route.request().url().includes('/logos/resume/')
+        ) {
           const delay = delayUntil - Date.now()
-          if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay))
+          // Logos deliberately arrive after fonts and hydration, particularly
+          // the large SCPS PNG. Geometry-only checks miss these empty boxes.
+          const imageDelay = type === 'image' ? 600 : 0
+          if (delay + imageDelay > 0)
+            await new Promise((resolve) => setTimeout(resolve, delay + imageDelay))
         }
         await route.continue()
       })
@@ -58,6 +71,7 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
         await page.waitForFunction(
           () =>
             !document.documentElement.hasAttribute('data-initial-hash') &&
+            !document.documentElement.hasAttribute('data-initial-assets') &&
             !document.documentElement.hasAttribute('data-initial-reading'),
         )
         await page.evaluate(() => document.fonts.ready)
@@ -77,12 +91,14 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
           assert.ok(Math.abs(frame.height - final.height) <= 1, `${label}: layout changed`)
           assert.equal(frame.arrows, final.arrows, `${label}: arrows flickered`)
           assert.equal(frame.open, final.open, `${label}: disclosure changed`)
+          assert.deepEqual(frame.missingLogos, [], `${label}: logos missing from a visible frame`)
         }
         if (final.y > 0 && (await page.locator('.back-to-top').count()) > 0)
           assert.ok(final.arrows > 0, `${label}: arrows visible before hydration`)
         assert.deepEqual(errors, [])
       }
       for (const path of [
+        '/resume',
         '/resume#education',
         '/resume#experience',
         '/resume#skills',

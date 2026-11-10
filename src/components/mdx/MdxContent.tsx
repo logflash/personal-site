@@ -517,7 +517,7 @@ export function ResumeEntry({
     <details ref={entry} data-reading-anchor={memoryKey} className="resume-entry">
       <summary className="resume-entry-toggle">
         <span className="resume-entry-logo" aria-hidden="true">
-          <img src={logo} alt="" width="48" height="48" loading="lazy" decoding="async" />
+          <img src={logo} alt="" width="48" height="48" loading="eager" decoding="sync" />
         </span>
         <span className="resume-entry-overview">
           <span

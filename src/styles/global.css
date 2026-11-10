@@ -57,7 +57,8 @@ html[data-initial-reading] {
 
 /* The body-end boot script reveals the server-rendered page only after the
    initial anchor has been positioned, so the top is never a visible frame. */
-html[data-initial-hash] body {
+html[data-initial-hash] body,
+html[data-initial-assets] body {
   opacity: 0;
   pointer-events: none;
 }

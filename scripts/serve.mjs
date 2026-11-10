@@ -13,6 +13,7 @@ const MIME = {
   '.js': 'text/javascript',
   '.css': 'text/css',
   '.png': 'image/png',
+  '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
   '.pdf': 'application/pdf',

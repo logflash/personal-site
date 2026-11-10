@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { syncScrollControls } from '../lib/pageScroll'
+import { readingAssetsReady } from '../lib/readingAssets'
 import {
   captureSnapshot,
   initialSnapshot,
@@ -138,7 +139,7 @@ export function usePageMemory() {
           if (!document.querySelector('main[data-reading-ready]')) return
           // Flush layout before reading fonts.ready, including newly open cards.
           document.documentElement.getBoundingClientRect()
-          void document.fonts.ready.then(() => {
+          void readingAssetsReady().then(() => {
             if (!disposed && run === generation) frame = requestAnimationFrame(apply)
           })
         } else apply()
