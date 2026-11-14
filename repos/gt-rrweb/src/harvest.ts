@@ -366,9 +366,10 @@ export function overlayFromDict(
 /**
  * Cover text NOT wrapped in a `<T>` — `gt()`/`useGT()` strings and other bare recorded
  * text — by hashing each recorded SOURCE string to its GT message hash and looking that
- * up in the dict. Nodes already translated by the `<T>` path (`covered`) are skipped so
- * it wins. Only STRING dict entries apply (a JSX entry belongs to a `<T>`, not bare
- * text); a translation equal to source, blank, or absent is left on source. An
+ * up in the dict. All nodes owned by marked messages (`covered`) are skipped, even
+ * when their message leaves them unchanged. Only STRING dict entries apply (a JSX
+ * entry belongs to a `<T>`, not bare text); a translation equal to source, blank,
+ * or absent is left on source. An
  * interpolated string (e.g. `gt('Hello {name}')` rendered as "Hello Ann") won't match its
  * template's hash, so it simply stays on source. Pure.
  */
@@ -411,6 +412,11 @@ export async function harvestHash(
 ): Promise<LocaleTextOverlay> {
   const targets = locales.filter((l) => l && l !== opts.source);
   const hashNodes = collectHashNodes(events);
+  // Ownership is locale-independent. Variables and skipped/unchanged messages
+  // must not be reinterpreted as unrelated bare-string messages by fallback.
+  const covered = new Set(
+    hashNodes.flatMap((node) => node.textNodes.map((text) => text.id)),
+  );
   // Recorded text is only needed for the `gt()`-string lookup (hashMessage path).
   const recorded = opts.hashMessage ? collectRecordedText(events) : null;
   const overlay: LocaleTextOverlay = {};
@@ -431,7 +437,6 @@ export async function harvestHash(
       formatMessage: opts.formatMessage,
     });
     if (recorded && opts.hashMessage) {
-      const covered = new Set(Object.keys(bag).map(Number));
       Object.assign(
         bag,
         stringOverlay(recorded, covered, dict, opts.hashMessage),

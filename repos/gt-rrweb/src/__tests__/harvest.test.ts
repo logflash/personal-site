@@ -453,6 +453,86 @@ describe('harvestHash', () => {
 
 // ===================================================================================
 describe('harvestLocales', () => {
+  it('protects marked variables from colliding bare-message translations', async () => {
+    const recorded = [
+      fullSnapshot(
+        el(1, 'MAIN', [
+          el(2, 'SPAN', [text(3, 'Hello '), text(4, 'Ada'), text(5, '!')], {
+            'data-_gt-hash': 'greeting',
+          }),
+          text(6, 'Ada'),
+        ]),
+      ),
+    ];
+    const dict: TranslationDict = {
+      greeting: ['Bonjour ', { k: 'name' }, ' !'],
+      Ada: 'Adele',
+    };
+    const overlay = await harvestLocales(recorded, ['en', 'fr'], {
+      sourceLocale: 'en',
+      loadTranslations: async () => dict,
+      hashMessage: (message) => message,
+    });
+    expect(overlay).toEqual({ fr: { 3: 'Bonjour ', 5: ' !', 6: 'Adele' } });
+  });
+
+  const skippedEntries: { name: string; entry?: GtJsxChildren | null }[] = [
+    { name: 'unchanged', entry: ['Ada'] },
+    { name: 'missing' },
+    { name: 'untranslated', entry: null },
+    { name: 'structurally mismatched', entry: ['Bonjour ', { k: 'name' }] },
+    {
+      name: 'branch-ambiguous',
+      entry: { t: 'span', d: { b: { one: 'Ada', other: 'Ada' } } },
+    },
+  ];
+  it.each(skippedEntries)(
+    'protects $name marked entries while translating unmarked text',
+    async ({ entry }) => {
+      const recorded = [
+        fullSnapshot(
+          el(1, 'MAIN', [
+            hashSpan(2, 'greeting', [text(3, 'Ada')]),
+            text(4, 'Ada'),
+          ]),
+        ),
+      ];
+      const overlay = await harvestLocales(recorded, ['en', 'fr', 'es'], {
+        sourceLocale: 'en',
+        loadTranslations: async (locale) => ({
+          ...(entry === undefined ? {} : { greeting: entry }),
+          Ada: locale === 'fr' ? 'Adele' : 'Adela',
+        }),
+        hashMessage: (message) => message,
+      });
+      expect(overlay).toEqual({ fr: { 4: 'Adele' }, es: { 4: 'Adela' } });
+    },
+  );
+
+  it('protects nested and separately-added marked text from fallback', async () => {
+    const recorded = [
+      fullSnapshot(
+        el(1, 'MAIN', [
+          hashSpan(2, 'outer', [
+            text(3, 'Ada'),
+            hashSpan(4, 'inner', [text(5, 'Ada')]),
+          ]),
+          text(6, 'Ada'),
+        ]),
+      ),
+      // The child can arrive before its marked parent in a mutation batch.
+      mutation([
+        { parentId: 7, node: text(8, 'Ada') },
+        { parentId: 1, node: hashSpan(7, 'later', []) },
+      ]),
+    ];
+    const overlay = await harvestLocales(recorded, ['en', 'fr'], {
+      loadTranslations: async () => ({ inner: ['Adèle'], Ada: 'Adele' }),
+      hashMessage: (message) => message,
+    });
+    expect(overlay).toEqual({ fr: { 5: 'Adèle', 6: 'Adele' } });
+  });
+
   const events = [
     fullSnapshot(el(1, 'MAIN', [hashSpan(2, 'H1', [text(3, 'Usage')])])),
   ];
