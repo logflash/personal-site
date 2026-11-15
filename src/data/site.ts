@@ -14,7 +14,7 @@ export const profile = {
   handle: '@logflash',
   githubUser: 'logflash',
   copyrightYear: 2026,
-  avatar: '/avatar.png', // 256px — og:image and favicon
+  avatar: '/avatar.png', // 256px — social preview image
 }
 
 const pageLinks: NavItem[] = [

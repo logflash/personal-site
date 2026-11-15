@@ -135,7 +135,7 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
     ],
     links: [
-      { rel: 'icon', type: 'image/png', href: '/avatar.png' },
+      { rel: 'icon', type: 'image/png', sizes: '256x256', href: '/favicon.png' },
       // All three faces still start fetching from the document, preserving a
       // flicker-free warm refresh. Only the above-the-fold body face competes
       // at high priority; mono/serif and morph preparation remain eager but
