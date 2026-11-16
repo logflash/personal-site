@@ -2712,7 +2712,7 @@ dialog.replay-overlay:not([open]) {
 }
 
 .colophon > summary {
-  width: fit-content;
+  width: 100%;
   min-height: 44px;
   padding: 40px 0 14px;
   cursor: pointer;
