@@ -30,6 +30,39 @@ export type DirectedClick = { t: number; x: number; y: number; id: number };
 
 export type Point = { x: number; y: number };
 
+/** Approach the next target only after intervening layout changes settle. */
+export function cursorGlideStart(
+  from: number,
+  to: number,
+  firstScroll: number | null,
+  mutationTimes: readonly number[],
+): number {
+  let start = firstScroll ?? from;
+  for (const time of mutationTimes) {
+    if (time > start && time < to) start = time;
+  }
+  return start;
+}
+
+/** A completed click stays at its viewport position when its action reflows the page. */
+export function createClickPositionResolver(
+  resolve: (click: DirectedClick) => Point,
+) {
+  const positions = new Map<DirectedClick, Point>();
+  return {
+    at(click: DirectedClick, time: number): Point {
+      const previous = positions.get(click);
+      if (time > click.t && previous) return previous;
+      const position = resolve(click);
+      positions.set(click, position);
+      return position;
+    },
+    clear(): void {
+      positions.clear();
+    },
+  };
+}
+
 export function clampScrollPosition(position: Point, maximum: Point): Point {
   return {
     x: Math.max(0, Math.min(Math.max(0, maximum.x), position.x)),
@@ -112,6 +145,7 @@ export type ScrollPoint = {
   burst: number;
   mx: number;
   my: number;
+  layoutTime: number;
 };
 
 export type ScrollTrack = { id: number; burst: number; points: ScrollPoint[] };
@@ -310,9 +344,9 @@ export function detectDoubleClicks(
 ): Set<number> {
   const NEW_PRESS = 250;
   const DOUBLE_CLICK_MS = 5000;
-  const presses: number[] = [];
+  const presses: Array<{ timestamp: number; index: number }> = [];
   let lastPress = -Infinity;
-  for (const event of events) {
+  for (const [index, event] of events.entries()) {
     const data = incrementalData(event);
     if (!data || !isDirectedClick(event)) continue;
     if (
@@ -320,14 +354,16 @@ export function detectDoubleClicks(
       typeof data.x === 'number' &&
       typeof data.y === 'number'
     ) {
-      presses.push(event.timestamp);
+      presses.push({ timestamp: event.timestamp, index });
     }
     lastPress = event.timestamp;
   }
 
   const changedBetween = (start: number, end: number) =>
-    events.some((event) => {
-      if (event.timestamp <= start || event.timestamp > end) return false;
+    events.some((event, index) => {
+      // DOM mutations can share the press timestamp. Their event order still
+      // establishes that the click changed the page and wasn't a duplicate.
+      if (index <= start || index > end) return false;
       const data = incrementalData(event);
       if (!data || data.source !== REPLAY_SOURCE.Mutation) return false;
       return !!(
@@ -340,13 +376,13 @@ export function detectDoubleClicks(
 
   const hidden = new Set<number>();
   for (let index = 0; index < presses.length - 1; index += 1) {
-    const timestamp = presses[index];
+    const press = presses[index];
     const next = presses[index + 1];
     if (
-      next - timestamp <= DOUBLE_CLICK_MS &&
-      !changedBetween(timestamp, next)
+      next.timestamp - press.timestamp <= DOUBLE_CLICK_MS &&
+      !changedBetween(press.index, next.index)
     ) {
-      hidden.add(timestamp);
+      hidden.add(press.timestamp);
     }
   }
   return hidden;
@@ -423,8 +459,18 @@ export function buildScrollTracks(
   burstStarts: WeakSet<ReplayIncrementalData>,
 ) {
   const tracks = new Map<number, ScrollTrack>();
+  let layoutTime = 0;
   for (const event of events) {
     const data = incrementalData(event);
+    if (
+      data?.source === REPLAY_SOURCE.Mutation &&
+      (data.adds?.length ||
+        data.removes?.length ||
+        data.texts?.length ||
+        data.attributes?.length)
+    ) {
+      layoutTime = event.timestamp - timelineStart;
+    }
     if (
       !data ||
       data.source !== REPLAY_SOURCE.Scroll ||
@@ -444,6 +490,7 @@ export function buildScrollTracks(
       burst: track.burst,
       mx: 0,
       my: 0,
+      layoutTime,
     });
   }
   for (const track of tracks.values()) {
@@ -473,7 +520,10 @@ export function scrollPositionAt(
   if (to && to.burst !== from.burst) {
     const afterTo = points[index + 2];
     const singletonBurst = !afterTo || afterTo.burst !== to.burst;
-    let start = Math.max(from.t, to.t - 450);
+    // A jump caused by changing layout cannot start before that layout exists.
+    // In particular, collapsing content clamps scrolling immediately; easing
+    // that clamp ahead of the mutation scrolls the still-expanded page instead.
+    let start = Math.max(from.t, to.t - 450, to.layoutTime);
     for (const click of clicks) {
       if (click.t > start && click.t < to.t) start = click.t;
     }

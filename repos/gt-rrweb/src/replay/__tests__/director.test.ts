@@ -8,6 +8,8 @@ import {
   buildScrollTracks,
   clampScrollPosition,
   collectDirectedClicks,
+  createClickPositionResolver,
+  cursorGlideStart,
   compressTimeline,
   detectDoubleClicks,
   firstScrollTimeBetween,
@@ -95,6 +97,49 @@ describe('directed pointer input', () => {
 });
 
 describe('directed pointer target projection', () => {
+  it('waits for expansion before approaching a target in the expanded layout', () => {
+    expect(cursorGlideStart(100, 1000, 200, [50, 300, 1100])).toBe(300);
+    expect(cursorGlideStart(100, 1000, 200, [50])).toBe(200);
+    expect(cursorGlideStart(100, 1000, null, [50])).toBe(100);
+    expect(cursorGlideStart(100, 1000, null, [300, 1000])).toBe(300);
+  });
+
+  it('does not move a completed click when collapsing content clamps its scroll container', () => {
+    const click = { t: 100, id: 4, x: 40, y: 400 };
+    let target = { x: 40, y: 400 };
+    const positions = createClickPositionResolver(() => target);
+    expect(positions.at(click, 99)).toEqual({ x: 40, y: 400 });
+    // The same summary moves down as the browser clamps the shorter page.
+    target = { x: 40, y: 600 };
+    expect(positions.at(click, 120)).toEqual({ x: 40, y: 400 });
+  });
+
+  it('keeps an expansion click in place while resolving the next click after automatic scrolling', () => {
+    const expand = { t: 100, id: 4, x: 40, y: 600 };
+    const next = { t: 500, id: 4, x: 40, y: 400 };
+    let target = { x: 40, y: 600 };
+    const positions = createClickPositionResolver(() => target);
+    positions.at(expand, 99);
+    target = { x: 40, y: 450 };
+    expect(positions.at(next, 300)).toEqual({ x: 40, y: 450 });
+    target = { x: 40, y: 400 };
+    expect(positions.at(next, 499)).toEqual({ x: 40, y: 400 });
+    expect(positions.at(expand, 499)).toEqual({ x: 40, y: 600 });
+    expect(positions.at(next, 600)).toEqual({ x: 40, y: 400 });
+  });
+
+  it('retains completed waypoints on seek and re-resolves them after a locale change', () => {
+    const click = { t: 100, id: 4, x: 40, y: 400 };
+    let target = { x: 40, y: 400 };
+    const positions = createClickPositionResolver(() => target);
+    positions.at(click, 99);
+    target = { x: 40, y: 600 };
+    expect(positions.at(click, 900)).toEqual({ x: 40, y: 400 });
+    expect(positions.at(click, 120)).toEqual({ x: 40, y: 400 });
+    positions.clear();
+    expect(positions.at(click, 120)).toEqual({ x: 40, y: 600 });
+  });
+
   it('uses the scroll position a shorter translated document can actually reach', () => {
     expect(clampScrollPosition({ x: 0, y: 1545 }, { x: 0, y: 1460 })).toEqual({
       x: 0,
@@ -264,6 +309,21 @@ describe('directed timeline', () => {
 describe('directed scrolling', () => {
   const linear = (progress: number) => progress;
 
+  it('keeps dwell for disclosure actions whose mutation shares the click timestamp', () => {
+    const events = [
+      mouse(100, 1),
+      event(100, {
+        source: REPLAY_SOURCE.Mutation,
+        attributes: [{ id: 4, attributes: { open: '' } }],
+      }),
+      mouse(1100, 1),
+    ];
+    const input = analyzePointerInput(events);
+    expect(detectDoubleClicks(events, input.isDirectedClick)).toEqual(new Set());
+    const directed = compressTimeline(events, new Set(), input.isDirectedClick);
+    expect(directed[2].timestamp - directed[1].timestamp).toBeGreaterThanOrEqual(550);
+  });
+
   it('interpolates every scroll burst smoothly and deterministically', () => {
     const events = [scroll(0, 0), scroll(100, 100), scroll(200, 200)];
     const tracks = buildScrollTracks(events, 0, markScrollBurstStarts(events));
@@ -292,6 +352,40 @@ describe('directed scrolling', () => {
     expect(scrollPositionAt(track, 550, [], linear)?.y).toBe(0);
     expect(scrollPositionAt(track, 775, [], linear)?.y).toBeCloseTo(200);
     expect(scrollPositionAt(track, 1000, [], linear)?.y).toBe(400);
+  });
+
+  it('does not anticipate the scroll clamp caused by collapsing a disclosure', () => {
+    const events = [
+      scroll(0, 700),
+      event(1000, {
+        source: REPLAY_SOURCE.Mutation,
+        attributes: [{ id: 4, attributes: { open: null } }],
+      }),
+      scroll(1000, 400),
+    ];
+    const track = buildScrollTracks(events, 0, markScrollBurstStarts(events)).get(
+      1,
+    )!;
+    expect(scrollPositionAt(track, 800, [], linear)?.y).toBe(700);
+    expect(scrollPositionAt(track, 999, [], linear)?.y).toBe(700);
+    expect(scrollPositionAt(track, 1000, [], linear)?.y).toBe(400);
+  });
+
+  it('starts an expansion scroll only after the content opens', () => {
+    const events = [
+      scroll(0, 400),
+      event(900, {
+        source: REPLAY_SOURCE.Mutation,
+        attributes: [{ id: 4, attributes: { open: '' } }],
+      }),
+      scroll(1000, 700),
+    ];
+    const track = buildScrollTracks(events, 0, markScrollBurstStarts(events)).get(
+      1,
+    )!;
+    expect(scrollPositionAt(track, 899, [], linear)?.y).toBe(400);
+    expect(scrollPositionAt(track, 950, [], linear)?.y).toBe(550);
+    expect(scrollPositionAt(track, 1000, [], linear)?.y).toBe(700);
   });
 
   it('replaces native rrweb scrolls so only the director applies position', () => {

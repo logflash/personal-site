@@ -21,6 +21,8 @@ import {
   buildScrollTracks,
   clampScrollPosition,
   collectDirectedClicks,
+  createClickPositionResolver,
+  cursorGlideStart,
   compressTimeline,
   detectDoubleClicks,
   firstScrollTimeBetween,
@@ -119,7 +121,7 @@ type IncrementalData = {
   adds?: Array<{ node?: SNode }>;
   removes?: Array<{ id?: number }>;
   texts?: Array<{ id?: number; value?: string }>;
-  attributes?: unknown[];
+  attributes?: Array<{ attributes?: Record<string, unknown> }>;
   x?: number;
   y?: number;
   id?: number;
@@ -1265,9 +1267,17 @@ function createPlayerInstance(
     return added;
   }
 
-  // Resolve the target at its click timestamp, rather than wherever the target
-  // happens to be during the current frame. This keeps cursor waypoints stable
-  // while their elements scroll, while still adapting to locale and layout changes.
+  // Track a target while approaching it, then keep the completed click in
+  // viewport coordinates. Reprojecting it through a later, smaller scroll range
+  // would move the cursor when the click collapses content under it.
+  const clickPositions = createClickPositionResolver(liveXY);
+  function directedXY(
+    click: DirectedClick,
+    time: number,
+  ): { x: number; y: number } {
+    return clickPositions.at(click, time);
+  }
+
   function liveXY(click: DirectedClick): { x: number; y: number } {
     try {
       const element = clickTargetElement(click);
@@ -1348,7 +1358,7 @@ function createPlayerInstance(
       ring.style.display = 'none';
       return;
     }
-    const position = liveXY(activeRing.click);
+    const position = directedXY(activeRing.click, time);
     const progress = Math.max(0, Math.min(1, activeRing.age / rippleDuration));
     const eased = 1 - Math.pow(1 - progress, 3);
     const minimumSize = usesTouchControls ? 22 : 10;
@@ -1375,7 +1385,12 @@ function createPlayerInstance(
     const data = incr(event);
     if (
       data?.source === SRC.Mutation &&
-      (data.adds?.length || data.removes?.length || data.texts?.length)
+      (data.adds?.length ||
+        data.removes?.length ||
+        data.texts?.length ||
+        data.attributes?.some(({ attributes }) =>
+          attributes && ('open' in attributes || 'hidden' in attributes),
+        ))
     ) {
       mutationTimes.push(event.timestamp - t0);
     }
@@ -1389,33 +1404,23 @@ function createPlayerInstance(
     if (index === 0) return click.t;
     const from = points[index - 1].t;
     const firstScroll = firstScrollTimeBetween(scrollTracks, from, click.t);
-    if (firstScroll != null) return firstScroll;
-    let end = from;
-    for (const mutationTime of mutationTimes) {
-      if (
-        mutationTime > from &&
-        mutationTime <= click.t &&
-        mutationTime > end
-      ) {
-        end = mutationTime;
-      }
-    }
-    return end;
+    return cursorGlideStart(from, click.t, firstScroll, mutationTimes);
   }
 
   function positionAt(time: number): { x: number; y: number } | null {
     const visibleClicks = clicks.filter(isCursorPointVisible);
     if (!visibleClicks.length) return null;
     const index = visibleClicks.findIndex((click) => click.t >= time);
-    if (index === -1) return liveXY(visibleClicks[visibleClicks.length - 1]);
+    if (index === -1)
+      return directedXY(visibleClicks[visibleClicks.length - 1], time);
     if (index === 0) {
-      return liveXY(visibleClicks[0]);
+      return directedXY(visibleClicks[0], time);
     }
     const next = visibleClicks[index];
-    const from = liveXY(visibleClicks[index - 1]);
+    const from = directedXY(visibleClicks[index - 1], time);
     const start = glideAt(visibleClicks, index);
     if (time <= start) return from;
-    const to = liveXY(next);
+    const to = directedXY(next, time);
     const span = next.t - start;
     const progress = span > 0 ? (time - start) / span : 1;
     const eased = easeLogistic(Math.min(1, Math.max(0, progress)));
@@ -1500,8 +1505,8 @@ function createPlayerInstance(
   });
   showControls(); // flash it once on load so it's discoverable
 
-  // Seeking is stateless: reset the last transformed cursor coordinates so a
-  // backward or forward jump renders exactly like that timestamp on first arrival.
+  // Reset transformed coordinates on seek, retaining resolved click-time
+  // waypoints so revisiting an action doesn't re-anchor it to a later layout.
   function syncVisualTime(time: number): void {
     prevT = time;
     lastCurX = null;
@@ -1644,6 +1649,12 @@ function createPlayerInstance(
       return;
     }
     prevT = T;
+    // Touch replay has no cursor glide, but its click ripple needs the same
+    // pre-action position as the desktop cursor.
+    const approaching = clicks.find(
+      (click) => click.t >= T && isCursorPointVisible(click),
+    );
+    if (approaching) directedXY(approaching, T);
     if (usesTouchControls) {
       cursor.classList.remove('on', 'clicking');
       renderClickEffects(T);
@@ -1724,6 +1735,7 @@ function createPlayerInstance(
         );
       appliedScroll.clear();
       resetSyntheticScrolls();
+      clickPositions.clear();
       applyDirectedScroll(curTime(), true);
       startLoop();
     } finally {
