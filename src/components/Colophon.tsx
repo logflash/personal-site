@@ -47,7 +47,13 @@ function TypeSpecimen() {
     setBusy(false)
   }
   return (
-    <button type="button" className="type-specimen" onClick={() => void change()} disabled={busy}>
+    <button
+      type="button"
+      className="type-specimen"
+      title={gt('Change typeface')}
+      onClick={() => void change()}
+      disabled={busy}
+    >
       <span className="type-specimen-stage">
         <span
           key={String(serif)}
@@ -59,7 +65,23 @@ function TypeSpecimen() {
         </span>
       </span>
       <span className="type-specimen-caption">
-        <Copy text="Change typeface" /> <span aria-hidden="true">↔</span>
+        <span className="type-specimen-instruction">
+          <Copy text="Change typeface" />
+        </span>
+        <svg
+          className="type-specimen-arrow"
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="0.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M2 8h12M5 5 2 8l3 3M11 5l3 3-3 3" />
+        </svg>
       </span>
     </button>
   )

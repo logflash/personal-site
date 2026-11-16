@@ -319,7 +319,9 @@ try {
       for (const direction of ['serif', 'sans']) {
         await page.locator('.type-specimen').click()
         await page.waitForFunction(
-          () => !document.documentElement.hasAttribute('data-font-morph-active'),
+          () =>
+            !document.querySelector('.type-specimen').disabled &&
+            !document.documentElement.hasAttribute('data-font-morph-active'),
         )
         const payload = await page.evaluate(() => window.__morphs.at(-1))
         assert.equal(payload.target.style.fontRole, direction)
