@@ -2718,6 +2718,10 @@ dialog.replay-overlay:not([open]) {
   cursor: pointer;
 }
 
+.colophon > summary > span {
+  margin-inline-start: 0.35em;
+}
+
 .colophon:not([open]) + .copyright-mobile {
   margin-top: 0;
 }

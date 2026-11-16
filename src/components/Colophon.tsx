@@ -7,6 +7,7 @@ import { translationHash } from '../lib/translationHash'
 import { SUPPORTED_LOCALES } from '../lib/localePath'
 import { useRecordingRuntime } from '../hooks/useRecordingRuntime'
 import { useRememberedDisclosure } from '../hooks/usePageMemory'
+import { pageScroller } from '../lib/pageScroll'
 
 export const colophonMessages = [
   msg('About this site'),
@@ -91,9 +92,24 @@ export function Colophon() {
   const entry = useRememberedDisclosure('colophon')
   const locale = useLocale()
   const { start, status } = useRecordingRuntime()
+  const reveal = () => {
+    if (entry.current?.open) return
+    // Let the native summary action expand first. Only direct activation
+    // scrolls; restoring the disclosure during navigation keeps its saved place.
+    requestAnimationFrame(() => {
+      if (!entry.current?.open) return
+      const scroller = pageScroller()
+      scroller.scrollTo({
+        top: scroller.scrollHeight,
+        behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      })
+    })
+  }
   return (
     <details ref={entry} data-reading-anchor="colophon" className="colophon">
-      <summary>
+      <summary onClick={reveal}>
         <Copy text="About this site" />
       </summary>
       <div className="colophon-grid">
