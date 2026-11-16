@@ -1056,14 +1056,26 @@ main {
 }
 
 .publication-entry-authors {
+  position: relative;
+  height: 1.6em;
+  min-width: 0;
+  overflow: hidden;
   margin-block: 2px;
   color: var(--mut);
   font-size: 13px;
   line-height: 1.6;
+  white-space: nowrap;
 }
 
-.publication-entry-authors > span {
-  display: inline-block;
+.publication-entry-authors-options {
+  display: block;
+  width: max-content;
+}
+
+.publication-entry-authors-options > span {
+  display: block;
+  width: max-content;
+  height: 1.6em;
 }
 
 .publication-entry-authors strong {

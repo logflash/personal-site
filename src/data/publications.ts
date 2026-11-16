@@ -20,7 +20,6 @@ const sweetdeepAuthors = [
 export const publications = {
   sweetdeep: {
     authors: sweetdeepAuthors,
-    authorPreview: [...sweetdeepAuthors.slice(0, 3), '…', ...sweetdeepAuthors.slice(-1)],
     citation:
       'Henriques, I., Elhassar, L., Relekar, S., Walrave, D., Hassantabar, S., Ghanakota, V., Laoui, A., Aich, M., Tir, R., Zerguine, M., Louafi, S., Kimouche, M., Cosson, E., & Jha, N. K. (2025). SweetDeep: A Wearable AI Solution for Real-Time Non-Invasive Diabetes Screening. arXiv. https://doi.org/10.48550/arXiv.2512.03471',
     bibtex: `@misc{henriques2025sweetdeep,

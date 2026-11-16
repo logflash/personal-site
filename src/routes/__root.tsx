@@ -35,6 +35,7 @@ import { LOCALE_PICKER_BOOT_SCRIPT } from '../lib/localePicker'
 import { PAGE_MEMORY_KEY, READING_RESTORE_BOOT_SCRIPT } from '../lib/pageMemory'
 import { SCROLL_STATE_BOOT_SCRIPT } from '../lib/pageScroll'
 import readingAssetsSource from '../lib/readingAssets.ts?raw'
+import publicationAuthorsSource from '../lib/publicationAuthors.ts?raw'
 import { glyphfluxManifestUrlsByLocale } from '../generated/glyphfluxManifests'
 
 type RecordingRuntimeComponent =
@@ -46,13 +47,14 @@ type RecordingRuntimeComponent =
 // even though finger taps leave :hover styles stuck on screen.
 const DISPLAY_BOOT_SCRIPT = `${THEME_BOOT_SCRIPT};${LOCALE_PICKER_BOOT_SCRIPT};${SCROLL_STATE_BOOT_SCRIPT};addEventListener('touchstart',()=>document.documentElement.classList.add('touch'),{once:true,passive:true});const setActiveSection=()=>{const parts=location.pathname.split('/').filter(Boolean);let section=['resume','publications','projects'].includes(parts[1])?parts[1]:parts.length===1?'home':'not-found';try{section=decodeURIComponent(location.hash.slice(1))||section}catch(e){}document.documentElement.dataset.activeSection=section};setActiveSection();addEventListener('hashchange',setActiveSection);document.documentElement.dataset.initialScroll='';if(location.hash){document.documentElement.dataset.initialHash='';document.documentElement.dataset.initialHashTarget=location.hash;history.scrollRestoration='manual';setTimeout(()=>document.documentElement.removeAttribute('data-initial-hash'),5000)}`
 
-// A résumé can open at any section. Its small logo set is loaded eagerly and
-// decoded before revealing the SSR document, including loads without a hash.
-const RESUME_ASSETS_BOOT_SCRIPT = `if(/^\\/(en|es|ja)\\/resume\\/?$/.test(location.pathname))document.documentElement.dataset.initialAssets=''`
+// Reveal résumés after logo decoding and publications after fitting author
+// names with the final font metrics, including loads without a hash.
+const PAGE_ASSETS_BOOT_SCRIPT = `if(/^\\/(en|es|ja)\\/(resume|publications)\\/?$/.test(location.pathname))document.documentElement.dataset.initialAssets=''`
 
 // Use the authored source, not Function.toString(): the server and client
 // bundles minify differently, but hydration must see identical script text.
 const READING_ASSETS_READY_SCRIPT = `(${readingAssetsSource.replace(/^export /m, '')})()`
+const FIT_PUBLICATION_AUTHORS_SCRIPT = `(${publicationAuthorsSource.replace(/^export /m, '')})()`
 
 // Runs synchronously after the server-rendered sections have been parsed but
 // before the client bundle or first visible paint. It positions both scroll
@@ -81,7 +83,10 @@ const INITIAL_LAYOUT_SCRIPT = `(()=>{
 })();(()=>{
   const root=document.documentElement;
   const assetsReady=${READING_ASSETS_READY_SCRIPT};
-  assetsReady.then(()=>root.removeAttribute('data-initial-assets'));
+  assetsReady.then(()=>{
+    ${FIT_PUBLICATION_AUTHORS_SCRIPT};
+    root.removeAttribute('data-initial-assets');
+  });
   if(!root.hasAttribute('data-initial-hash')) return;
   const hash=location.hash;
   const reveal=()=>root.removeAttribute('data-initial-hash');
@@ -245,7 +250,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           {contributionCueBootScript(resetContributionCue) +
             DISPLAY_BOOT_SCRIPT +
             ';' +
-            RESUME_ASSETS_BOOT_SCRIPT +
+            PAGE_ASSETS_BOOT_SCRIPT +
             ';' +
             READING_RESTORE_BOOT_SCRIPT}
         </script>

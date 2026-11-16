@@ -30,10 +30,10 @@ import { CollapseLabel, DisclosureCloseButton, DisclosureLabel } from '../Disclo
 import { TransitionPageHeading, UndoIcon } from '../TransitionPageHeading'
 import { ProjectExplorer, ProjectGroup } from '../ProjectExplorer'
 import { PublicationTools } from '../PublicationTools'
+import { PublicationAuthors } from '../PublicationAuthors'
 import { NamePronunciation } from '../NamePronunciation'
 import { useRememberedDisclosure, useRememberedState } from '../../hooks/usePageMemory'
 import { publications } from '../../data/publications'
-import { profile } from '../../data/site'
 
 interface SectionContextValue {
   id: string
@@ -380,6 +380,7 @@ export function PublicationEntry({
 }) {
   const gt = useMdxGT()
   const entry = useRememberedDisclosure(`publication:${publicationId ?? name}`)
+  const authors = publicationId ? publications[publicationId].authors : undefined
   useLayoutEffect(() => {
     if (!publicationId) return
     const reveal = () => {
@@ -401,19 +402,7 @@ export function PublicationEntry({
       <summary className="resume-entry-toggle">
         <span className="resume-entry-overview">
           <strong className="resume-entry-title">{name}</strong>
-          {publicationId && (
-            <span className="publication-entry-authors">
-              {publications[publicationId].authorPreview.map((author, index, authors) => (
-                <Fragment key={author}>
-                  <span>
-                    {author === profile.name ? <strong>{author}</strong> : author}
-                    {index < authors.length - 1 ? ',' : ''}
-                  </span>
-                  {index < authors.length - 1 ? ' ' : ''}
-                </Fragment>
-              ))}
-            </span>
-          )}
+          {authors && publicationId && <PublicationAuthors id={publicationId} authors={authors} />}
           <span className="publication-entry-meta">
             {venue}
             <DisclosureLabel />

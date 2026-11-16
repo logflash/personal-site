@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction }
 import { useRouter } from '@tanstack/react-router'
 import { syncScrollControls } from '../lib/pageScroll'
 import { readingAssetsReady } from '../lib/readingAssets'
+import { fitPublicationAuthors } from '../lib/publicationAuthors'
 import {
   captureSnapshot,
   initialSnapshot,
@@ -140,7 +141,10 @@ export function usePageMemory() {
           // Flush layout before reading fonts.ready, including newly open cards.
           document.documentElement.getBoundingClientRect()
           void readingAssetsReady().then(() => {
-            if (!disposed && run === generation) frame = requestAnimationFrame(apply)
+            if (!disposed && run === generation) {
+              fitPublicationAuthors()
+              frame = requestAnimationFrame(apply)
+            }
           })
         } else apply()
       })
