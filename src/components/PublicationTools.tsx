@@ -14,14 +14,21 @@ export const citationMessages = [
   msg('Citation'),
 ]
 
-export function PublicationTools({ publicationId }: { publicationId: keyof typeof publications }) {
+export function PublicationTools({
+  publicationId,
+  authors,
+}: {
+  publicationId: keyof typeof publications
+  authors: readonly string[]
+}) {
   const gt = useTranslate()
   const [format, setFormat] = useState<'citation' | 'bibtex' | 'link'>('citation')
   const [status, setStatus] = useState('')
   const [link, setLink] = useState('')
   const output = useRef<HTMLTextAreaElement>(null)
   const pendingCopy = useRef(0)
-  const publication = publications[publicationId]
+  const metadata = publications[publicationId]
+  const publication = { citation: metadata.citation(authors), bibtex: metadata.bibtex(authors) }
   const value = format === 'link' ? link : publication[format]
 
   // Run after React mounts the fallback. A queued animation frame can precede

@@ -33,7 +33,7 @@ import { PublicationTools } from '../PublicationTools'
 import { PublicationAuthors } from '../PublicationAuthors'
 import { NamePronunciation } from '../NamePronunciation'
 import { useRememberedDisclosure, useRememberedState } from '../../hooks/usePageMemory'
-import { publications } from '../../data/publications'
+import type { publications } from '../../data/publications'
 
 interface SectionContextValue {
   id: string
@@ -365,6 +365,7 @@ export function Stack({ children }: { children: ReactNode }) {
 
 export function PublicationEntry({
   publicationId,
+  authors,
   name,
   venue,
   description,
@@ -372,6 +373,7 @@ export function PublicationEntry({
   translatedLabel,
 }: {
   publicationId?: keyof typeof publications
+  authors: readonly string[]
   name: string
   venue: string
   description: string
@@ -380,7 +382,6 @@ export function PublicationEntry({
 }) {
   const gt = useMdxGT()
   const entry = useRememberedDisclosure(`publication:${publicationId ?? name}`)
-  const authors = publicationId ? publications[publicationId].authors : undefined
   useLayoutEffect(() => {
     if (!publicationId) return
     const reveal = () => {
@@ -416,7 +417,7 @@ export function PublicationEntry({
         <a href={url} {...externalProps(true)}>
           <span data-_gt-hash={translationHash(translatedLabel)}>{gt(translatedLabel)}</span> ↗
         </a>
-        {publicationId && <PublicationTools publicationId={publicationId} />}
+        {publicationId && <PublicationTools publicationId={publicationId} authors={authors} />}
         <DisclosureCloseButton />
       </div>
     </details>
